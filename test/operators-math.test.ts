@@ -244,7 +244,7 @@ describe('power / round / floor / ceiling / abs', () => {
     expect((await failure({ $power: [-8, 0.5] })).code).toBe('non-finite-result')
   })
 
-  test('round: a null decimals means unset — 0 (row 14); a null value propagates', async () => {
+  test('round: a null decimals means omitted — 0 (row 14); a null value propagates', async () => {
     expect(await ev({ $round: ['$data.price', null] }, { price: 3.7 })).toBe(4)
     expect(
       await ev({ operator: 'round', value: 3.7, decimals: '$data.settings.precision' }, {})

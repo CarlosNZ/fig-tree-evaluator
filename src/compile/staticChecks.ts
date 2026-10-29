@@ -13,14 +13,7 @@
 import { ErrorCodes } from '../errorCodes'
 import { FALLBACK_ERROR_FIELDS } from '../FigTreeError'
 import type { Severity } from '../issues'
-import {
-  checkDeclared,
-  checkType,
-  defaultFor,
-  isUnset,
-  NO_DEFAULT,
-  nullMeansUnset,
-} from '../typeCheck'
+import { checkDeclared, checkType, defaultFor, isOmitted, NO_DEFAULT } from '../typeCheck'
 import { typesIntersect } from '../typeIntersection'
 import { staticType } from './staticType'
 import type { Constraints, ExpectedType } from '../typeCheck'
@@ -252,7 +245,7 @@ const visitOperator = (state: CheckState, node: OperatorNode) => {
  * Whether a whole null at `target` is replaced before the type check sees
  * it: a `replacesNullAt` holder targets it, supplied on the node or by its
  * operator's `operatorDefaults`, the chain the runtime builds its holders
- * from (src/evaluate/params.ts). A null holder is unset, so it replaces
+ * from (src/evaluate/params.ts). A null holder is omitted, so it replaces
  * nothing. At a target declaring an element null policy the holder
  * replaces null elements only, and a whole null reaches the type check.
  */
@@ -282,6 +275,7 @@ interface ReceivingDeclaration {
   constraints?: Constraints
   elementNullPolicy?: unknown
   evaluationMode?: EvaluationMode
+  nullBehavior: unknown
 }
 
 /**
@@ -491,7 +485,7 @@ const SAMPLES = { object: {}, array: [], string: '', number: 0, boolean: false }
  * The type an `$error` read is known to have: a bare `$error` is always an
  * object, and a field is its type in `FallbackError`'s shape where that is
  * one type. Anything else is unknown. An optional field may be absent, so
- * read as null, which an optional parameter may take as unset.
+ * read as null, which an optional parameter may take as omitted.
  */
 const errorReadType = (segments: PathSegment[]): keyof typeof SAMPLES | undefined => {
   const [field, ...rest] = segments
@@ -505,7 +499,7 @@ const errorReadType = (segments: PathSegment[]): keyof typeof SAMPLES | undefine
  * Why a value can never satisfy a receiving declaration — the compile
  * moment of the one type table. Null policy runs BEFORE the type check,
  * mirroring the runtime layers: a null that a holder replaces, or a null at
- * an optional parameter whose type excludes null (unset, so the default
+ * an optional parameter whose type excludes null (omitted, so the default
  * applies), never reaches the type check. Past it, the constraints follow
  * the rule every other check of a value follows (`checkDeclared`).
  */
@@ -514,7 +508,7 @@ const valueMismatch = (
   value: unknown,
   nullReplaced: boolean
 ): { code: string; reason: string } | undefined => {
-  if (value === null && (nullReplaced || nullMeansUnset(declared))) return
+  if (value === null && (nullReplaced || declared.nullBehavior === 'omit')) return
   const checked = checkDeclared(value, declared)
   if (!checked.ok)
     return {
@@ -605,10 +599,10 @@ const runValidateHook = (state: CheckState, node: OperatorNode) => {
   if (hook === undefined) return
 
   // Every value known before evaluation — dynamic values simply aren't
-  // present. An unset parameter carries what the runtime's defaults pass
+  // present. An omitted parameter carries what the runtime's defaults pass
   // will give it (src/evaluate/params.ts), so a hook reads the effective
   // value whether it was authored, left to a default, or set to a null that
-  // means unset. The data the `EvaluationData` sentinel stands for isn't
+  // means omitted. The data the `EvaluationData` sentinel stands for isn't
   // known until evaluation, so it stays out
   const { definition } = node.entry
   const literalParams: Record<string, unknown> = {}
@@ -616,7 +610,7 @@ const runValidateHook = (state: CheckState, node: OperatorNode) => {
     const declared = definition.parameters[name]
     const supplied = node.params[name]
     if (supplied !== undefined && supplied.kind !== 'constant') continue
-    const value = isUnset(supplied?.value, declared)
+    const value = isOmitted(supplied?.value, declared)
       ? defaultFor(node.entry, name, declared)
       : supplied!.value
     if (value !== NO_DEFAULT && value !== EvaluationData) literalParams[name] = value

@@ -46,7 +46,7 @@ test('row 13 — null element in min: null; fallback ignored', async () => {
   expect(await ev({ $min: [3, '$data.missing', 7], fallback: 'F' })).toBe(null)
 })
 
-test('row 14 — null at optional decimals means unset; a null value still propagates', async () => {
+test('row 14 — null at optional decimals means omitted; a null value still propagates', async () => {
   expect(await ev({ $round: ['$data.price', null] }, { price: 3.7 })).toBe(4)
   expect(await ev({ $round: ['$data.price', null], fallback: 'F' }, { price: 3.7 })).toBe(4)
   expect(await ev({ $round: ['$data.missing', null] })).toBe(null)

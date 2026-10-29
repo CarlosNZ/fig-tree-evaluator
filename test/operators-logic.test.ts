@@ -22,7 +22,7 @@ const tracked = () => {
   const definition = defineOperator({
     name: 'track',
     category: 'other',
-    parameters: { value: { type: 'any', nullPolicy: 'value' } },
+    parameters: { value: { type: 'any', nullPolicy: 'accept' } },
     positionalParams: ['value'],
     evaluate: ({ value }) => {
       calls.push(value)

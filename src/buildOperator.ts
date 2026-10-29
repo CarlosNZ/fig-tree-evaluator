@@ -17,6 +17,7 @@
 import { fnv1a, isPlainObject } from './utils'
 import { typeNamesNull, type ExpectedType, type LiteralType } from './typeCheck'
 import { isLiteralType } from './typeIntersection'
+import { elementNullBehaviorOf, nullBehaviorOf, type Declared } from './nullBehavior'
 import {
   VALIDATED_OPERATOR,
   type CompiledNullPolicy,
@@ -88,28 +89,39 @@ export const assembleOperator = (
   def: OperatorDefinition,
   compiledPolicies: Map<string, CompiledNullPolicy>
 ): ValidatedOperatorDefinition => {
-  const validatedParameters: Record<string, ValidatedParameter> = {}
+  const declaredParameters: Record<string, Declared> = {}
   for (const [paramName, d] of Object.entries(def.parameters)) {
     const compiled = compiledPolicies.get(paramName)
     const declaredPolicy = typeof d.nullPolicy === 'string' ? d.nullPolicy : undefined
     const type = d.type ?? 'any'
-    // truthiness implies 'value' where the type admits null at all
-    const impliedPolicy: NullPolicyValue =
-      d.truthiness === true && typeNamesNull(type) ? 'value' : 'propagate'
+    // Truthiness implies 'accept', and so does a lazy delivery, the only
+    // policy legal there
+    const lazily =
+      d.evaluationMode !== undefined &&
+      d.evaluationMode !== 'eager' &&
+      d.evaluationMode !== 'literal'
+    const impliedPolicy: NullPolicyValue = d.truthiness === true || lazily ? 'accept' : 'propagate'
 
-    const parameter: ValidatedParameter = {
+    const parameter: Declared = {
       type: cloneTypeExpression(type),
       required: d.required ?? !('default' in d),
       evaluationMode: (d.evaluationMode as EvaluationMode) ?? 'eager',
       truthiness: d.truthiness ?? false,
-      nullPolicy: compiled ?? declaredPolicy ?? impliedPolicy,
     }
+    if (typeNamesNull(type)) parameter.nullPolicy = compiled ?? declaredPolicy ?? impliedPolicy
     if ('default' in d) parameter.default = d.default
     if (d.elementNullPolicy !== undefined) parameter.elementNullPolicy = d.elementNullPolicy
     if (d.constraints !== undefined) parameter.constraints = deepClone(d.constraints)
     if (d.over !== undefined) parameter.over = d.over
     if (d.replacesNullAt !== undefined) parameter.replacesNullAt = [...d.replacesNullAt]
-    validatedParameters[paramName] = parameter
+    declaredParameters[paramName] = parameter
+  }
+  // The behaviours read the whole parameter, and `as`'s its siblings too
+  const validatedParameters = declaredParameters as Record<string, ValidatedParameter>
+  for (const [paramName, parameter] of Object.entries(validatedParameters)) {
+    parameter.nullBehavior = nullBehaviorOf(paramName, parameter, declaredParameters)
+    const element = elementNullBehaviorOf(parameter)
+    if (element !== undefined) parameter.elementNullBehavior = element
   }
 
   // Only the last entry can be the rest entry in a well-formed definition
@@ -222,11 +234,12 @@ const deepFreezeArtifact = (
     if (typeof parameter.type !== 'string') Object.freeze(parameter.type)
     if (typeof parameter.type === 'object' && 'literal' in parameter.type)
       Object.freeze(parameter.type.literal)
-    if (typeof parameter.nullPolicy === 'object') {
-      parameter.nullPolicy.table.forEach((row) => Object.freeze(row))
-      Object.freeze(parameter.nullPolicy.table)
-      Object.freeze(parameter.nullPolicy)
-    }
+    for (const conditional of [parameter.nullPolicy, parameter.nullBehavior])
+      if (typeof conditional === 'object') {
+        conditional.table.forEach((row) => Object.freeze(row))
+        Object.freeze(conditional.table)
+        Object.freeze(conditional)
+      }
     if (parameter.constraints !== undefined) deepFreezePlain(parameter.constraints)
     if (parameter.replacesNullAt !== undefined) Object.freeze(parameter.replacesNullAt)
     Object.freeze(parameter)

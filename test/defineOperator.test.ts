@@ -122,6 +122,30 @@ describe('defineOperator — the validated artifact', () => {
     expect(validated.parameters.else.default).toBeNull()
   })
 
+  it("gives a lazily delivered parameter that admits null the policy 'accept'", () => {
+    const validated = defineOperator(ifLike())
+    expect(validated.parameters.then.nullPolicy).toBe('accept')
+    expect(validated.parameters.condition.nullPolicy).toBe('accept') // truthiness
+  })
+
+  it('admits a target named twice by one replacesNullAt, redundant as it is', () => {
+    const definition = nullReplacerLike()
+    definition.parameters.nullValueDefault = {
+      ...definition.parameters.nullValueDefault,
+      replacesNullAt: ['values', 'values'],
+    }
+    expect(defineOperator(definition).parameters.nullValueDefault.replacesNullAt).toEqual([
+      'values',
+      'values',
+    ])
+  })
+
+  it("admits 'accept' declared on a lazily delivered parameter, redundant as it is", () => {
+    const definition = ifLike()
+    definition.parameters.then = { ...definition.parameters.then, nullPolicy: 'accept' }
+    expect(defineOperator(definition).parameters.then.nullPolicy).toBe('accept')
+  })
+
   it('derives restParam and keeps positionalParams verbatim', () => {
     const validated = defineOperator(nullReplacerLike())
     expect(validated.positionalParams).toEqual(['...values'])
@@ -241,7 +265,7 @@ describe('defineOperator — a default meets its constraints as a value does', (
   it('null elements under an element null policy are the policy’s', () => {
     const values = {
       type: 'array',
-      elementNullPolicy: 'value',
+      elementNullPolicy: 'accept',
       constraints: { length: 2, homogeneous: ['number'] },
     }
     expect(() => withValues({ ...values, default: [1, null] })).not.toThrow()

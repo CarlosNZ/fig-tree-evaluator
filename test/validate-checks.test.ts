@@ -372,7 +372,7 @@ describe('maxDepth / maxNodes — instance configuration, compared against store
 })
 
 describe('the static layer applies null policy before the type check', () => {
-  test('a literal null at an optional parameter whose type excludes null is unset (row 14)', () => {
+  test('a literal null at an optional parameter whose type excludes null is omitted (row 14)', () => {
     // clamp.min is `number` with a default — null means "use the default"
     expect(errorCodes({ $clamp: [5, null] })).toHaveLength(0)
     expect(errorCodes({ $clamp: { value: 5, max: null } })).toHaveLength(0)
@@ -380,6 +380,18 @@ describe('the static layer applies null policy before the type check', () => {
 
   test('a literal null at a required parameter whose type excludes null stays a type error', () => {
     expect(errorCodes({ $format: { template: null } })).toContain('type-check')
+  })
+
+  test('a literal null at an optional lazy parameter whose type excludes null is a type error', () => {
+    // A handle has no default to fall back on, so the runtime fails it too
+    const later = defineOperator({
+      name: 'later',
+      category: 'other',
+      parameters: { x: { type: 'number', evaluationMode: 'lazy', required: false } },
+      evaluate: () => null,
+    })
+    const issues = new FigTree({ operators: [later] }).validate({ $later: { x: null } }).issues
+    expect(issues.map((issue) => issue.code)).toEqual(['type-check'])
   })
 
   test('a literal null at a required parameter whose type names null is admitted', () => {
@@ -472,7 +484,7 @@ describe("a validate hook reads each parameter's effective value", () => {
   const received = (expression: unknown, operatorDefaults?: Record<string, unknown>) =>
     delivery(expression, operatorDefaults).literalParams
 
-  test('an unset parameter arrives as its declared default', () => {
+  test('an omitted parameter arrives as its declared default', () => {
     expect(received({ $probe: {} })).toEqual({ mode: 'a', nullable: 'kept' })
   })
 
@@ -487,7 +499,7 @@ describe("a validate hook reads each parameter's effective value", () => {
     expect(received({ $probe: {} }, { mode: 'c' })).toMatchObject({ mode: 'c' })
   })
 
-  test('a null that means unset arrives as the default; one the type names stays null', () => {
+  test('a null that means omitted arrives as the default; one the type names stays null', () => {
     expect(received({ $probe: { mode: null, nullable: null } })).toMatchObject({
       mode: 'a',
       nullable: null,

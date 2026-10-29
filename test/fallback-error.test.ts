@@ -614,7 +614,7 @@ describe('the static check knows the fields $error always has', () => {
     ).toEqual([])
   })
 
-  test('an optional field is not checked: absent, it is null, which may mean unset', () => {
+  test('an optional field is not checked: absent, it is null, which may mean omitted', () => {
     expect(typeErrors({ operator: 'round', value: '$error.operator' })).toEqual([])
   })
 })

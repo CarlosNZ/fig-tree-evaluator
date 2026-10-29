@@ -109,6 +109,13 @@ export const typeNamesNull = (type: ExpectedType): boolean => {
   return false
 }
 
+/** Does a declared type admit an array (the `over` target requirement)? */
+export const typeAdmitsArray = (type: ExpectedType): boolean => checkType([], type).ok
+
+/** Does a declared type admit an array or an object, which have elements? */
+export const typeAdmitsContainer = (type: ExpectedType): boolean =>
+  typeAdmitsArray(type) || checkType({}, type).ok
+
 /**
  * Does a declared type name a number? `any` does not: an operator that may
  * return anything hands values on rather than computing numbers.
@@ -120,28 +127,18 @@ export const typeNamesNumber = (type: ExpectedType): boolean => {
 }
 
 /**
- * Null-means-unset: a null at an optional parameter whose type does not
- * name null behaves as if nothing had been passed, so its default applies.
- * The opt-out is the declaration itself — `type: ['string', 'null']`
- * receives a null as a value.
+ * Whether an operator parameter's value leaves it omitted, so that its
+ * default applies: nothing passed, or a null where its null behaviour is
+ * `omit`.
  */
-export const nullMeansUnset = (declared: { required: boolean; type: ExpectedType }): boolean =>
-  !declared.required && !typeNamesNull(declared.type)
-
-/**
- * Whether a parameter's value leaves it unset, so that its default
- * applies: nothing passed, or a null where null means unset.
- */
-export const isUnset = (
-  value: unknown,
-  declared: { required: boolean; type: ExpectedType }
-): boolean => value === undefined || (value === null && nullMeansUnset(declared))
+export const isOmitted = (value: unknown, declared: { nullBehavior: unknown }): boolean =>
+  value === undefined || (value === null && declared.nullBehavior === 'omit')
 
 /** What `defaultFor` answers for a parameter with no default at all. */
 export const NO_DEFAULT: unique symbol = Symbol('fig-tree:noDefault')
 
 /**
- * The default chain an unset parameter falls to: the instance's
+ * The default chain an omitted parameter falls to: the instance's
  * `operatorDefaults` entry, else the declared default. The runtime, the
  * validate hook's input and `fallbackCoverage` all read it here, so the
  * hook sees what the runtime will use. A declared default may be the

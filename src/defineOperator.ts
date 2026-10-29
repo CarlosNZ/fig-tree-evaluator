@@ -22,6 +22,8 @@ import {
   checkDeclaredConstraints,
   checkType,
   isExpectedType,
+  typeAdmitsArray,
+  typeAdmitsContainer,
   typeNamesNull,
   validateConstraintsShape,
   type ExpectedType,
@@ -60,16 +62,9 @@ const EVALUATION_MODES: ReadonlySet<string> = new Set([
  */
 const CATEGORIES: ReadonlySet<string> = new Set(OPERATOR_CATEGORIES)
 
-const NULL_POLICY_VALUES: ReadonlySet<string> = new Set(['propagate', 'value'])
+const NULL_POLICY_VALUES: ReadonlySet<string> = new Set(['propagate', 'accept'])
 
 type ReportIssue = (code: string, message: string, path: Path, parameter?: string) => void
-
-/** Does a declared type admit an array (the `over` target requirement)? */
-const typeAdmitsArray = (type: ExpectedType): boolean => checkType([], type).ok
-
-/** Is a declared type a container (admits per-element/per-value policies)? */
-const typeIsContainer = (type: ExpectedType): boolean =>
-  typeAdmitsArray(type) || checkType({}, type).ok
 
 /**
  * Overloads rather than one signature over a union, because a union
@@ -348,13 +343,15 @@ export function defineOperator(
         paramName
       )
 
-    // Null policies: vocabulary, type-driven admission, truthiness conflict
-    if (d.nullPolicy !== undefined) {
+    // Null policies: vocabulary, type-driven admission, truthiness conflict,
+    // delivery mode. A holder's are checked with its `replacesNullAt`
+    const isHolder = d.replacesNullAt !== undefined
+    if (d.nullPolicy !== undefined && !isHolder) {
       const policy = d.nullPolicy
       if (typeof policy !== 'function' && !NULL_POLICY_VALUES.has(policy as string))
         addIssue(
           ErrorCodes.invalidNullPolicy,
-          `'nullPolicy' must be 'propagate', 'value' or a conditional function`,
+          `'nullPolicy' must be 'propagate', 'accept' or a conditional function`,
           at('nullPolicy'),
           paramName
         )
@@ -369,22 +366,22 @@ export function defineOperator(
       if (d.truthiness === true && policy === 'propagate')
         addIssue(
           ErrorCodes.invalidNullPolicy,
-          `'truthiness' implies null policy 'value' (null is falsy) — declaring 'propagate' is a conflict`,
+          `'truthiness' implies null policy 'accept' (null is falsy) — declaring 'propagate' is a conflict`,
           at('nullPolicy'),
           paramName
         )
     }
-    if (d.elementNullPolicy !== undefined) {
+    if (d.elementNullPolicy !== undefined && !isHolder) {
       if (!NULL_POLICY_VALUES.has(d.elementNullPolicy as string)) {
         addIssue(
           ErrorCodes.invalidNullPolicy,
-          `'elementNullPolicy' must be 'propagate' or 'value' — the conditional form is not admitted here`,
+          `'elementNullPolicy' must be 'propagate' or 'accept' — the conditional form is not admitted here`,
           at('elementNullPolicy'),
           paramName
         )
       }
       const type = effectiveTypes[paramName]
-      if (type !== undefined && !typeIsContainer(type))
+      if (type !== undefined && !typeAdmitsContainer(type))
         addIssue(
           ErrorCodes.invalidNullPolicy,
           `'elementNullPolicy' applies to container parameters only`,
@@ -392,6 +389,32 @@ export function defineOperator(
           paramName
         )
     }
+    // A null reaches a lazily delivered parameter's operator whatever is
+    // declared: by the time the body demands the value, it is running
+    const mode = d.evaluationMode
+    if (mode !== undefined && mode !== 'eager' && mode !== 'literal' && !isHolder)
+      for (const field of ['nullPolicy', 'elementNullPolicy'] as const) {
+        const policy = d[field]
+        if (policy === 'propagate' || typeof policy === 'function')
+          addIssue(
+            ErrorCodes.invalidNullPolicy,
+            `'${field}' can only be 'accept' with evaluationMode '${mode}' — a null always reaches the operator`,
+            at(field),
+            paramName
+          )
+      }
+    // A literal container at these modes reaches the operator as a handle
+    // per element, which no constraint over its elements can check, so one
+    // would be checked only when the container arrives whole
+    if (constraintsValid && (mode === 'lazyElements' || mode === 'race' || mode === 'lazyEntries'))
+      for (const key of ['homogeneous', 'elementShape'] as const)
+        if (d.constraints![key] !== undefined)
+          addIssue(
+            ErrorCodes.invalidDefinition,
+            `'${key}' is never checked on a literal container with evaluationMode '${mode}'`,
+            [...at('constraints'), key],
+            paramName
+          )
   }
 
   // ── Cross-parameter checks ─────────────────────────────────────────────
@@ -470,16 +493,38 @@ export function defineOperator(
     }
   }
 
-  // replacesNullAt: holder lazy, optional, no default; targets real siblings
+  // replacesNullAt: the holder lazy, optional, no default, its type without
+  // null and no null policy or truthiness of its own; targets real, eager
+  // or literal siblings, each by one holder. A null at the
+  // holder replaces a null with a null, which is no replacement, and its
+  // value never reaches the body, so a policy there could never apply
+  const claimed: Record<string, string> = {}
   for (const [paramName, d] of Object.entries(declarations)) {
     if (d.replacesNullAt === undefined) continue
+    const paramPath: Path = ['parameters', paramName]
+    for (const field of ['nullPolicy', 'elementNullPolicy', 'truthiness'] as const)
+      if (d[field] !== undefined && d[field] !== false)
+        addIssue(
+          field === 'truthiness' ? ErrorCodes.invalidDefinition : ErrorCodes.invalidNullPolicy,
+          `a 'replacesNullAt' parameter takes no '${field}' — its value never reaches the operator`,
+          [...paramPath, field],
+          paramName
+        )
+    const type = effectiveTypes[paramName]
+    if (type !== undefined && typeNamesNull(type))
+      addIssue(
+        ErrorCodes.invalidDefinition,
+        `a 'replacesNullAt' parameter's type may not include 'null' — a null there means no replacement`,
+        [...paramPath, 'type'],
+        paramName
+      )
     if (!Array.isArray(d.replacesNullAt) || d.replacesNullAt.some((t) => typeof t !== 'string'))
       continue // shape issue already recorded
-    const path: Path = ['parameters', paramName, 'replacesNullAt']
+    const path: Path = [...paramPath, 'replacesNullAt']
     if (d.evaluationMode !== 'lazy')
       addIssue(
         ErrorCodes.invalidDefinition,
-        `a 'replacesNullAt' holder must declare evaluationMode: 'lazy'`,
+        `a 'replacesNullAt' parameter must declare evaluationMode: 'lazy'`,
         path,
         paramName
       )
@@ -487,14 +532,14 @@ export function defineOperator(
     if (holderRequired)
       addIssue(
         ErrorCodes.invalidDefinition,
-        `a 'replacesNullAt' holder must be optional`,
+        `a 'replacesNullAt' parameter must be optional`,
         path,
         paramName
       )
     if ('default' in d)
       addIssue(
         ErrorCodes.invalidDefinition,
-        `a 'replacesNullAt' holder may not carry a 'default' — it is presence-sensitive by construction`,
+        `a 'replacesNullAt' parameter may not carry a 'default' — it is presence-sensitive by construction`,
         path,
         paramName
       )
@@ -502,7 +547,7 @@ export function defineOperator(
       if (target === paramName)
         addIssue(
           ErrorCodes.invalidDefinition,
-          `'replacesNullAt' may not target the holder itself`,
+          `'replacesNullAt' may not target the parameter declaring it`,
           [...path, i],
           paramName
         )
@@ -513,6 +558,28 @@ export function defineOperator(
           [...path, i],
           paramName
         )
+      else {
+        // Nulls are replaced in a whole value, before the body runs, so a
+        // lazily delivered target's would arrive unreplaced; and a target
+        // has one replacement, or one would silently override the other
+        const mode = declarations[target].evaluationMode ?? 'eager'
+        const claimant = claimed[target]
+        if (mode !== 'eager' && mode !== 'literal')
+          addIssue(
+            ErrorCodes.invalidDefinition,
+            `'replacesNullAt' target '${target}' must be eager or literal, not '${mode}'`,
+            [...path, i],
+            paramName
+          )
+        else if (claimant !== undefined && claimant !== paramName)
+          addIssue(
+            ErrorCodes.invalidDefinition,
+            `'replacesNullAt' target '${target}' is already replaced by '${claimant}'`,
+            [...path, i],
+            paramName
+          )
+        claimed[target] = paramName
+      }
     })
   }
 
@@ -597,7 +664,7 @@ const compileNullPolicies = (
       if (typeof policy !== 'string' || !NULL_POLICY_VALUES.has(policy)) {
         report(
           ErrorCodes.invalidNullPolicy,
-          `the conditional 'nullPolicy' must return 'propagate' or 'value' for every member — got ${JSON.stringify(policy)} for ${JSON.stringify(member)}`,
+          `the conditional 'nullPolicy' must return 'propagate' or 'accept' for every member — got ${JSON.stringify(policy)} for ${JSON.stringify(member)}`,
           path,
           paramName
         )

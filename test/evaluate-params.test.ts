@@ -30,7 +30,7 @@ describe('whole-value null policy', () => {
   })
 
   test('value: null is delivered to the body', async () => {
-    const spy = spyOp('val', { p: { type: ['number', 'null'], nullPolicy: 'value' } })
+    const spy = spyOp('val', { p: { type: ['number', 'null'], nullPolicy: 'accept' } })
     await figWith([spy]).evaluate({ $val: { p: null } })
     expect(spy.calls).toEqual([{ p: null }])
   })
@@ -55,7 +55,7 @@ describe('whole-value null policy', () => {
   })
 })
 
-describe('unset detection and the layered default chain', () => {
+describe('omission detection and the layered default chain', () => {
   const declaration = { p: { type: 'number' as const, default: 7 } }
 
   test('omitted → the metadata default', async () => {
@@ -64,7 +64,7 @@ describe('unset detection and the layered default chain', () => {
     expect(spy.calls).toEqual([{ p: 7 }])
   })
 
-  test('null at an optional parameter whose type excludes null means unset', async () => {
+  test('null at an optional parameter whose type excludes null means omitted', async () => {
     const spy = spyOp('dflt', declaration)
     await figWith([spy]).evaluate({ $dflt: { p: '$data.missing' } })
     expect(spy.calls).toEqual([{ p: 7 }])
@@ -78,7 +78,7 @@ describe('unset detection and the layered default chain', () => {
     expect(spy.calls).toEqual([{ p: 9 }, { p: 3 }])
   })
 
-  test('optional without a default: unset is an ABSENT key, not null', async () => {
+  test('optional without a default: omitted is an ABSENT key, not null', async () => {
     const spy = spyOp('opt', { p: { type: 'number', required: false } })
     const fig = figWith([spy])
     await fig.evaluate({ $opt: {} })
@@ -89,7 +89,7 @@ describe('unset detection and the layered default chain', () => {
 
   test('an optional parameter whose type names null receives an explicit null as a value', async () => {
     const spy = spyOp('optnull', {
-      p: { type: ['number', 'null'], required: false, nullPolicy: 'value' },
+      p: { type: ['number', 'null'], required: false, nullPolicy: 'accept' },
     })
     const fig = figWith([spy])
     await fig.evaluate({ $optnull: { p: null } })
@@ -116,7 +116,7 @@ describe('the conditional null policy (ledger #14)', () => {
     spyOp(
       'conv',
       {
-        value: { type: 'any', nullPolicy: (to: string) => (to === 'b' ? 'value' : 'propagate') },
+        value: { type: 'any', nullPolicy: (to: string) => (to === 'b' ? 'accept' : 'propagate') },
         to: { type: { literal: ['a', 'b'] } },
       },
       { positionalParams: ['value', 'to'] }
@@ -152,7 +152,7 @@ describe('the conditional null policy (ledger #14)', () => {
       spyOp(
         'conv',
         {
-          value: { type: 'any', nullPolicy: (to: string) => (to === 'b' ? 'value' : 'propagate') },
+          value: { type: 'any', nullPolicy: (to: string) => (to === 'b' ? 'accept' : 'propagate') },
           to: { type: { literal: ['a', 'b'] }, default: 'b' },
         },
         { positionalParams: ['value', 'to'] }
@@ -219,6 +219,28 @@ describe('replacesNullAt — the engine-side null replacement (ledger #18)', () 
     expect(counter.calls).toHaveLength(0)
     expect(spy.calls).toEqual([{ values: [1, 2] }])
   })
+  test("a computed replacement meets the holder's own type; a null replaces nothing", async () => {
+    const spy = spyOp('repl', {
+      target: { type: ['number', 'null'] },
+      nullValueDefault: {
+        type: 'number',
+        required: false,
+        evaluationMode: 'lazy',
+        replacesNullAt: ['target'],
+      },
+    })
+    const fig = figWith([spy])
+    const error = await rejection(
+      fig.evaluate({ $repl: { target: null, nullValueDefault: { $echo: 'five' } } })
+    )
+    expect(error.code).toBe('type-check')
+    expect(error.message).toMatch(/parameter 'nullValueDefault': expected number, received string/)
+    expect(spy.calls).toHaveLength(0)
+    expect(await fig.evaluate({ $repl: { target: null, nullValueDefault: { $echo: null } } })).toBe(
+      null
+    )
+    expect(spy.calls).toEqual([])
+  })
 })
 
 describe('element-wise null policy (ledger #8)', () => {
@@ -230,7 +252,7 @@ describe('element-wise null policy (ledger #8)', () => {
   })
 
   test('value per element delivers the nulls', async () => {
-    const spy = spyOp('elv', { values: { type: 'array', elementNullPolicy: 'value' } })
+    const spy = spyOp('elv', { values: { type: 'array', elementNullPolicy: 'accept' } })
     await figWith([spy]).evaluate({ $elv: { values: [1, null] } })
     expect(spy.calls).toEqual([{ values: [1, null] }])
   })
@@ -279,7 +301,7 @@ describe('the runtime type check', () => {
     const spy = spyOp('pair', {
       values: {
         type: 'array',
-        elementNullPolicy: 'value',
+        elementNullPolicy: 'accept',
         constraints: { length: 2, homogeneous: ['number'] },
       },
     })
@@ -292,7 +314,7 @@ describe('the runtime type check', () => {
   // and before evaluation as at it
   test('a null the type admits skips the constraints', async () => {
     const spy = spyOp('pairOrNull', {
-      values: { type: ['array', 'null'], nullPolicy: 'value', constraints: { length: 2 } },
+      values: { type: ['array', 'null'], nullPolicy: 'accept', constraints: { length: 2 } },
     })
     const fig = figWith([spy])
     expect(fig.validate({ $pairOrNull: { values: null } }).issues).toEqual([])

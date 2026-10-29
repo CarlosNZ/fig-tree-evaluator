@@ -47,7 +47,7 @@ export const OPERATOR_CATEGORIES = [
 
 export type OperatorCategory = (typeof OPERATOR_CATEGORIES)[number]
 
-export type NullPolicyValue = 'propagate' | 'value'
+export type NullPolicyValue = 'propagate' | 'accept'
 
 /**
  * The conditional null-policy form ("The conditional null-policy form" in
@@ -59,6 +59,28 @@ export type NullPolicyValue = 'propagate' | 'value'
 export type ConditionalNullPolicy = (selectorValue: any) => NullPolicyValue
 
 export type NullPolicy = NullPolicyValue | ConditionalNullPolicy
+
+/**
+ * What a `null` at a parameter does:
+ * - `propagate`: the node resolves to `null` without its operator running;
+ * - `accept`: the operator receives the `null` and decides what it means;
+ * - `omit`: the `null` counts as leaving the parameter out, so its default
+ *   applies, the host's or the declared one, else the operator runs without
+ *   it. At a parameter declaring `replacesNullAt`, no replacement is made,
+ *   and the target's behaviour follows;
+ * - `error`: a type error.
+ */
+export type NullBehavior = 'propagate' | 'accept' | 'omit' | 'error'
+
+/**
+ * The behaviour of a conditional null policy: a row per member of its
+ * selector's literal type, read through the selector's value.
+ */
+export interface ConditionalNullBehavior {
+  /** The definition's single literal-union parameter. */
+  selector: string
+  table: { value: string | number | boolean; behavior: NullPolicyValue }[]
+}
 
 /**
  * The compiled form of a conditional null policy: one row per member of the
@@ -107,7 +129,7 @@ export interface ValidateFinding {
 /**
  * The static validation hook (contract ledger #11). Runs at compile (Phase 3);
  * registration only checks it is a function. `literalParams` holds every
- * value known before evaluation: each literal on the node, and for an unset
+ * value known before evaluation: each literal on the node, and for an omitted
  * parameter its `operatorDefaults` entry, else its declared default. A
  * dynamic value is absent, as is the data `EvaluationData` stands for. The
  * `helpers` toolbox is the frozen primitives object of
@@ -132,7 +154,7 @@ export interface ParameterDeclaration extends TypeDeclaration {
   over?: string
   /**
    * The position is judged by the shared `isTruthy()`; the body receives
-   * actual booleans. Implies null policy `'value'` — declaring a conflicting
+   * actual booleans. Implies null policy `'accept'` — declaring a conflicting
    * `'propagate'` is a registration error.
    */
   truthiness?: boolean
@@ -147,8 +169,8 @@ export interface ParameterDeclaration extends TypeDeclaration {
    */
   elementNullPolicy?: NullPolicyValue
   /**
-   * Marks a `…Default` parameter as the engine-side null replacement for the
-   * named sibling target(s). Requires `evaluationMode: 'lazy'`, optional, no
+   * Makes this parameter the engine-side null replacement for the named
+   * sibling target(s). Requires `evaluationMode: 'lazy'`, optional, no
    * `default`.
    */
   replacesNullAt?: readonly string[]
@@ -228,14 +250,27 @@ export interface ValidatedParameter {
   evaluationMode: EvaluationMode
   truthiness: boolean
   /**
-   * The declared policy, else `'value'` where `truthiness` implies it, else
-   * `'propagate'`, filled in even where no policy can apply: at a type that
-   * doesn't name `null`, at a lazily delivered parameter, and at a holder.
-   * What a `null` does at every parameter is the catalog's `nullOutcome`
-   * (`CatalogOperatorParameter`).
+   * Present only where a policy can be declared, where the type names
+   * `null`: the declared policy, else `'accept'` where `truthiness` or a
+   * lazy delivery implies it, else `'propagate'`. What a `null` does at
+   * every parameter is `nullBehavior`.
    */
-  nullPolicy: NullPolicyValue | CompiledNullPolicy
+  nullPolicy?: NullPolicyValue | CompiledNullPolicy
   elementNullPolicy?: NullPolicyValue
+  /**
+   * What a `null` at the parameter does, worked out at registration from
+   * the rest of the declaration (src/nullBehavior.ts). The engine resolves
+   * a `null` by it. It describes a `null` with no holder supplied: where a
+   * sibling names this parameter in its `replacesNullAt`, supplying that
+   * sibling replaces the `null` first.
+   */
+  nullBehavior: NullBehavior | ConditionalNullBehavior
+  /**
+   * What a `null` element (or an object's `null` value) does, wherever the
+   * type admits an array or an object, except at a holder, whose `null`
+   * elements are the target's business as its `null` is.
+   */
+  elementNullBehavior?: NullPolicyValue | 'error'
   constraints?: Constraints
   over?: string
   replacesNullAt?: string[]

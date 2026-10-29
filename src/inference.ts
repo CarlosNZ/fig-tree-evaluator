@@ -10,7 +10,7 @@
  *     members, `integer` → `number`, `any` → `unknown`);
  *   - `propagate` (the default wherever the type names `null` and nothing
  *     else is declared) removes `null` — the engine short-circuits before
- *     the body; `nullPolicy: 'value'` keeps it; a conditional policy keeps
+ *     the body; `nullPolicy: 'accept'` keeps it; a conditional policy keeps
  *     it (either may apply);
  *   - `truthiness: true` → `boolean` (`boolean[]` for an array position);
  *   - `evaluationMode: 'lazy'` → `LazyValue<T>`, `'perElement'` →
@@ -52,7 +52,7 @@ export type TypeOf<T> = T extends 'string'
 type DeclaredType<P> = P extends { type: infer T } ? T : 'any'
 
 /** Does the body see `null` at this position? */
-type KeepsNull<P> = P extends { nullPolicy: 'value' }
+type KeepsNull<P> = P extends { nullPolicy: 'accept' }
   ? true
   : P extends { nullPolicy: NullPolicyValue }
     ? false
@@ -127,7 +127,7 @@ type Simplify<T> = { [K in keyof T]: T[K] } & {}
 /**
  * The post-everything parameters a body receives, typed from its
  * declarations: positional mapping applied, defaults resolved, type checks
- * passed, null policies enforced, truthiness delivered. Unset optionals
+ * passed, null policies enforced, truthiness delivered. Omitted optionals
  * without a default are absent keys, hence optional here.
  */
 export type ResolvedParams<D extends ParameterDeclarations = ParameterDeclarations> = Simplify<

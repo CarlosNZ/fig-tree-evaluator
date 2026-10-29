@@ -144,7 +144,7 @@ describe('declarations govern what a body receives', () => {
     })
   })
 
-  test('null at an optional parameter means unset', async () => {
+  test('null at an optional parameter means omitted', async () => {
     const result = (await fig().evaluate({ $frag: { required: 1, withDefault: null } })) as Record<
       string,
       unknown
@@ -170,6 +170,38 @@ describe('declarations govern what a body receives', () => {
     expect(fig.validate({ $read: { pair: null } }).issues).toEqual([])
     expect(await fig.evaluate({ $read: { pair: null } })).toBeNull()
     expect(await fig.evaluate({ $read: { pair: '$data.missing' } })).toBeNull()
+  })
+
+  // Each declaration's reported behaviour, held to what a null does there:
+  // written into the call (checked statically) and computed (at runtime)
+  test.each([
+    ['a type naming null', { type: ['string', 'null'] }, 'accept', null],
+    ["'any'", { type: 'any' }, 'accept', null],
+    ['optional, with a default', { type: 'string', default: 'd' }, 'omit', 'd'],
+    ['optional, no default', { type: 'string', required: false }, 'omit', null],
+    ['required', { type: 'string' }, 'error', undefined],
+  ] as const)('%s: a null is %s', async (_, declared, behavior, result) => {
+    const fig = build({ probe: { expression: '$params.p', parameters: { p: declared } } })
+    expect(fig.getFragments()[0].parameters.p.nullBehavior).toBe(behavior)
+    const written = fig.validate({ $probe: { p: null } }).issues
+    expect(written.some((issue) => issue.code === ErrorCodes.typeCheck)).toBe(behavior === 'error')
+    const computed = { $probe: { p: '$data.missing' } }
+    if (behavior === 'error')
+      expect((await rejection(fig.evaluate(computed))).code).toBe(ErrorCodes.typeCheck)
+    else expect(await fig.evaluate(computed)).toBe(result)
+  })
+
+  test.each([
+    ['a homogeneous constraint', { homogeneous: ['number'] }, 'error'],
+    ['no constraint', undefined, 'accept'],
+  ] as const)('a null element under %s is %s', async (_, constraints, behavior) => {
+    const p = { type: 'array', ...(constraints && { constraints }) } as const
+    const fig = build({ probe: { expression: '$params.p', parameters: { p } } })
+    expect(fig.getFragments()[0].parameters.p.elementNullBehavior).toBe(behavior)
+    const call = { $probe: { p: [1, '$data.missing'] } }
+    if (behavior === 'error')
+      expect((await rejection(fig.evaluate(call))).code).toBe(ErrorCodes.typeCheck)
+    else expect(await fig.evaluate(call)).toEqual([1, null])
   })
 
   test('an optional parameter with no default yields null', async () => {

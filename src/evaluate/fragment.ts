@@ -47,7 +47,7 @@ import { FigTreeError, isFigTreeError, type FallbackError } from '../FigTreeErro
 import { ErrorCodes } from '../errorCodes'
 import type { FragmentEntry, FragmentParameter } from '../fragments'
 import { toNodePath, type CompiledNode, type FragmentCallNode, type LinkedPath } from '../compile'
-import { checkDeclared, describeType, nullMeansUnset } from '../typeCheck'
+import { checkDeclared, describeType } from '../typeCheck'
 import { isPlainObject, noop, once } from '../utils'
 import { DeferredScope } from './abort'
 import {
@@ -255,7 +255,7 @@ const unsuppliedValue = (
 }
 
 /**
- * The declaration layers, applied where a value arrives: null-means-unset,
+ * The declaration layers, applied where a value arrives: null-means-omitted,
  * then the type check. The same two layers an operator parameter gets, in
  * the same order and with the same opt-out — `type: ['string', 'null']`
  * receives a null as a value.
@@ -269,7 +269,7 @@ const resolveArgument = (
   ctx: EvaluationContext
 ): unknown => {
   const normalized = value === undefined ? null : value
-  if (normalized === null && nullMeansUnset(declared)) return declared.default ?? null
+  if (normalized === null && declared.nullBehavior === 'omit') return declared.default ?? null
 
   const checked = checkDeclared(normalized, declared)
   if (!checked.ok)

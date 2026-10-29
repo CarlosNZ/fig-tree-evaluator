@@ -24,7 +24,7 @@ const counter = () => {
   const definition = defineOperator({
     name: 'count',
     category: 'other',
-    parameters: { value: { type: 'any', nullPolicy: 'value', required: false } },
+    parameters: { value: { type: 'any', nullPolicy: 'accept', required: false } },
     positionalParams: ['value'],
     evaluate: ({ value }) => {
       calls.push(value)
@@ -124,7 +124,7 @@ describe('the default chain reaches a lazy parameter', () => {
   })
 
   test('no default at all leaves the key absent, not null', async () => {
-    // The distinction `match.default` depends on: an unset default must be
+    // The distinction `match.default` depends on: an omitted default must be
     // distinguishable from one explicitly set to null
     const spy = spyOp('noDefault', declare({}) as never)
     await figWith([spy.definition]).evaluate({ $noDefault: {} })

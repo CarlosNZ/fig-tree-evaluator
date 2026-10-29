@@ -41,7 +41,7 @@ describe('fallback feeding-position check', () => {
     expect(issuesOf(inValue(0))).toEqual([])
     // round.value names null
     expect(issuesOf(inValue(null))).toEqual([])
-    // round.decimals is optional and excludes null: a null there is unset
+    // round.decimals is optional and excludes null: a null there is omitted
     expect(issuesOf({ $round: { value: 1.5, decimals: { ...divide, fallback: null } } })).toEqual(
       []
     )

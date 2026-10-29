@@ -51,7 +51,7 @@ describe("a node's own timeout", () => {
     expect(await fig.evaluate({ $sleep: [5, 500] })).toBe('slept 5')
   })
 
-  it('is unset when the node supplies no value, so only the caller bounds it', async () => {
+  it('is omitted when the node supplies no value, so only the caller bounds it', async () => {
     const { fig } = withSleeper()
     expect(await fig.evaluate({ $sleep: [5] })).toBe('slept 5')
   })
