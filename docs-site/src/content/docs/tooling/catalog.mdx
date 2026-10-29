@@ -1,5 +1,5 @@
 ---
-title: 'The catalog: fig-tree-evaluator/catalog'
+title: fig-tree-evaluator/catalog
 description: Display names, descriptions and colours for operators, categories and fragments
 sidebar:
   label: /catalog
@@ -8,44 +8,21 @@ sidebar:
 
 import Callout from '../../../components/Callout.astro'
 
-{/* STAND-IN: Carl to rewrite */}
+So, you're writing a [visual editor](/editor/) for FigTree expressions: it's going to need a bunch of stuff from FigTree — the actual instance, for running evaluations, of course, but you'll also want detailed info about each operator and fragment available, including their parameter declarations so you can enforce correct input in the UI. It'd also be handy to have guidelines about how to _display_ them, such as labels, descriptions and even colours.
 
-A visual editor needs more than FigTree's own declarations to present an operator: a label for it, a colour to draw it in, and what a new parameter should start as. The **catalog** puts all of that in one place: every operator and fragment an instance has, each with its listing joined in and every gap already filled, so a tool reads one list and never works out a fallback of its own.
-
-Here, the catalog becomes an editor's menu for adding a node, grouped by category:
-
-```ts title="menu.ts"
-import { getCatalog } from 'fig-tree-evaluator/catalog'
-
-const catalog = getCatalog(fig)
-
-const menu = catalog.categories.map((category) => ({
-  heading: category.displayName,
-  items: catalog.operators
-    .filter((operator) => operator.category === category.name)
-    .map((operator) => operator.displayName),
-}))
-```
-
-Here's its first group:
-
-```json5
-{
-  heading: 'Logic & control',
-  items: [
-    'Logical AND',
-    'Logical OR',
-    'Logical NOT (!)',
-    'Conditional (?)',
-    'Match',
-    'First non-null',
-  ],
-}
-```
+Enter the **catalog**: a single source of truth for _all_ that stuff, derived from the FigTree instance itself, along with [listings](/custom-operators/presenting/) you've provided, and structured so it's easy to consume.
 
 ## `getCatalog()`
 
-`getCatalog()` takes a FigTree instance, and optionally the listings and category changes to merge over the package's own ([Combining listings](#combining-listings) and [Overriding categories](#overriding-categories)). It returns:
+`getCatalog()` takes your FigTree instance, and returns the catalog:
+
+```ts title="catalog.ts"
+import { getCatalog } from 'fig-tree-evaluator/catalog'
+
+const catalog = getCatalog(fig)
+```
+
+It can also take listings and category changes, to merge over the package's own ([Combining listings](#combining-listings) and [Overriding categories](#overriding-categories)). Here's the shape of what it returns:
 
 ```ts title="Types"
 import type {
@@ -57,7 +34,8 @@ import type {
 } from 'fig-tree-evaluator'
 // ---cut---
 interface Catalog {
-  // The categories at least one operator is in, sorted by their order
+  // The categories that have at least one active operator, sorted
+  // by each one's order field: logic first, other last
   categories: CatalogCategory[]
   // Both in the order they were registered
   operators: CatalogOperator[]
@@ -71,29 +49,27 @@ interface Catalog {
 
 ### Operators
 
-Each operator's entry is what [`getOperators()`](/tooling/overview/#instance-introspection) reports about it, with its listing joined in:
+Each operator's entry is just what [`getOperators()`](/tooling/overview/#instance-introspection) reports about it, with its listing joined in:
 
 - **`displayName`**: the listing's, or the operator's name where it has none.
 - **`description`** and **`docUrl`**: the listing's, absent where it has none.
 - **`colors`**: the listing's, or its category's where it has none.
-- **`metadata`**: the definition's `metadata`, with the listing's merged over it key by key, so on a clash the listing's wins. It's `{}` where neither has any.
+- **`metadata`**: the definition's `metadata`, with the listing's merged over it, so on a clash the listing's wins. It's `{}` when there is none.
 
 And each parameter adds:
 
 - **`description`**: its entry in the listing's `parameterDescriptions`.
-- **`seed`**: what an editor fills in when someone adds the parameter: the listing's seed, or a generic one for its type ([Type seeds](#type-seeds)). Every parameter has one.
-- **`sample`**: the listing's sample, absent where it has none.
+- **`seed`**: what an editor should fill in when someone adds the parameter: either the listing's seed, or a generic one for its type ([Type seeds](#type-seeds)) — every parameter has one.
+- **`sample`**: a realistic value the parameter could have, from the listing ([Writing a listing](/custom-operators/presenting/#writing-a-listing)), absent where it has none.
 - **`nullOutcome`**, and **`elementNullOutcome`** for an array or object: what a `null` there does ([below](#what-a-null-does-at-each-parameter)).
 
 [Joining listings to an instance](/custom-operators/presenting/#joining-listings-to-an-instance) shows a whole entry, for a custom operator.
 
-<Callout kind="caution" title="Copy a seed before changing it">
-  A `seed`, `sample` or `metadata` value in the catalog is the listing's own, not a copy. When an editor adds a parameter whose seed is an array or object, copy the seed first, such as with `structuredClone()`, or editing the new parameter changes the seed for every node added after it.
-</Callout>
-
 ### What a null does at each parameter
 
-A parameter's `nullPolicy` is its declaration as written, which doesn't always say what happens: an optional parameter whose type has no `null` in it, for instance, never applies its policy. `nullOutcome` says what FigTree actually does with a `null` there, for every parameter. It's what the operator reference's [Null column](/reference/operators/#what-a-null-does) shows:
+{/* TO-DO: rewrite this section once #287 lands: nullOutcome becomes nullBehavior ('propagate', 'accept', 'omit', 'error'), the column becomes "Null behaviour" in the same words, and the rules live in Declaring parameters' Null policy section, which this links to rather than restates. */}
+
+Whether a parameter's [`nullPolicy`](/custom-operators/parameters/#null-policy) actually applies depends on its type and whether it's required. `nullOutcome` works that out, as one answer for every parameter, including the cases the table doesn't cover, such as a lazy parameter, which receives a `null` as a value. The operator reference's [Null column](/reference/operators/#what-a-null-does) is built from it:
 
 | `nullOutcome` | Null column | A `null` here…                                                                                                      |
 | ------------- | ----------- | ------------------------------------------------------------------------------------------------------------------- |
