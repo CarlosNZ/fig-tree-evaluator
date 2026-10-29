@@ -113,11 +113,11 @@ Grouped by owning doc; packaging adds no shapes of its own, it only fixes what i
 
 - **Expressions & nodes**: none. Every method takes `expression: unknown`, because any value evaluates (ruling on open Q4, below).
 - **Options**: `FigTreeOptions`, `CacheStore`; `OperatorEntry`, `OperatorSelector`, `OperatorSetOptions` — what `operatorSet` takes ("Surface" in [v3-operator-set.md](v3-operator-set.md)).
-- **Operator contract**: `OperatorDefinition`, the parameter-declaration types, `OperatorContext`, `OperatorFailure` (class doubles as type), `LazyValue`, `PerElement`.
+- **Operator contract**: `OperatorDefinition`, the parameter-declaration types, `NullBehavior` and `ConditionalNullBehavior` (what a `null` at a parameter does, #287), `OperatorContext`, `OperatorFailure` (class doubles as type), `LazyValue`, `PerElement`.
 - **Clients**: `HttpClient`, `HttpRequest`, `SqlConnection`, `SqlRequest`; `FetchLike`, `FetchResponseLike`, `AxiosLike`, `AxiosErrorLike`, `PgClientLike`, `SqliteDatabaseLike`, the driver surfaces the bundled wrappers take; `HttpFailureInfo`, what `httpFailure` takes.
 - **Fragments**: `FragmentDefinition` (+ its parameter-declaration types).
 - **Methods & results**: `EvaluationResult`, the trace envelope and trace shapes (names reserved; shapes deferred per evaluator-methods), `Issue`, `ValidationResult`, `ValidateOptions` (what `validate()` takes: the per-call options plus its own `params`), the `getDependencies()` report shape, `FigTreeError` (class doubles as type), the code types `FigTreeErrorCode` and `FallbackErrorCode` ("The code vocabulary" in evaluator-methods), and `FallbackError`, what `$error` holds inside a fallback (#239).
-- **Catalog**: `Listing`, `ListingMap`, `ColorPair`, `CategoryListing`, `CategoryListingMap`, `CategoryOverrides`, `TypeSeeds` — the documented key convention for definition authors ("The catalog module" in [v3-operator-parameters.md](v3-operator-parameters.md)), and for a fragment's `listing`; `CatalogOptions`, what `getCatalog` takes; `Catalog`, `CatalogCategory`, `CatalogOperator`, `CatalogOperatorParameter`, `CatalogFragment`, `CatalogFragmentParameter`, `CatalogLiteral`, `CatalogIssue`, `NullOutcome` — what it returns ("`./catalog`", below, and [v3-listings.md](v3-listings.md)).
+- **Catalog**: `Listing`, `ListingMap`, `ColorPair`, `CategoryListing`, `CategoryListingMap`, `CategoryOverrides`, `TypeSeeds` — the documented key convention for definition authors ("The catalog module" in [v3-operator-parameters.md](v3-operator-parameters.md)), and for a fragment's `listing`; `CatalogOptions`, what `getCatalog` takes; `Catalog`, `CatalogCategory`, `CatalogOperator`, `CatalogOperatorParameter`, `CatalogFragment`, `CatalogFragmentParameter`, `CatalogLiteral`, `CatalogIssue` — what it returns ("`./catalog`", below, and [v3-listings.md](v3-listings.md)).
 - **Migration**: `V2Options`, `MigrationResult`, `FragmentMigrationResult`, `MigrationIssue` — what `./migrate`'s two functions take and return ("Surface" in [v3-converter.md](v3-converter.md)).
 - **Format**: `Registry`, `Spelling`, `NameOptions`, `CanonicalOptions`, `ShorthandOptions` — what `./format`'s four conversions take ("Surface" in [v3-format.md](v3-format.md)); `ObjectClass`, `ReferenceRecognition`, `ReferenceNamespace`, `ReferenceScope`, `PositionalShape`, `PositionalLayout` — what its reading primitives take and return ("Reading primitives" there).
 - **Authoring**: `FallbackCoverage`, `FallbackCoverageOptions`, `CoverageFinding`, `CoveredFinding` — what `./authoring`'s `fallbackCoverage` returns and takes; `OperatorAnalysis`, `FailureRule`, `FailureTest`, `DeclaredOutput` — the `analysis` field a definition declares for it ([v3-fallback-coverage.md](v3-fallback-coverage.md)).
@@ -200,6 +200,8 @@ Reverses the "Precedence" bullet of the ruling above.
 
 ### Ruling: the catalog reports each parameter's null outcome (Carl, October 2026, #250)
 
+Superseded by "Ruling: null policy and null behaviour", below: the outcome is renamed the null behaviour, and worked out at registration rather than by the catalog.
+
 - **Why.** Every validated parameter carries a `nullPolicy`, filled in as `propagate` where none is declared, including where no policy can apply: at a type that doesn't name `null`, where a `null` is a type error or means unset; at a lazily delivered parameter, where `propagate` is inert; and at a holder. `getOperators()` reports it as filled in, so a reader of the snapshot saw claims the engine doesn't make: the docs site's operator reference printed `propagate` for `round.decimals` (which takes its default), `if.then` (whose `null` the body receives and hands back) and `http.url` (a type error).
 - **`nullOutcome` on `CatalogParameter`** (`CatalogOperatorParameter` since #284), with `elementNullOutcome` beside it (below), typed `NullOutcome | CompiledNullPolicy`, with `NullOutcome` = `'propagate' | 'value' | 'unset' | 'error' | 'none'`: what a `null` at the parameter does, worked out by `getCatalog` from the snapshot's own fields, in the order the engine meets them:
   1. a holder (`replacesNullAt`) → `none`: a `null` there replaces a `null` with a `null`, so the target's outcome follows;
@@ -224,6 +226,16 @@ The full design is [v3-listings.md](v3-listings.md); this records what it change
 - **The catalog** reports only the categories in use, every parameter's `sample`, `literal` (`Catalog.literal`), and `issues`: an input of the wrong type is skipped and reported rather than thrown.
 - **`fragmentColors`**, a fourth data export, is the pair a fragment without colours of its own takes, so a catalog entry always has colours.
 - **Size**, brotli: `./catalog` 5.31 → 6.09 kB, most of it the input checks; its budget is raised from 5.4 to 6.4 kB to take it.
+
+### Ruling: null policy and null behaviour (Carl, October 2026, #287)
+
+- **Two concepts, one vocabulary.** A parameter's _null policy_ is what its author declares (`nullPolicy`, `elementNullPolicy`: `'propagate'` or `'accept'`, which was `'value'`); its _null behaviour_ is what a `null` there actually does. The rules are "Null behaviour" in [v3-operator-contract.md](v3-operator-contract.md).
+- **Renamed:** `nullOutcome` → `nullBehavior`, `elementNullOutcome` → `elementNullBehavior`, `NullOutcome` → `NullBehavior` (`'propagate' | 'accept' | 'omit' | 'error'`), with `'unset'` and `'none'` both `'omit'` and `'value'` `'accept'`. A conditional behaviour is a `ConditionalNullBehavior`, its rows keyed `behavior`. Internally, null-means-unset is null-means-omitted.
+- **The snapshot, not the catalog** — reverses "The catalog, not the snapshot" in the #250 ruling. The behaviours are worked out once, at registration (`src/nullBehavior.ts`), and stored on each validated parameter and fragment parameter. Parameter resolution, the compiler's static checks and `./authoring` read them, `getOperators()` and `getFragments()` report them, and `getCatalog()` passes them through. The rule was written out in four places (the engine implicitly, `./catalog`, `./authoring`, and the editor for fragment parameters); the engine already carried it, so stating it once in the engine costs little, and the engine stops re-deriving it from the type on every evaluation.
+- **`nullPolicy` is reported only where it can be declared**, where the type names `null`. Elsewhere it was a filled-in `'propagate'` that couldn't apply.
+- **Elements** report `elementNullBehavior` wherever the type admits an array or an object, `'any'` included, not only where it admits nothing else; a `replacesNullAt` parameter reports neither.
+- **Fragment parameters** carry both, so a tool reads them as it does an operator's.
+- **Size**, brotli: `./catalog` 6.12 → 5.89 kB, losing its copy of the rule; the engine chunk +0.19 kB with the rule and fragment parameters; the root +0.31 kB with `defineOperator()`'s new checks, which only a host defining its own operators ships.
 
 ## Ruling: no `./internal`
 

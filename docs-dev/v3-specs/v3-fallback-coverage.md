@@ -105,7 +105,7 @@ Where an iterator's `over` parameter receives one exact array, its `each` is wal
 
 These apply to every operator node. None of them names an operator: each reads the node's definition and its children's results.
 
-1. **Inputs.** Each parameter receives its child's output. An unsupplied one receives its default: the `operatorDefaults` one, else the declared `default`. The engine's null rules then apply in the engine's order: replacement (`replacesNullAt`), null meaning unset, and propagation. A null that can propagate adds null to the node's output.
+1. **Inputs.** Each parameter receives its child's output. An unsupplied one receives its default: the `operatorDefaults` one, else the declared `default`. The engine's null rules then apply in the engine's order: replacement (`replacesNullAt`), null meaning omitted, and propagation. A null that can propagate adds null to the node's output.
 2. **Type check.** If what a parameter receives is not a subset of its declared type and constraints, the node may fail `type-check` on that parameter. A parameter typed `any` never does. Subset, not equality: `integer` fits `number`, `number` fits `number | null`.
 3. **Children's failures.** A child that can throw makes the node able to throw if the node uses that parameter. An `eager` parameter is always used. Any other delivery mode is used when the operator asks for it, which the walk assumes it does unless rule 4 shows otherwise.
 4. **Running the node.** When enough is known, the walk runs the node's own body (pure operators only; see "Running a node").
