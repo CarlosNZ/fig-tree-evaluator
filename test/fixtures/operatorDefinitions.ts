@@ -666,6 +666,30 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     },
   },
   {
+    id: 'homogeneous-on-lazy-elements',
+    definition: withValueParam({
+      type: 'array',
+      evaluationMode: 'lazyElements',
+      constraints: { homogeneous: ['number'] },
+    }),
+    expected: {
+      code: ErrorCodes.invalidDefinition,
+      pathTail: ['parameters', 'value', 'constraints', 'homogeneous'],
+    },
+  },
+  {
+    id: 'element-shape-on-lazy-entries',
+    definition: withValueParam({
+      type: 'object',
+      evaluationMode: 'lazyEntries',
+      constraints: { elementShape: { id: { type: 'number' } } },
+    }),
+    expected: {
+      code: ErrorCodes.invalidDefinition,
+      pathTail: ['parameters', 'value', 'constraints', 'elementShape'],
+    },
+  },
+  {
     id: 'null-policy-propagate-on-lazy',
     definition: withValueParam({ type: 'any', evaluationMode: 'lazy', nullPolicy: 'propagate' }),
     expected: {
