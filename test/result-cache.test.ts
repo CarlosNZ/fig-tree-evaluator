@@ -28,7 +28,7 @@ const countedOp = (name = 'cached') => {
   const definition = defineOperator({
     name,
     category: 'other',
-    parameters: { value: { type: 'any', nullPolicy: 'value', default: null } },
+    parameters: { value: { type: 'any', nullPolicy: 'accept', default: null } },
     positionalParams: ['value'],
     cache: true,
     evaluate: ({ value }, context) =>
@@ -47,7 +47,7 @@ const manualOp = (name = 'manual') => {
     name,
     category: 'other',
     parameters: {
-      key: { type: 'any', nullPolicy: 'value', default: null },
+      key: { type: 'any', nullPolicy: 'accept', default: null },
       shape: { type: 'string', default: '' },
     },
     positionalParams: ['key', 'shape'],
@@ -520,7 +520,7 @@ describe('the two invalidation stories are opposites', () => {
     const before = defineOperator({
       name: 'counted',
       category: 'other',
-      parameters: { value: { type: 'any', nullPolicy: 'value', default: null } },
+      parameters: { value: { type: 'any', nullPolicy: 'accept', default: null } },
       positionalParams: ['value'],
       cache: true,
       evaluate: ({ value }, context) =>
@@ -532,7 +532,7 @@ describe('the two invalidation stories are opposites', () => {
     const after = defineOperator({
       name: 'counted',
       category: 'other',
-      parameters: { value: { type: 'any', nullPolicy: 'value', default: null } },
+      parameters: { value: { type: 'any', nullPolicy: 'accept', default: null } },
       positionalParams: ['value'],
       cache: true,
       evaluate: ({ value }, context) =>

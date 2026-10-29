@@ -23,7 +23,7 @@ const op = defineOperator({
   category: 'other',
   parameters: {
     value: { type: ['number', 'null'] },
-    kept: { type: ['number', 'null'], nullPolicy: 'value' },
+    kept: { type: ['number', 'null'], nullPolicy: 'accept' },
     min: { type: 'number', default: 0 },
     opt: { type: 'string', required: false },
     flag: { type: 'any', truthiness: true },
@@ -47,7 +47,7 @@ const op = defineOperator({
       evaluationMode: 'lazy',
       replacesNullAt: ['value'],
     },
-    conditional: { type: 'any', nullPolicy: (mode) => (mode === 'a' ? 'value' : 'propagate') },
+    conditional: { type: 'any', nullPolicy: (mode) => (mode === 'a' ? 'accept' : 'propagate') },
   },
   evaluate: (params) => {
     assertType<Equal<typeof params.value, number>>()

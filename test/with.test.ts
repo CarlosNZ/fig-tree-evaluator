@@ -32,7 +32,7 @@ const countedOp = () => {
   const definition = defineOperator({
     name: 'cached',
     category: 'other',
-    parameters: { value: { type: 'any', nullPolicy: 'value', default: null } },
+    parameters: { value: { type: 'any', nullPolicy: 'accept', default: null } },
     positionalParams: ['value'],
     cache: true,
     evaluate: ({ value }, context) =>
@@ -94,7 +94,7 @@ describe('an added fragment', () => {
     })
   })
 
-  it('evaluates as a real call: defaults, null-as-unset and the trace source', async () => {
+  it('evaluates as a real call: defaults, null-as-omitted and the trace source', async () => {
     const fig = new FigTree({ operators: [coreOperators], fragments })
     const derived = fig.with({ fragments: { __draft: draft } })
     const { result, trace } = (await derived.evaluate(

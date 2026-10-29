@@ -144,7 +144,7 @@ describe('declarations govern what a body receives', () => {
     })
   })
 
-  test('null at an optional parameter means unset', async () => {
+  test('null at an optional parameter means omitted', async () => {
     const result = (await fig().evaluate({ $frag: { required: 1, withDefault: null } })) as Record<
       string,
       unknown

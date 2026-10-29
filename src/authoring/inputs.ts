@@ -4,11 +4,11 @@
  * operator node receives, and whether it can fail its type check. It
  * follows `resolveParams` in src/evaluate/params.ts layer by layer, over
  * what is known of each child's output rather than over values: the
- * default chain, null meaning unset, `replacesNullAt`, the null policies,
+ * default chain, null meaning omitted, `replacesNullAt`, the null policies,
  * then the type check and constraints.
  */
 import { isTruthy } from '../primitives/truthiness'
-import { defaultFor, NO_DEFAULT, nullMeansUnset, typeNamesNull } from '../typeCheck'
+import { defaultFor, NO_DEFAULT, nullMeansOmitted, typeNamesNull } from '../typeCheck'
 import { isPlainObject } from '../utils'
 import type { ExpectedType } from '../typeCheck'
 import type { CompiledNode, OperatorNode } from '../compile/artifact'
@@ -99,7 +99,7 @@ const literalContainer = (declared: ValidatedParameter, supplied: CompiledNode):
 const policiesOf = (
   declared: ValidatedParameter,
   pending: Record<string, Pending>
-): Set<'propagate' | 'value'> => {
+): Set<'propagate' | 'accept'> => {
   const policy = declared.nullPolicy
   if (typeof policy === 'string') return new Set([policy])
   const selector = pending[policy.selector]?.known ?? NOTHING
@@ -183,15 +183,15 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
     }
   }
 
-  // The defaults pass: an unset parameter takes its default chain, or is
-  // removed. A null is unset at an optional parameter whose type excludes it
+  // The defaults pass: an omitted parameter takes its default chain, or is
+  // removed. A null is omitted at an optional parameter whose type excludes it
   for (const [name, declared] of whole) {
     if (delivered.has(name)) continue
     const value = pending[name] ?? { known: NOTHING, absent: true }
-    const nullUnset = nullMeansUnset(declared) && admitsNull(value.known)
-    if (!value.absent && !nullUnset) continue
+    const nullOmitted = nullMeansOmitted(declared) && admitsNull(value.known)
+    if (!value.absent && !nullOmitted) continue
     const chain = defaultOf(node, name, declared)
-    const kept = nullUnset ? withoutNull(value.known) : value.known
+    const kept = nullOmitted ? withoutNull(value.known) : value.known
     pending[name] = {
       known: chain === undefined ? kept : union(kept, chain),
       absent: chain === undefined,
@@ -302,12 +302,12 @@ export const argumentInput = (
   declared: FragmentParameter,
   known: Known
 ): { known: Known; answer: Answer } => {
-  const unset = nullMeansUnset(declared) && admitsNull(known)
-  const rest = unset ? withoutNull(known) : known
+  const omitted = nullMeansOmitted(declared) && admitsNull(known)
+  const rest = omitted ? withoutNull(known) : known
   let answer = fits(rest, declared.type, declared.constraints)
   if (answer === 'yes' && declared.constraints !== undefined && admitsNull(rest)) answer = 'maybe'
-  const unsetValue = unset ? exactly(declared.default ?? null) : NOTHING
-  return { known: union(narrow(rest, declared.type), unsetValue), answer }
+  const omittedValue = omitted ? exactly(declared.default ?? null) : NOTHING
+  return { known: union(narrow(rest, declared.type), omittedValue), answer }
 }
 
 /**

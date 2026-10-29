@@ -207,7 +207,7 @@ describe('regex — replace', () => {
     expect(await ev(replace('(021) 555-1234', '[^0-9]'))).toBe('0215551234')
   })
 
-  test('a null replacement is unset, so it removes them too', async () => {
+  test('a null replacement is omitted, so it removes them too', async () => {
     expect(await ev(replace('(021) 555-1234', '[^0-9]', { replacement: null }))).toBe('0215551234')
   })
 

@@ -9,7 +9,7 @@
  * awaited together, so a failing operand fails the node before any null is
  * considered: failure beats propagation.
  *
- * The defaults pass resolves every unset parameter — absent, or null at an
+ * The defaults pass resolves every omitted parameter — absent, or null at an
  * optional parameter whose type excludes null — through the layered
  * default chain (operatorDefaults → metadata default, the EvaluationData
  * sentinel delivering the merged data), or removes it when nothing declares
@@ -23,7 +23,7 @@
  *     once-evaluated value, per element/value where the target declares an
  *     element policy, whole-value otherwise;
  *  3. whole-value null policy — `propagate` resolves the node to null
- *     without running the body, `value` delivers, a compiled conditional
+ *     without running the body, `accept` delivers, a compiled conditional
  *     table is consulted through the resolved selector; a null at a type
  *     that does not name null is the derived reject (a type error);
  *  4. element-wise null policy — the same per element / per value;
@@ -49,7 +49,7 @@ import {
   checkDeclared,
   checkType,
   defaultFor,
-  isUnset,
+  isOmitted,
   NO_DEFAULT,
   typeNamesNull,
   type ExpectedType,
@@ -177,7 +177,7 @@ export const resolveParams = async (
   for (const [name, declared] of whole) {
     // A handle delivered in pass 1 runs its layers on demand
     if (Object.hasOwn(params, name)) continue
-    if (!isUnset(resolved[name], declared)) continue
+    if (!isOmitted(resolved[name], declared)) continue
     const fallback = defaultFor(node.entry, name, declared)
     if (fallback === NO_DEFAULT) delete resolved[name]
     else resolved[name] = fallback === EvaluationData ? ctx.data : fallback
@@ -186,7 +186,7 @@ export const resolveParams = async (
   // ── Pass 2: the layers ────────────────────────────────────────────
   for (const [name, declared] of whole) {
     // A handle delivered in pass 1 is in place already, its layers running
-    // on demand, with no whole value here for the unset chain to test
+    // on demand, with no whole value here for the default chain to test
     if (Object.hasOwn(params, name)) continue
     let value = resolved[name]
 
@@ -201,7 +201,7 @@ export const resolveParams = async (
     //    delivered parameter and MUST be skipped, not merely unused: it
     //    means "resolve the node without running the body", and the body
     //    is the thing that demands a handle. Letting it fire would make
-    //    `{ $if: [true, 'yes'] }` resolve null — the unset `else` takes
+    //    `{ $if: [true, 'yes'] }` resolve null — the omitted `else` takes
     //    its declared default of null, which is a whole value reaching
     //    this layer, and the node would short-circuit before the taken
     //    branch was ever demanded. The derived reject (layer 5) still

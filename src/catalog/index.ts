@@ -664,20 +664,20 @@ const seedOf = (listing: Listing, parameter: string, type: ExpectedType): unknow
 
 /**
  * What a `null` at the parameter does
- * (`CatalogOperatorParameter.nullOutcome`), in the order the engine meets
+ * (`CatalogOperatorParameter.nullBehavior`), in the order the engine meets
  * it: the compiler first, which owns an iterator's `as` binding, then
  * parameter resolution (src/evaluate/params.ts). Its null-naming test is
  * the engine's `typeNamesNull`, repeated since this module imports no
- * engine code; test/catalog.test.ts holds every package parameter's outcome
+ * engine code; test/catalog.test.ts holds every package parameter's behaviour
  * to what the engine does with a `null` there.
  */
-const nullOutcomeOf = (
+const nullBehaviorOf = (
   name: string,
   parameter: ParameterInfo,
   parameters: Record<string, ParameterInfo>
-): CatalogOperatorParameter['nullOutcome'] => {
-  const { type, evaluationMode } = parameter
-  if (parameter.replacesNullAt) return 'none'
+): CatalogOperatorParameter['nullBehavior'] => {
+  const { type, evaluationMode, nullPolicy } = parameter
+  if (parameter.replacesNullAt) return 'omit'
   // A binding name must be a literal string, so a null there is a compile
   // error (invalid-as)
   if (
@@ -691,8 +691,13 @@ const nullOutcomeOf = (
   if (![type].flat().some((member) => member === 'null' || member === 'any'))
     return parameter.required || evaluationMode === 'lazy' || evaluationMode === 'perElement'
       ? 'error'
-      : 'unset'
-  return evaluationMode === 'eager' || evaluationMode === 'literal' ? parameter.nullPolicy : 'value'
+      : 'omit'
+  if (evaluationMode !== 'eager' && evaluationMode !== 'literal') return 'accept'
+  if (typeof nullPolicy === 'string') return nullPolicy
+  return {
+    selector: nullPolicy.selector,
+    table: nullPolicy.table.map(({ value, policy }) => ({ value, behavior: policy })),
+  }
 }
 
 /** `from`'s own entries written onto `onto`, except any set to `undefined`. */
@@ -954,19 +959,19 @@ export const getCatalog = (
     for (const [key, parameter] of Object.entries(parameters)) {
       const entry: CatalogOperatorParameter = {
         ...parameter,
-        nullOutcome: nullOutcomeOf(key, parameter, parameters),
+        nullBehavior: nullBehaviorOf(key, parameter, parameters),
         ...parameterText(listing, key, parameter.type),
       }
-      // A holder has no outcome of its own, for its elements either
+      // A holder has no behaviour of its own, for its elements either
       if (
         !parameter.replacesNullAt &&
         [parameter.type].flat().every((member) => member === 'array' || member === 'object')
       ) {
         // Unless a policy takes them, null elements meet the constraints
         const { homogeneous, elementShape } = parameter.constraints ?? {}
-        entry.elementNullOutcome =
+        entry.elementNullBehavior =
           parameter.elementNullPolicy ??
-          (elementShape || (homogeneous && !homogeneous.includes('any')) ? 'error' : 'value')
+          (elementShape || (homogeneous && !homogeneous.includes('any')) ? 'error' : 'accept')
       }
       operator.parameters[key] = entry
     }

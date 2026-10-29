@@ -65,7 +65,7 @@ export const convertLike = (): OperatorDefinition => ({
   parameters: {
     value: {
       type: 'any',
-      nullPolicy: (to) => (to === 'boolean' ? 'value' : 'propagate'),
+      nullPolicy: (to) => (to === 'boolean' ? 'accept' : 'propagate'),
     },
     to: { type: { literal: ['number', 'string', 'boolean', 'array'] } },
   },
@@ -79,7 +79,7 @@ export const convertLikeCompiledPolicy = {
   table: [
     { value: 'number', policy: 'propagate' },
     { value: 'string', policy: 'propagate' },
-    { value: 'boolean', policy: 'value' },
+    { value: 'boolean', policy: 'accept' },
     { value: 'array', policy: 'propagate' },
   ],
 }
@@ -370,7 +370,7 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
   },
   {
     id: 'null-policy-on-null-free-type',
-    definition: withValueParam({ type: 'number', nullPolicy: 'value' }),
+    definition: withValueParam({ type: 'number', nullPolicy: 'accept' }),
     expected: {
       code: ErrorCodes.invalidNullPolicy,
       pathTail: ['parameters', 'value', 'nullPolicy'],
@@ -378,7 +378,7 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
   },
   {
     id: 'element-null-policy-on-non-container',
-    definition: withValueParam({ type: 'number', elementNullPolicy: 'value' }),
+    definition: withValueParam({ type: 'number', elementNullPolicy: 'accept' }),
     expected: {
       code: ErrorCodes.invalidNullPolicy,
       pathTail: ['parameters', 'value', 'elementNullPolicy'],
@@ -386,7 +386,7 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
   },
   {
     id: 'element-null-policy-conditional-form',
-    definition: withValueParam({ type: 'array', elementNullPolicy: () => 'value' }),
+    definition: withValueParam({ type: 'array', elementNullPolicy: () => 'accept' }),
     expected: {
       code: ErrorCodes.invalidNullPolicy,
       pathTail: ['parameters', 'value', 'elementNullPolicy'],
@@ -523,7 +523,7 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
   {
     id: 'conditional-null-policy-without-selector',
     definition: withParams({
-      value: { type: 'any', nullPolicy: () => 'value' },
+      value: { type: 'any', nullPolicy: () => 'accept' },
       to: { type: 'string' },
     }),
     expected: {
@@ -534,7 +534,7 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
   {
     id: 'conditional-null-policy-two-selectors',
     definition: withParams({
-      value: { type: 'any', nullPolicy: () => 'value' },
+      value: { type: 'any', nullPolicy: () => 'accept' },
       to: { type: { literal: ['number', 'string'] } },
       mode: { type: { literal: ['strict', 'loose'] } },
     }),
@@ -548,7 +548,7 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     definition: withParams({
       value: {
         type: 'any',
-        nullPolicy: (to: unknown) => (to === 'boolean' ? 'value' : 'reject'),
+        nullPolicy: (to: unknown) => (to === 'boolean' ? 'accept' : 'reject'),
       },
       to: { type: { literal: ['number', 'boolean'] } },
     }),

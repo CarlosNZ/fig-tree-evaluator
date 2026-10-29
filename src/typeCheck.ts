@@ -120,28 +120,28 @@ export const typeNamesNumber = (type: ExpectedType): boolean => {
 }
 
 /**
- * Null-means-unset: a null at an optional parameter whose type does not
+ * Null-means-omitted: a null at an optional parameter whose type does not
  * name null behaves as if nothing had been passed, so its default applies.
  * The opt-out is the declaration itself — `type: ['string', 'null']`
  * receives a null as a value.
  */
-export const nullMeansUnset = (declared: { required: boolean; type: ExpectedType }): boolean =>
+export const nullMeansOmitted = (declared: { required: boolean; type: ExpectedType }): boolean =>
   !declared.required && !typeNamesNull(declared.type)
 
 /**
- * Whether a parameter's value leaves it unset, so that its default
- * applies: nothing passed, or a null where null means unset.
+ * Whether a parameter's value leaves it omitted, so that its default
+ * applies: nothing passed, or a null where null means omitted.
  */
-export const isUnset = (
+export const isOmitted = (
   value: unknown,
   declared: { required: boolean; type: ExpectedType }
-): boolean => value === undefined || (value === null && nullMeansUnset(declared))
+): boolean => value === undefined || (value === null && nullMeansOmitted(declared))
 
 /** What `defaultFor` answers for a parameter with no default at all. */
 export const NO_DEFAULT: unique symbol = Symbol('fig-tree:noDefault')
 
 /**
- * The default chain an unset parameter falls to: the instance's
+ * The default chain an omitted parameter falls to: the instance's
  * `operatorDefaults` entry, else the declared default. The runtime, the
  * validate hook's input and `fallbackCoverage` all read it here, so the
  * hook sees what the runtime will use. A declared default may be the

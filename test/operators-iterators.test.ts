@@ -297,7 +297,7 @@ describe('the shared contract', () => {
   test('a literal null input with no nullInputDefault is a compile-time type error', () => {
     for (const expression of [
       { $map: [null, '$element'] },
-      // A null holder is unset, so nothing replaces the input
+      // A null holder is omitted, so nothing replaces the input
       { $map: { input: null, each: '$element', nullInputDefault: null } },
     ])
       expect(fig.validate(expression).issues.map((issue) => issue.code)).toEqual(['type-check'])

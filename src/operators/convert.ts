@@ -21,7 +21,7 @@ export const convert = declareOperator({
   parameters: {
     value: {
       type: 'any',
-      nullPolicy: (to) => (to === 'boolean' ? 'value' : 'propagate'),
+      nullPolicy: (to) => (to === 'boolean' ? 'accept' : 'propagate'),
     },
     to: {
       type: { literal: ['number', 'string', 'boolean', 'array'] },

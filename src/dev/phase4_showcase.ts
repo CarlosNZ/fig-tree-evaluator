@@ -164,7 +164,7 @@ const main = async () => {
   })
   await show('row 13: a null candidate in min', { $min: [3, '$data.missing', 7] })
   await show(
-    'row 14: null at optional decimals means unset',
+    'row 14: null at optional decimals means omitted',
     { $round: ['$data.price', null] },
     { data: { price: 3.7 } }
   )

@@ -18,7 +18,7 @@ export const echoOp = () =>
   defineOperator({
     name: 'echo',
     category: 'other',
-    parameters: { value: { type: 'any', nullPolicy: 'value' } },
+    parameters: { value: { type: 'any', nullPolicy: 'accept' } },
     positionalParams: ['value'],
     evaluate: ({ value }) => value,
   })
@@ -28,7 +28,7 @@ export const boomOp = () =>
   defineOperator({
     name: 'boom',
     category: 'other',
-    parameters: { value: { type: 'any', nullPolicy: 'value', required: false } },
+    parameters: { value: { type: 'any', nullPolicy: 'accept', required: false } },
     positionalParams: ['value'],
     evaluate: ({ value }) => {
       throw new Error(`boom ${String(value)}`)
@@ -157,7 +157,7 @@ export const latencyOp = (name = 'slow'): LatencySpy => {
     name,
     category: 'other',
     parameters: {
-      value: { type: 'any', nullPolicy: 'value' },
+      value: { type: 'any', nullPolicy: 'accept' },
       ms: { type: 'integer', default: 0 },
       fail: { type: 'boolean', default: false },
     },

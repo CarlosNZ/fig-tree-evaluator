@@ -372,7 +372,7 @@ describe('maxDepth / maxNodes — instance configuration, compared against store
 })
 
 describe('the static layer applies null policy before the type check', () => {
-  test('a literal null at an optional parameter whose type excludes null is unset (row 14)', () => {
+  test('a literal null at an optional parameter whose type excludes null is omitted (row 14)', () => {
     // clamp.min is `number` with a default — null means "use the default"
     expect(errorCodes({ $clamp: [5, null] })).toHaveLength(0)
     expect(errorCodes({ $clamp: { value: 5, max: null } })).toHaveLength(0)
@@ -472,7 +472,7 @@ describe("a validate hook reads each parameter's effective value", () => {
   const received = (expression: unknown, operatorDefaults?: Record<string, unknown>) =>
     delivery(expression, operatorDefaults).literalParams
 
-  test('an unset parameter arrives as its declared default', () => {
+  test('an omitted parameter arrives as its declared default', () => {
     expect(received({ $probe: {} })).toEqual({ mode: 'a', nullable: 'kept' })
   })
 
@@ -487,7 +487,7 @@ describe("a validate hook reads each parameter's effective value", () => {
     expect(received({ $probe: {} }, { mode: 'c' })).toMatchObject({ mode: 'c' })
   })
 
-  test('a null that means unset arrives as the default; one the type names stays null', () => {
+  test('a null that means omitted arrives as the default; one the type names stays null', () => {
     expect(received({ $probe: { mode: null, nullable: null } })).toMatchObject({
       mode: 'a',
       nullable: null,
