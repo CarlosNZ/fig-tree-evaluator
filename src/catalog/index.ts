@@ -21,7 +21,6 @@ import type {
   CatalogCategory,
   CatalogFragment,
   CatalogIssue,
-  CatalogLiteral,
   CatalogOperator,
   CatalogOptions,
   CategoryListing,
@@ -33,6 +32,7 @@ import type {
   TypeSeeds,
 } from '../catalogTypes'
 import type { FigTree } from '../FigTree'
+import type { OperatorInfo } from '../introspect'
 import type { OperatorCategory } from '../operatorDefinition'
 import type { ExpectedType } from '../typeCheck'
 
@@ -623,13 +623,18 @@ export const operatorListings: ListingMap = {
   },
 
   // ── Grammar ────────────────────────────────────────────────────────────
-  // `literal` is no operator definition, so it has no category, but an
-  // editor draws it as an operator node. Its colour is a shade of Other's.
+  // `literal` is no operator definition, but an editor draws it as an
+  // operator node, so the catalog lists it as one, in Other
   literal: {
     displayName: 'Literal',
+    description: 'Use a value exactly as written — nothing inside it is evaluated',
     docUrl: DOCS,
     colors: { background: '#d5dae4', text: '#272a30' },
     seeds: { value: 'No content inside a literal node is evaluated' },
+    parameterDescriptions: {
+      value:
+        'Returned exactly as written, including any keys prefixed with $ and $data strings inside it',
+    },
   },
 }
 
@@ -822,7 +827,10 @@ const presentation = (
   colors: ColorPair,
   metadata: Record<string, unknown> | undefined
 ) => {
-  const shown: Omit<CatalogLiteral, 'parameters'> = {
+  const shown: Pick<
+    CatalogOperator,
+    'displayName' | 'description' | 'docUrl' | 'colors' | 'metadata'
+  > = {
     displayName: listing.displayName ?? name,
     colors,
     metadata: {},
@@ -846,8 +854,35 @@ const parameterText = (listing: Listing, parameter: string, type: ExpectedType) 
 }
 
 /**
- * The instance's operators and fragments, each with its listing joined in,
- * `literal`, and the categories the operators are in.
+ * `literal` as `getOperators()` would report a definition declaring one
+ * required `value` of any type, never evaluated, whose null is returned as
+ * it is. Fresh on every call, as a snapshot's entries are.
+ */
+const literalInfo = (): OperatorInfo => ({
+  name: 'literal',
+  category: 'other',
+  parameters: {
+    value: {
+      type: 'any',
+      required: true,
+      evaluationMode: 'literal',
+      truthiness: false,
+      nullPolicy: 'accept',
+      nullBehavior: 'accept',
+      elementNullBehavior: 'accept',
+    },
+  },
+  restParam: null,
+  timeoutParam: null,
+  cache: false,
+  returns: 'any',
+  hasValidate: false,
+  positionalParams: [],
+})
+
+/**
+ * The instance's operators, then `literal`, and its fragments, each with its
+ * listing joined in, and the categories the operators are in.
  *
  * An entry's listing is its base layer, then the map in `listings`, or each
  * of its maps in order, each merged over the ones before it, so an override
@@ -883,7 +918,8 @@ export const getCatalog = (
     checkedCategory,
     report
   )
-  const snapshot = fig.getOperators()
+  // `literal` is a reserved name, so no registered operator can be another
+  const snapshot = [...fig.getOperators(), literalInfo()]
 
   const inUse = new Set(snapshot.map(({ category }) => category))
   const resolved = new Map(
@@ -928,12 +964,5 @@ export const getCatalog = (
       return fragment
     })
 
-  const literalListing = resolveListing(operatorListings.literal, 'literal', listings)
-  const literal: CatalogLiteral = {
-    // The package's listing gives the pair, and a layer can only replace it
-    ...presentation('literal', literalListing, literalListing.colors!, undefined),
-    parameters: { value: parameterText(literalListing, 'value', 'any') },
-  }
-
-  return { categories, operators, fragments, literal, issues }
+  return { categories, operators, fragments, issues }
 }

@@ -108,10 +108,13 @@ describe('operatorListings', () => {
     })
   })
 
-  // `literal` is grammar, with no definition to check its seeds against:
+  // `literal` is grammar, with no definition to check its listing against:
   // its one parameter, `value`, takes anything and is returned as it is
-  test('literal seeds only its value, and its starting node returns the seed', async () => {
-    const seeds = operatorListings.literal.seeds ?? {}
+  test('literal describes and seeds only its value, and its starting node returns the seed', async () => {
+    const { description, parameterDescriptions, seeds = {} } = operatorListings.literal
+    expect(description?.trim()).toBeTruthy()
+    expect(Object.keys(parameterDescriptions ?? {})).toEqual(['value'])
+    expect(parameterDescriptions!.value.trim()).not.toBe('')
     expect(Object.keys(seeds)).toEqual(['value'])
     const node = { operator: 'literal', value: seeds.value }
     expect(errorsOf(node)).toEqual([])
@@ -242,10 +245,11 @@ describe('getCatalog', () => {
   })
 
   describe('operators', () => {
-    test('one per registered operator, in registration order', () => {
-      expect(catalog.operators.map((op) => op.name)).toEqual(
-        fig.getOperators().map((op) => op.name)
-      )
+    test('one per registered operator, in registration order, then literal', () => {
+      expect(catalog.operators.map((op) => op.name)).toEqual([
+        ...fig.getOperators().map((op) => op.name),
+        'literal',
+      ])
     })
 
     test('carry every field of the snapshot', () => {
@@ -254,7 +258,9 @@ describe('getCatalog', () => {
         operatorDefaults: { join: { delimiter: ' | ' }, plus: { fallback: 0 } },
       })
       const snapshot = instance.getOperators()
-      getCatalog(instance).operators.forEach((operator, i) => {
+      const operators = getCatalog(instance).operators
+      expect(operators).toHaveLength(snapshot.length + 1)
+      operators.slice(0, -1).forEach((operator, i) => {
         const { displayName, description, docUrl, colors, metadata, ...rest } = operator
         void [displayName, description, docUrl, colors, metadata]
         const parameters = Object.fromEntries(
@@ -621,7 +627,10 @@ describe('getCatalog', () => {
         }
       }
 
-      const cases = catalog.operators.flatMap((operator) =>
+      // `literal` has no body to record what it was given, so its own tests
+      // check its null
+      const operators = catalog.operators.filter(({ name }) => name !== 'literal')
+      const cases = operators.flatMap((operator) =>
         Object.entries(operator.parameters)
           .filter(([, parameter]) => parameter.replacesNullAt === undefined)
           .map(([name, parameter]) => [`${operator.name}.${name}`, operator, name, parameter])
@@ -647,7 +656,7 @@ describe('getCatalog', () => {
       const elementCases = cases.filter(([, , , parameter]) => parameter.elementNullBehavior)
 
       test('a holder reports no element behaviour, even where it takes a list', () => {
-        const holders = catalog.operators.flatMap((operator) =>
+        const holders = operators.flatMap((operator) =>
           Object.values(operator.parameters).filter((parameter) => parameter.replacesNullAt)
         )
         expect(holders.some((holder) => holder.type === 'array')).toBe(true)
@@ -751,12 +760,81 @@ describe('getCatalog', () => {
     })
   })
 
+  describe('literal', () => {
+    // What a definition declaring the same `value` reports, so the entry
+    // follows any change to how a declaration's fields are derived
+    const [declared] = new FigTree({
+      operators: [
+        defineOperator({
+          name: 'literalShape',
+          category: 'other',
+          parameters: {
+            value: { type: 'any', required: true, evaluationMode: 'literal', nullPolicy: 'accept' },
+          },
+          positionalParams: [],
+          returns: 'any',
+          evaluate: ({ value }) => value,
+        }),
+      ],
+    }).getOperators()
+
+    test('is an operator entry, as a definition declaring its one parameter reports', () => {
+      const listing = operatorListings.literal
+      const { metadata, ...info } = declared
+      void metadata
+      expect(catalogOperator('literal')).toStrictEqual({
+        ...info,
+        name: 'literal',
+        displayName: listing.displayName,
+        description: listing.description,
+        docUrl: listing.docUrl,
+        colors: listing.colors,
+        metadata: {},
+        parameters: {
+          value: {
+            ...info.parameters.value,
+            description: listing.parameterDescriptions!.value,
+            seed: listing.seeds!.value,
+          },
+        },
+      })
+    })
+
+    test('accepts a null, as its whole value and as an element', async () => {
+      const { value } = catalogOperator('literal').parameters
+      expect([value.nullBehavior, value.elementNullBehavior]).toEqual(['accept', 'accept'])
+      expect(await fig.evaluate({ operator: 'literal', value: null })).toBeNull()
+      expect(await fig.evaluate({ $literal: [1, null, { a: null }] })).toEqual([
+        1,
+        null,
+        { a: null },
+      ])
+    })
+
+    test('is listed once, in every catalog, and never by getOperators()', () => {
+      for (const instance of [fig, new FigTree({ operators: [] })]) {
+        const names = getCatalog(instance, {
+          listings: { literal: { displayName: 'L' } },
+        }).operators.map(({ name }) => name)
+        expect(names.filter((name) => name === 'literal')).toEqual(['literal'])
+        expect(instance.getOperators().some(({ name }) => name === 'literal')).toBe(false)
+      }
+    })
+
+    test('is fresh in each catalog', () => {
+      const [a, b] = [getCatalog(fig), getCatalog(fig)].map(({ operators }) => operators.at(-1)!)
+      expect(a).not.toBe(b)
+      expect(a.parameters.value).not.toBe(b.parameters.value)
+      expect(a.positionalParams).not.toBe(b.positionalParams)
+    })
+  })
+
   test('takes anything with the two snapshot methods', () => {
     const { operators, fragments } = getCatalog({
       getOperators: () => fig.getOperators().slice(0, 1),
       getFragments: () => [],
     })
-    expect(operators.map((op) => op.name)).toEqual([fig.getOperators()[0].name])
+    expect(operators.map((op) => op.name)).toEqual([fig.getOperators()[0].name, 'literal'])
     expect(fragments).toEqual([])
   })
 
@@ -765,9 +843,11 @@ describe('getCatalog', () => {
       operators: [coreOperators.filter(({ category }) => category === 'math'), tally],
     })
 
+    // `other` always, since `literal` is in it
     test('only the categories an operator is in', () => {
-      expect(getCatalog(instance).categories.map(({ name }) => name)).toEqual(['math'])
-      expect(getCatalog(new FigTree({ operators: [] })).categories).toEqual([])
+      const names = (fig: FigTree) => getCatalog(fig).categories.map(({ name }) => name)
+      expect(names(instance)).toEqual(['math', 'other'])
+      expect(names(new FigTree({ operators: [] }))).toEqual(['other'])
     })
 
     test('overrides merge over the package’s, in order, field by field', () => {
@@ -785,6 +865,7 @@ describe('getCatalog', () => {
           order: categoryListings.math.order,
           colors: pair,
         },
+        { name: 'other', ...categoryListings.other },
       ])
       // An operator without colours of its own takes its category's, overridden
       expect(operators.find(({ name }) => name === 'tally')!.colors).toBe(pair)
@@ -854,7 +935,7 @@ describe('getCatalog', () => {
 
     test('{} where nothing gives any', () => {
       expect(catalogOperator('plus').metadata).toEqual({})
-      expect(getCatalog(instance).literal.metadata).toEqual({})
+      expect(getCatalog(instance).operators.at(-1)!.metadata).toEqual({})
     })
   })
 
@@ -1009,7 +1090,7 @@ describe('getCatalog', () => {
         ['categories.0.math.order', 'expected number, got NaN'],
         ['categories.0.math.colors', 'expected object, got string'],
       ])
-      expect(categories).toEqual([{ name: 'math', ...categoryListings.math }])
+      expect(categories[0]).toEqual({ name: 'math', ...categoryListings.math })
     })
   })
 
@@ -1047,23 +1128,20 @@ describe('getCatalog', () => {
       expect(instance.getFragments()[0].listing?.description).toBe('A greeting')
     })
 
-    test('literal is listed from the package’s listing, and a map can change it', () => {
+    test('a map changes literal as it does an operator', () => {
       const listing = operatorListings.literal
-      expect(catalog.literal).toEqual({
-        displayName: listing.displayName,
-        docUrl: listing.docUrl,
-        colors: listing.colors,
-        metadata: {},
-        parameters: { value: { seed: listing.seeds!.value } },
-      })
-      const { literal } = getCatalog(instance, {
+      const literal = getCatalog(instance, {
         listings: [
           { literal: { displayName: 'Littéral', parameterDescriptions: { value: 'Data' } } },
         ],
-      })
+      }).operators.find(({ name }) => name === 'literal')!
       expect(literal.displayName).toBe('Littéral')
+      expect(literal.description).toBe(listing.description)
       expect(literal.colors).toBe(listing.colors)
-      expect(literal.parameters.value).toEqual({ description: 'Data', seed: listing.seeds!.value })
+      expect(literal.parameters.value).toMatchObject({
+        description: 'Data',
+        seed: listing.seeds!.value,
+      })
     })
 
     test('keys are canonical names: an alias, or a name nothing has, is ignored', () => {

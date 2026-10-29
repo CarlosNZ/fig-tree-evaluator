@@ -131,6 +131,12 @@ export interface CatalogOperatorParameter extends ParameterInfo {
  * joined in. `displayName` falls back to the name, and the colours to the
  * category's. `metadata` is the definition's with the listing's merged over
  * it, key by key, and `{}` where neither gives any.
+ *
+ * `literal` is one too, though it is grammar rather than a definition, so
+ * it has no `getOperators()` entry. An editor draws it as an operator node,
+ * so the catalog lists it as one, in `other`, with the fields a definition
+ * declaring one required `value` of any type, never evaluated, would
+ * report. It has no `host…` fields: no instance can configure it.
  */
 export interface CatalogOperator extends Omit<OperatorInfo, 'parameters' | 'metadata'> {
   displayName: string
@@ -168,20 +174,6 @@ export interface CatalogFragment extends Omit<FragmentInfo, 'parameters' | 'list
 }
 
 /**
- * `literal`, which an editor draws as an operator node. It is grammar, not
- * an operator definition, so it has no category and no `getOperators()`
- * entry, and its listing is all there is of it.
- */
-export interface CatalogLiteral {
-  displayName: string
-  description?: string
-  docUrl?: string
-  colors: ColorPair
-  metadata: Record<string, unknown>
-  parameters: { value: { description?: string; seed: unknown; sample?: unknown } }
-}
-
-/**
  * A value `getCatalog` skipped: an option it doesn't know, or a listing, a
  * field or an override of the wrong type.
  */
@@ -194,14 +186,14 @@ export interface CatalogIssue {
 
 /**
  * Everything an instance offers, as `getCatalog` presents it: the
- * categories its operators are in, in their `order`, then the operators and
- * fragments in registration order, and `literal`. `issues` holds whatever
- * was skipped, and is empty when every input is well formed.
+ * categories its operators are in, in their `order`, then the operators in
+ * registration order with `literal` last, and the fragments in
+ * registration order. `issues` holds whatever was skipped, and is empty
+ * when every input is well formed.
  */
 export interface Catalog {
   categories: CatalogCategory[]
   operators: CatalogOperator[]
   fragments: CatalogFragment[]
-  literal: CatalogLiteral
   issues: CatalogIssue[]
 }

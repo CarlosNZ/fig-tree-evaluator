@@ -1,6 +1,6 @@
 # FigTree v3 — listings
 
-_Status: **Agreed and built** (October 2026, Claude, from discussion with Carl, built in six steps reviewed by Carl). It settles [issue #284](https://github.com/CarlosNZ/fig-tree-evaluator/issues/284), and revises "`./catalog`" in [v3-packaging.md](v3-packaging.md) and the fragment wrapper in "Fragments" in [v3-api.md](v3-api.md). It covers the concept, the definition types, registration's checks, the snapshots, the catalog, the v2 converter and the exports, then the changes against the current code and what they reach outside it._
+_Status: **Agreed and built** (October 2026, Claude, from discussion with Carl, built in six steps reviewed by Carl; `literal` joined the catalog's `operators` later that month, ruled by Carl, see "`literal`"). It settles [issue #284](https://github.com/CarlosNZ/fig-tree-evaluator/issues/284), and revises "`./catalog`" in [v3-packaging.md](v3-packaging.md) and the fragment wrapper in "Fragments" in [v3-api.md](v3-api.md). It covers the concept, the definition types, registration's checks, the snapshots, the catalog, the v2 converter and the exports, then the changes against the current code and what they reach outside it._
 
 ## The concept
 
@@ -265,7 +265,7 @@ Each option takes one map, the common case, or an array of maps layered in order
 
 ### `./catalog`'s data
 
-- **`operatorListings`**: a complete `Listing` for each core and I/O operator, and for `literal`.
+- **`operatorListings`**: a complete `Listing` for each core and I/O operator, and for `literal`, which the catalog lists as an operator.
 - **`categoryListings`**: a `CategoryListing` for each category.
 - **`fragmentColors`**: the `ColorPair` a fragment without colours of its own is drawn in. It is one pair for every fragment, so fragments read as one kind, as an operator reads by its category.
 - **`typeSeeds`**: a starting value for each type.
@@ -310,6 +310,44 @@ Values are handed out by reference, never copied: an object or array seed, sampl
 
 An entry's `metadata` is its definition's `metadata` with its resolved listing's merged over it, per key, so on a clash the listing wins. It is `{}` where neither gives any. `literal` has no definition, so its `metadata` is its listing's.
 
+### `literal`
+
+`literal` is grammar, not an operator definition. No instance registers it, so `getOperators()` never reports it: everything that method reports can be configured, through `operatorDefaults`, `operatorSet()` and the modifiers, and `literal` takes none of them (the compiler rejects a modifier on it). An editor draws it as an operator node, though, so the catalog lists it as one, in every catalog, as the last of `operators`. A tool reads one list and never adds it by hand.
+
+Its entry has the fields a definition would report if it declared one required `value` of type `any`, delivered `literal`, with null policy `accept`, in category `other`, returning `any`:
+
+```ts
+{
+  name: 'literal',
+  category: 'other',
+  parameters: {
+    value: {
+      type: 'any',
+      required: true,
+      evaluationMode: 'literal',
+      truthiness: false,
+      nullPolicy: 'accept',
+      nullBehavior: 'accept',
+      elementNullBehavior: 'accept',
+      // and the listing's description, seed and sample, as any operator's
+    },
+  },
+  restParam: null,
+  timeoutParam: null,
+  cache: false,
+  returns: 'any',
+  hasValidate: false,
+  positionalParams: [],
+  // and its presentation, as any operator's
+}
+```
+
+It has no `alias` and none of the `host…` fields, since nothing configures it. `positionalParams` is empty because a shorthand `$literal` takes its whole payload as `value`, never a list of arguments. A test holds the entry to what `getOperators()` reports for a definition declaring the same parameter, so it follows any change to how a declaration's fields are derived. Its presentation resolves as any operator's: the `literal` listing in `operatorListings`, then each map's `literal` key, and its colours are the listing's own, a shade of Other's. `literal` is a reserved name, so no registered operator can be a second one.
+
+Since `literal` is always present, `categories` always includes `other`.
+
+**Category `other`, not `data`** (Carl, October 2026). `literal` is the one node with no definition, nothing to configure and no modifiers, and `other` says so to anyone browsing. `data` would have filed it by what it is used for, beside `buildObject`.
+
 ### Checking the layers
 
 The package's own listings are held to their types by tests. Everything else is checked before anything merges: the options, each `listings` map and each `categories` override whole (so what is reported never depends on which operators the instance has), and each fragment definition's `listing`. A value of the wrong type is skipped and reported in `Catalog.issues` rather than thrown, so one malformed fragment in a host's store never breaks a tool's whole catalog. The checks are basic, by type only:
@@ -339,11 +377,10 @@ A path follows what the host wrote: a value in a single map has no index, `['lis
 interface Catalog {
   /** The categories at least one operator is in, in `order`. */
   categories: CatalogCategory[]
-  /** In registration order. */
+  /** In registration order, then `literal`. */
   operators: CatalogOperator[]
   /** In registration order. */
   fragments: CatalogFragment[]
-  literal: CatalogLiteral
   /** Values skipped by the checks; empty when every layer is well formed. */
   issues: CatalogIssue[]
 }
@@ -388,16 +425,6 @@ interface CatalogFragmentParameter extends FragmentParameter {
   seed: unknown
   sample?: unknown
 }
-
-/** `literal`, which an editor draws as an operator node. */
-interface CatalogLiteral {
-  displayName: string
-  description?: string
-  docUrl?: string
-  colors: ColorPair
-  metadata: Record<string, unknown>
-  parameters: { value: { description?: string; seed: unknown; sample?: unknown } }
-}
 ```
 
 Every snapshot field travels unchanged, except the raw `listing`, whose fields are resolved onto the entry. That includes each parameter's `nullBehavior` and `elementNullBehavior`, an operator's and a fragment's alike, worked out at registration ("Null behaviour" in [v3-operator-contract.md](v3-operator-contract.md), #287); the catalog drew up its own `nullOutcome` until then.
@@ -422,20 +449,20 @@ Every snapshot field travels unchanged, except the raw `listing`, whose fields a
 
 The types export from the root, as all of `./catalog`'s shapes do:
 
-| Type                                                           | What it is                                    |
-| -------------------------------------------------------------- | --------------------------------------------- |
-| `Listing`, `ColorPair`                                         | a listing, and its colours                    |
-| `ListingMap`                                                   | listings by name, a `listings` layer          |
-| `CategoryListing`, `CategoryListingMap`, `CategoryOverrides`   | a category's listing, all of them, a layer    |
-| `CatalogOptions`                                               | `getCatalog()`'s options                      |
-| `Catalog`, `CatalogCategory`, `CatalogLiteral`, `CatalogIssue` | what `getCatalog()` returns                   |
-| `CatalogOperator`, `CatalogOperatorParameter`                  | an operator in the catalog, and its parameter |
-| `CatalogFragment`, `CatalogFragmentParameter`                  | a fragment in the catalog, and its parameter  |
-| `TypeSeeds`                                                    | unchanged                                     |
+| Type                                                         | What it is                                    |
+| ------------------------------------------------------------ | --------------------------------------------- |
+| `Listing`, `ColorPair`                                       | a listing, and its colours                    |
+| `ListingMap`                                                 | listings by name, a `listings` layer          |
+| `CategoryListing`, `CategoryListingMap`, `CategoryOverrides` | a category's listing, all of them, a layer    |
+| `CatalogOptions`                                             | `getCatalog()`'s options                      |
+| `Catalog`, `CatalogCategory`, `CatalogIssue`                 | what `getCatalog()` returns                   |
+| `CatalogOperator`, `CatalogOperatorParameter`                | an operator in the catalog, and its parameter |
+| `CatalogFragment`, `CatalogFragmentParameter`                | a fragment in the catalog, and its parameter  |
+| `TypeSeeds`                                                  | unchanged                                     |
 
 `OperatorListing`, `OperatorListingMap`, `FragmentMetadata` and `CatalogParameter` are deleted. `NullOutcome` became `NullBehavior` at #287, exported with the operator-contract types.
 
-`./catalog` exports four values and one function: `operatorListings`, `categoryListings`, `fragmentColors`, `typeSeeds` and `getCatalog`. `operatorListings` keeps its name although it holds `literal`'s listing too, since an editor draws `literal` as an operator node.
+`./catalog` exports four values and one function: `operatorListings`, `categoryListings`, `fragmentColors`, `typeSeeds` and `getCatalog`. `operatorListings` keeps its name although it holds `literal`'s listing too, since the catalog lists `literal` as an operator.
 
 ## Changes from the current code
 
@@ -450,7 +477,7 @@ For the implementation, against the code as of `aede57a`:
 - **`FragmentInfo`** loses `description` and gains `listing`; its `metadata` loses the `FragmentMetadata` typing. **`FragmentParameter`** loses `description` and `metadata`.
 - **`samples`**, withheld from `getFragments()` by "Fragments" in [v3-api.md](v3-api.md), is reported, inside `listing`.
 - **`getCatalog()`** takes a `CatalogOptions` object in place of its rest parameter of maps. `OperatorListingMap` becomes `ListingMap`, and its maps reach fragments and `literal` as well as operators. Category overrides are new.
-- **`Catalog`** reports only the categories in use, and gains `literal` and `issues`. `CatalogParameter` becomes `CatalogOperatorParameter`. Both parameter types gain `sample`, `CatalogFragmentParameter` gains `description`, and `CatalogFragment` gains `description` and always has `colors`. `metadata` is always present, the definition's and the listing's merged.
+- **`Catalog`** reports only the categories in use, lists `literal` as the last of its `operators`, and gains `issues`. `CatalogParameter` becomes `CatalogOperatorParameter`. Both parameter types gain `sample`, `CatalogFragmentParameter` gains `description`, and `CatalogFragment` gains `description` and always has `colors`. `metadata` is always present, the definition's and the listing's merged.
 - **`./catalog`** gains `fragmentColors`. Today the editor picks its own fragment colours (`fragmentBackground` / `fragmentText` in fig-tree-editor-react's `editorTheme.ts`), and that pair reaches only 3.49:1, so the package's needs a new one.
 - **The converter** writes `listing` (`description`, `colors`, `parameterDescriptions`) where it wrote `description` and the colour keys into `metadata`, and drops a declaration's other keys with the new `parameter-key-dropped` issue where it wrote them into the parameter's `metadata`.
 
@@ -462,4 +489,4 @@ What this spec changes outside the code:
 - **[docs-dev/imports.md](../imports.md)**, for the renamed and new exports and `fragmentColors`' size.
 - **CHANGELOG**, since this breaks a preview's fragment definitions and `getCatalog()` calls.
 - **Docs site**: "Fragments in an editor" in guides/fragments.mdx, Tooling → `./catalog`, api/exports.mdx, then the paused custom-operators/presenting.mdx.
-- **fig-tree-editor-react**: remove `readOperatorListing`, read a fragment's presentation from the catalog, write descriptions into the listing in the fragment definition editor, use `fragmentColors`, `colors` and `Catalog.literal`, and show `Catalog.issues`.
+- **fig-tree-editor-react**: remove `readOperatorListing`, read a fragment's presentation from the catalog, write descriptions into the listing in the fragment definition editor, use `fragmentColors` and `colors`, read `literal` from `Catalog.operators` in place of merging it in by hand, and show `Catalog.issues`.
