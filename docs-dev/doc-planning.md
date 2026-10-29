@@ -191,14 +191,15 @@ What's shared:
 - **The example sets**, one entry each: an `id` (a slug, for the Playground's URL and for remembering the reader's last pick, so renaming the menu entry breaks neither), the menu `name`, the blurb, the data, the expression, the tree's starting `collapse`, and any `options` the example needs (below). Blurbs are Markdown files, one per example, rather than strings in a TS file, so they're written and previewed as Markdown.
 - **Blurb images** go beside the blurbs, referenced by relative path. The demo's blurbs point at `carlosnz.github.io/fig-tree-evaluator/img/…`, the URL the docs site takes over, so those links would break anyway. The docs site serves them from its own build; the demo serves the same folder through its Vite config. The Playground renders blurbs with the site's own Markdown at build time and hands the HTML to the island; the demo keeps rendering them itself.
 - **The fragments, custom operators and their listings** the examples use: plain `FragmentDefinition`s, `defineOperator()` calls and a `ListingMap`. Each consumer builds its own instance from them, so the demo keeps its own I/O setup (its Postgres bridge) and the Playground its own (SQLite in the browser).
-- **Settings per example**: an optional `options` field on an example, holding the instance options it needs, which the wrapper applies when the example is picked and the reader can then change in the options panel. **To confirm with Carl:** the rules for when settings change with the selected example; the current demo's `handleDemoSelect` sets only the expression and data.
+- **Settings per example: not yet (Carl, October 2026).** No example needs instance options (the random-user example sets `noCache` on its own node), so examples have no `options` field. When one needs it, the field is added along with the rule for how settings change when a reader picks an example.
 
 What stays out:
 
 - **The demo's data-editor settings** (`objectJsonEditorProps`): json-edit-react props, some of them functions, for the demo's data pane. The Playground edits data as JSON5 text. The demo keeps them in its own overlay, keyed by example `id`.
-- **The site's page examples**: the fragments and custom operators the guide pages use (`docs-site/src/lib/fragments.ts`, `src/lib/operators/`) are chosen for teaching one point each and stay where they are. Whether the Playground's set should include them is open.
+- **The site's page examples**: the fragments and custom operators the guide pages use (`docs-site/src/lib/fragments.ts`, `src/lib/operators/`) are chosen for teaching one point each and stay where they are, out of the Playground's set (Carl, October 2026). An "open in editor" link from a page still evaluates with that page's instance.
+- **The demo's welcome blurb**, which introduces the demo app itself. The Playground page has its own introduction.
 
-Moving the demo's data here is the first step of the port, before any of the Playground's features, since every later step reads it.
+Moving the demo's data here is the first step of the port, before any of the Playground's features, since every later step reads it. **Done (October 2026):** [docs-site/src/playground/](../docs-site/src/playground/) holds the examples (`examples.ts`), their blurbs and images (`blurbs/`), the fragments, with the fragment editor's starting sample (`fragments.ts`), and the custom operators and their listings (`operators.ts`). The blurbs' links point at the site's pages; their content gets an edit pass later.
 
 ## Dependencies
 
