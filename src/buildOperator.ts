@@ -93,9 +93,14 @@ export const assembleOperator = (
     const compiled = compiledPolicies.get(paramName)
     const declaredPolicy = typeof d.nullPolicy === 'string' ? d.nullPolicy : undefined
     const type = d.type ?? 'any'
-    // truthiness implies 'accept' where the type admits null at all
+    // Where the type admits null, truthiness implies 'accept', and so does
+    // a lazy delivery, the only policy legal there
+    const lazily =
+      d.evaluationMode !== undefined &&
+      d.evaluationMode !== 'eager' &&
+      d.evaluationMode !== 'literal'
     const impliedPolicy: NullPolicyValue =
-      d.truthiness === true && typeNamesNull(type) ? 'accept' : 'propagate'
+      (d.truthiness === true || lazily) && typeNamesNull(type) ? 'accept' : 'propagate'
 
     const parameter: ValidatedParameter = {
       type: cloneTypeExpression(type),

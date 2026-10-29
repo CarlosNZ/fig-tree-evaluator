@@ -348,8 +348,10 @@ export function defineOperator(
         paramName
       )
 
-    // Null policies: vocabulary, type-driven admission, truthiness conflict
-    if (d.nullPolicy !== undefined) {
+    // Null policies: vocabulary, type-driven admission, truthiness conflict,
+    // delivery mode. A holder's are checked with its `replacesNullAt`
+    const isHolder = d.replacesNullAt !== undefined
+    if (d.nullPolicy !== undefined && !isHolder) {
       const policy = d.nullPolicy
       if (typeof policy !== 'function' && !NULL_POLICY_VALUES.has(policy as string))
         addIssue(
@@ -374,7 +376,7 @@ export function defineOperator(
           paramName
         )
     }
-    if (d.elementNullPolicy !== undefined) {
+    if (d.elementNullPolicy !== undefined && !isHolder) {
       if (!NULL_POLICY_VALUES.has(d.elementNullPolicy as string)) {
         addIssue(
           ErrorCodes.invalidNullPolicy,
@@ -392,6 +394,20 @@ export function defineOperator(
           paramName
         )
     }
+    // A null reaches a lazily delivered parameter's operator whatever is
+    // declared: by the time the body demands the value, it is running
+    const mode = d.evaluationMode
+    if (mode !== undefined && mode !== 'eager' && mode !== 'literal' && !isHolder)
+      for (const field of ['nullPolicy', 'elementNullPolicy'] as const) {
+        const policy = d[field]
+        if (policy === 'propagate' || typeof policy === 'function')
+          addIssue(
+            ErrorCodes.invalidNullPolicy,
+            `'${field}' can only be 'accept' with evaluationMode '${mode}' — a null always reaches the operator`,
+            at(field),
+            paramName
+          )
+      }
   }
 
   // ── Cross-parameter checks ─────────────────────────────────────────────
@@ -470,16 +486,38 @@ export function defineOperator(
     }
   }
 
-  // replacesNullAt: holder lazy, optional, no default; targets real siblings
+  // replacesNullAt: the holder lazy, optional, no default, its type without
+  // null and no null policy or truthiness of its own; targets real, eager
+  // or literal siblings, each by one holder. A null at the
+  // holder replaces a null with a null, which is no replacement, and its
+  // value never reaches the body, so a policy there could never apply
+  const claimed: Record<string, string> = {}
   for (const [paramName, d] of Object.entries(declarations)) {
     if (d.replacesNullAt === undefined) continue
+    const paramPath: Path = ['parameters', paramName]
+    for (const field of ['nullPolicy', 'elementNullPolicy', 'truthiness'] as const)
+      if (d[field] !== undefined && d[field] !== false)
+        addIssue(
+          field === 'truthiness' ? ErrorCodes.invalidDefinition : ErrorCodes.invalidNullPolicy,
+          `a 'replacesNullAt' parameter takes no '${field}' — its value never reaches the operator`,
+          [...paramPath, field],
+          paramName
+        )
+    const type = effectiveTypes[paramName]
+    if (type !== undefined && typeNamesNull(type))
+      addIssue(
+        ErrorCodes.invalidDefinition,
+        `a 'replacesNullAt' parameter's type may not include 'null' — a null there means no replacement`,
+        [...paramPath, 'type'],
+        paramName
+      )
     if (!Array.isArray(d.replacesNullAt) || d.replacesNullAt.some((t) => typeof t !== 'string'))
       continue // shape issue already recorded
-    const path: Path = ['parameters', paramName, 'replacesNullAt']
+    const path: Path = [...paramPath, 'replacesNullAt']
     if (d.evaluationMode !== 'lazy')
       addIssue(
         ErrorCodes.invalidDefinition,
-        `a 'replacesNullAt' holder must declare evaluationMode: 'lazy'`,
+        `a 'replacesNullAt' parameter must declare evaluationMode: 'lazy'`,
         path,
         paramName
       )
@@ -487,14 +525,14 @@ export function defineOperator(
     if (holderRequired)
       addIssue(
         ErrorCodes.invalidDefinition,
-        `a 'replacesNullAt' holder must be optional`,
+        `a 'replacesNullAt' parameter must be optional`,
         path,
         paramName
       )
     if ('default' in d)
       addIssue(
         ErrorCodes.invalidDefinition,
-        `a 'replacesNullAt' holder may not carry a 'default' — it is presence-sensitive by construction`,
+        `a 'replacesNullAt' parameter may not carry a 'default' — it is presence-sensitive by construction`,
         path,
         paramName
       )
@@ -502,7 +540,7 @@ export function defineOperator(
       if (target === paramName)
         addIssue(
           ErrorCodes.invalidDefinition,
-          `'replacesNullAt' may not target the holder itself`,
+          `'replacesNullAt' may not target the parameter declaring it`,
           [...path, i],
           paramName
         )
@@ -513,6 +551,28 @@ export function defineOperator(
           [...path, i],
           paramName
         )
+      else {
+        // Nulls are replaced in a whole value, before the body runs, so a
+        // lazily delivered target's would arrive unreplaced; and a target
+        // has one replacement, or one would silently override the other
+        const mode = declarations[target].evaluationMode ?? 'eager'
+        const claimant = claimed[target]
+        if (mode !== 'eager' && mode !== 'literal')
+          addIssue(
+            ErrorCodes.invalidDefinition,
+            `'replacesNullAt' target '${target}' must be eager or literal, not '${mode}'`,
+            [...path, i],
+            paramName
+          )
+        else if (claimant !== undefined && claimant !== paramName)
+          addIssue(
+            ErrorCodes.invalidDefinition,
+            `'replacesNullAt' target '${target}' is already replaced by '${claimant}'`,
+            [...path, i],
+            paramName
+          )
+        claimed[target] = paramName
+      }
     })
   }
 

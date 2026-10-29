@@ -84,14 +84,14 @@ export const convertLikeCompiledPolicy = {
   ],
 }
 
-/** A `…Default` null-replacement holder (ledger #18). */
+/** A null-replacement holder, declaring `replacesNullAt` (ledger #18). */
 export const nullReplacerLike = (): OperatorDefinition => ({
   name: 'plusish',
   category: 'other',
   parameters: {
     values: { type: 'array', elementNullPolicy: 'propagate' },
     nullValueDefault: {
-      type: 'any',
+      type: 'number',
       evaluationMode: 'lazy',
       required: false,
       replacesNullAt: ['values'],
@@ -469,7 +469,7 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     id: 'replaces-null-at-holder-not-lazy',
     definition: withParams({
       value: { type: ['number', 'null'] },
-      holder: { required: false, replacesNullAt: ['value'] },
+      holder: { type: 'number', required: false, replacesNullAt: ['value'] },
     }),
     expected: {
       code: ErrorCodes.invalidDefinition,
@@ -480,7 +480,7 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     id: 'replaces-null-at-holder-required',
     definition: withParams({
       value: { type: ['number', 'null'] },
-      holder: { evaluationMode: 'lazy', replacesNullAt: ['value'] },
+      holder: { type: 'number', evaluationMode: 'lazy', replacesNullAt: ['value'] },
     }),
     expected: {
       code: ErrorCodes.invalidDefinition,
@@ -491,7 +491,7 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     id: 'replaces-null-at-holder-with-default',
     definition: withParams({
       value: { type: ['number', 'null'] },
-      holder: { evaluationMode: 'lazy', default: 0, replacesNullAt: ['value'] },
+      holder: { type: 'number', evaluationMode: 'lazy', default: 0, replacesNullAt: ['value'] },
     }),
     expected: {
       code: ErrorCodes.invalidDefinition,
@@ -502,7 +502,7 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     id: 'replaces-null-at-unknown-target',
     definition: withParams({
       value: { type: ['number', 'null'] },
-      holder: { evaluationMode: 'lazy', required: false, replacesNullAt: ['nope'] },
+      holder: { type: 'number', evaluationMode: 'lazy', required: false, replacesNullAt: ['nope'] },
     }),
     expected: {
       code: ErrorCodes.invalidDefinition,
@@ -513,11 +513,190 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     id: 'replaces-null-at-self-target',
     definition: withParams({
       value: { type: ['number', 'null'] },
-      holder: { evaluationMode: 'lazy', required: false, replacesNullAt: ['holder'] },
+      holder: {
+        type: 'number',
+        evaluationMode: 'lazy',
+        required: false,
+        replacesNullAt: ['holder'],
+      },
     }),
     expected: {
       code: ErrorCodes.invalidDefinition,
       pathTail: ['parameters', 'holder', 'replacesNullAt', 0],
+    },
+  },
+  {
+    id: 'replaces-null-at-type-names-null',
+    definition: withParams({
+      value: { type: ['number', 'null'] },
+      holder: {
+        type: ['number', 'null'],
+        evaluationMode: 'lazy',
+        required: false,
+        replacesNullAt: ['value'],
+      },
+    }),
+    expected: {
+      code: ErrorCodes.invalidDefinition,
+      pathTail: ['parameters', 'holder', 'type'],
+    },
+  },
+  {
+    id: 'replaces-null-at-type-defaults-to-any',
+    definition: withParams({
+      value: { type: ['number', 'null'] },
+      holder: { evaluationMode: 'lazy', required: false, replacesNullAt: ['value'] },
+    }),
+    expected: {
+      code: ErrorCodes.invalidDefinition,
+      pathTail: ['parameters', 'holder', 'type'],
+    },
+  },
+  {
+    id: 'replaces-null-at-with-null-policy',
+    definition: withParams({
+      value: { type: ['number', 'null'] },
+      holder: {
+        type: ['number', 'null'],
+        evaluationMode: 'lazy',
+        required: false,
+        nullPolicy: 'accept',
+        replacesNullAt: ['value'],
+      },
+    }),
+    expected: {
+      code: ErrorCodes.invalidNullPolicy,
+      pathTail: ['parameters', 'holder', 'nullPolicy'],
+    },
+  },
+  {
+    id: 'replaces-null-at-with-element-null-policy',
+    definition: withParams({
+      value: { type: ['array', 'null'] },
+      holder: {
+        type: 'array',
+        evaluationMode: 'lazy',
+        required: false,
+        elementNullPolicy: 'accept',
+        replacesNullAt: ['value'],
+      },
+    }),
+    expected: {
+      code: ErrorCodes.invalidNullPolicy,
+      pathTail: ['parameters', 'holder', 'elementNullPolicy'],
+    },
+  },
+  {
+    id: 'replaces-null-at-with-truthiness',
+    definition: withParams({
+      value: { type: ['number', 'null'] },
+      holder: {
+        type: 'number',
+        evaluationMode: 'lazy',
+        required: false,
+        truthiness: true,
+        replacesNullAt: ['value'],
+      },
+    }),
+    expected: {
+      code: ErrorCodes.invalidDefinition,
+      pathTail: ['parameters', 'holder', 'truthiness'],
+    },
+  },
+  {
+    id: 'replaces-null-at-lazy-target',
+    definition: withParams({
+      value: { type: ['number', 'null'], evaluationMode: 'lazy', required: false },
+      holder: {
+        type: 'number',
+        evaluationMode: 'lazy',
+        required: false,
+        replacesNullAt: ['value'],
+      },
+    }),
+    expected: {
+      code: ErrorCodes.invalidDefinition,
+      pathTail: ['parameters', 'holder', 'replacesNullAt', 0],
+    },
+  },
+  {
+    id: 'replaces-null-at-holder-target',
+    definition: withParams({
+      value: { type: ['number', 'null'] },
+      first: { type: 'number', evaluationMode: 'lazy', required: false, replacesNullAt: ['value'] },
+      second: {
+        type: 'number',
+        evaluationMode: 'lazy',
+        required: false,
+        replacesNullAt: ['first'],
+      },
+    }),
+    expected: {
+      code: ErrorCodes.invalidDefinition,
+      pathTail: ['parameters', 'second', 'replacesNullAt', 0],
+    },
+  },
+  {
+    id: 'replaces-null-at-shared-target',
+    definition: withParams({
+      value: { type: ['number', 'null'] },
+      first: { type: 'number', evaluationMode: 'lazy', required: false, replacesNullAt: ['value'] },
+      second: {
+        type: 'number',
+        evaluationMode: 'lazy',
+        required: false,
+        replacesNullAt: ['value'],
+      },
+    }),
+    expected: {
+      code: ErrorCodes.invalidDefinition,
+      pathTail: ['parameters', 'second', 'replacesNullAt', 0],
+    },
+  },
+  {
+    id: 'element-null-policy-propagate-on-lazy-elements',
+    definition: withValueParam({
+      type: 'array',
+      evaluationMode: 'lazyElements',
+      elementNullPolicy: 'propagate',
+    }),
+    expected: {
+      code: ErrorCodes.invalidNullPolicy,
+      pathTail: ['parameters', 'value', 'elementNullPolicy'],
+    },
+  },
+  {
+    id: 'null-policy-propagate-on-lazy',
+    definition: withValueParam({ type: 'any', evaluationMode: 'lazy', nullPolicy: 'propagate' }),
+    expected: {
+      code: ErrorCodes.invalidNullPolicy,
+      pathTail: ['parameters', 'value', 'nullPolicy'],
+    },
+  },
+  {
+    id: 'null-policy-propagate-on-per-element',
+    definition: withParams({
+      items: { type: 'array' },
+      value: { type: 'any', evaluationMode: 'perElement', over: 'items', nullPolicy: 'propagate' },
+    }),
+    expected: {
+      code: ErrorCodes.invalidNullPolicy,
+      pathTail: ['parameters', 'value', 'nullPolicy'],
+    },
+  },
+  {
+    id: 'null-policy-conditional-on-lazy',
+    definition: withParams({
+      mode: { type: { literal: ['a', 'b'] } },
+      value: {
+        type: 'any',
+        evaluationMode: 'lazy',
+        nullPolicy: (mode: unknown) => (mode === 'a' ? 'accept' : 'propagate'),
+      },
+    }),
+    expected: {
+      code: ErrorCodes.invalidNullPolicy,
+      pathTail: ['parameters', 'value', 'nullPolicy'],
     },
   },
   {
