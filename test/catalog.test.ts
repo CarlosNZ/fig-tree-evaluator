@@ -259,11 +259,8 @@ describe('getCatalog', () => {
         void [displayName, description, docUrl, colors, metadata]
         const parameters = Object.fromEntries(
           Object.entries(rest.parameters).map(
-            ([
-              name,
-              { description, seed, sample, nullBehavior, elementNullBehavior, ...parameter },
-            ]) => {
-              void [description, seed, sample, nullBehavior, elementNullBehavior]
+            ([name, { description, seed, sample, ...parameter }]) => {
+              void [description, seed, sample]
               return [name, parameter]
             }
           )
@@ -514,23 +511,29 @@ describe('getCatalog', () => {
       })
       // The placeholder the behaviour replaces, for contrast
       expect(operator.parameters.places.nullPolicy).toBe('propagate')
-      // Only the containers report their elements', and a constraint a null
-      // fails rules a null element out where no policy takes it
+      // Every type admitting a container reports its elements', and a
+      // constraint a null fails rules a null element out where no policy
+      // takes it
       const elementBehaviors = Object.fromEntries(
         Object.entries(operator.parameters)
           .filter(([, parameter]) => Object.hasOwn(parameter, 'elementNullBehavior'))
           .map(([name, { elementNullBehavior }]) => [name, elementNullBehavior])
       )
       expect(elementBehaviors).toEqual({
+        judged: 'accept',
+        chosen: 'accept',
+        branch: 'accept',
         items: 'propagate',
         entries: 'accept',
         numbers: 'error',
         mixed: 'accept',
         rows: 'error',
+        each: 'accept',
       })
     })
 
-    // The catalog repeats the engine's rules, so this holds them to it: each
+    // The behaviours are worked out at registration, apart from the
+    // resolution that acts on them, so this holds the two together: each
     // package parameter in turn handed a null, by an operator whose body
     // records what it was given in place of its own
     describe('matches what the engine does with a null', () => {
@@ -561,6 +564,10 @@ describe('getCatalog', () => {
       // `probe` value, through whichever delivery the parameter declares
       const probedElement = async (value: unknown, mode: string): Promise<unknown> => {
         switch (mode) {
+          case 'lazy':
+            return probedElement(await (value as LazyValue).evaluate(), 'eager')
+          case 'perElement':
+            return probedElement(await (value as PerElement).evaluate(0), 'eager')
           case 'lazyElements':
             return (value as LazyValue[]).at(-1)!.evaluate()
           case 'lazyEntries':
@@ -575,7 +582,12 @@ describe('getCatalog', () => {
             throw new Error('the probed element never settled')
           }
           default:
-            return Array.isArray(value) ? value.at(-1) : (value as Record<string, unknown>).probe
+            // A judged position's value is the container's truthiness
+            return Array.isArray(value)
+              ? value.at(-1)
+              : typeof value === 'object' && value !== null
+                ? (value as Record<string, unknown>).probe
+                : value
         }
       }
       // A null from a node rather than a literal, as data would give it
@@ -653,7 +665,10 @@ describe('getCatalog', () => {
             : [nothing]
           : { ...(seed as object), probe: nothing }
         const node = { ...startingNode(operator), [name]: container }
-        expect(await observe(node, parameter)).toBe(parameter.elementNullBehavior)
+        // A judged position receives the whole container's truthiness, so
+        // the element's arrival is all there is to see
+        const seen = await observe(node, parameter)
+        expect(seen.startsWith('received') ? 'accept' : seen).toBe(parameter.elementNullBehavior)
       })
     })
   })

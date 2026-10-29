@@ -22,6 +22,8 @@ import {
   checkDeclaredConstraints,
   checkType,
   isExpectedType,
+  typeAdmitsArray,
+  typeAdmitsContainer,
   typeNamesNull,
   validateConstraintsShape,
   type ExpectedType,
@@ -63,13 +65,6 @@ const CATEGORIES: ReadonlySet<string> = new Set(OPERATOR_CATEGORIES)
 const NULL_POLICY_VALUES: ReadonlySet<string> = new Set(['propagate', 'accept'])
 
 type ReportIssue = (code: string, message: string, path: Path, parameter?: string) => void
-
-/** Does a declared type admit an array (the `over` target requirement)? */
-const typeAdmitsArray = (type: ExpectedType): boolean => checkType([], type).ok
-
-/** Is a declared type a container (admits per-element/per-value policies)? */
-const typeIsContainer = (type: ExpectedType): boolean =>
-  typeAdmitsArray(type) || checkType({}, type).ok
 
 /**
  * Overloads rather than one signature over a union, because a union
@@ -386,7 +381,7 @@ export function defineOperator(
         )
       }
       const type = effectiveTypes[paramName]
-      if (type !== undefined && !typeIsContainer(type))
+      if (type !== undefined && !typeAdmitsContainer(type))
         addIssue(
           ErrorCodes.invalidNullPolicy,
           `'elementNullPolicy' applies to container parameters only`,

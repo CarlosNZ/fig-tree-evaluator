@@ -22,10 +22,10 @@
  *  2. `replacesNullAt` — a null at a target is replaced by the holder's
  *     once-evaluated value, per element/value where the target declares an
  *     element policy, whole-value otherwise;
- *  3. whole-value null policy — `propagate` resolves the node to null
- *     without running the body, `accept` delivers, a compiled conditional
- *     table is consulted through the resolved selector; a null at a type
- *     that does not name null is the derived reject (a type error);
+ *  3. whole-value null behaviour — `propagate` resolves the node to null
+ *     without running the body, `accept` delivers, a conditional table is
+ *     consulted through the resolved selector; `error`, at a type that
+ *     does not name null, is the derived reject (a type error);
  *  4. element-wise null policy — the same per element / per value;
  *  5. the type check and constraints;
  *  6. truthiness — `isTruthy` at declared positions, per element where the
@@ -36,12 +36,7 @@
  */
 import { FigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
-import {
-  EvaluationData,
-  type CompiledNullPolicy,
-  type NullPolicyValue,
-  type ValidatedParameter,
-} from '../operatorDefinition'
+import { EvaluationData, type NullBehavior, type ValidatedParameter } from '../operatorDefinition'
 import { renamedBinding, type CompiledNode, type OperatorNode } from '../compile'
 import { isTruthy } from '../primitives'
 import { LAZY_HANDLE, type LazyValue, type PerElement } from '../runtimeInterface'
@@ -51,7 +46,6 @@ import {
   defaultFor,
   isOmitted,
   NO_DEFAULT,
-  typeNamesNull,
   type ExpectedType,
 } from '../typeCheck'
 import { isPlainObject, isThenable, noop, once } from '../utils'
@@ -197,21 +191,15 @@ export const resolveParams = async (
     const holder = holders?.[name]
     if (holder !== undefined) value = await replaceNulls(value, declared, holder)
 
-    // 3. whole-value null policy. `propagate` is inert on a lazily
-    //    delivered parameter and MUST be skipped, not merely unused: it
-    //    means "resolve the node without running the body", and the body
-    //    is the thing that demands a handle. Letting it fire would make
-    //    `{ $if: [true, 'yes'] }` resolve null — the omitted `else` takes
-    //    its declared default of null, which is a whole value reaching
-    //    this layer, and the node would short-circuit before the taken
-    //    branch was ever demanded. The derived reject (layer 5) still
-    //    applies: a null container at a degenerating parameter is a type
-    //    error
-    const lazily = declared.evaluationMode !== 'eager' && declared.evaluationMode !== 'literal'
-    if (value === null && typeNamesNull(declared.type) && !lazily) {
-      if (effectivePolicy(node, declared, resolved) === 'propagate')
-        return { params, propagate: true }
-    }
+    // 3. whole-value null behaviour. A lazily delivered parameter's is
+    //    always `accept`, as it must be: `propagate` means "resolve the
+    //    node without running the body", and the body is the thing that
+    //    demands a handle. Were it to fire, `{ $if: [true, 'yes'] }` would
+    //    resolve null — the omitted `else` takes its declared default of
+    //    null, a whole value reaching this layer — before the taken branch
+    //    was ever demanded. An `error` is the type check's (layer 5)
+    if (value === null && effectiveBehavior(node, declared, resolved) === 'propagate')
+      return { params, propagate: true }
 
     // 4. element-wise null policy
     if (declared.elementNullPolicy === 'propagate' && containsNull(value))
@@ -433,25 +421,25 @@ const typeError = (
 }
 
 /**
- * The declared policy, or the compiled table read through its selector. The
- * selector is read after the defaults pass, so it is the value its own
- * layers will see. Its type is checked here, ahead of its own layers: the
- * table needs a member of the literal type as its key.
+ * The parameter's null behaviour, a conditional one read through its
+ * selector. The selector is read after the defaults pass, so it is the
+ * value its own layers will see. Its type is checked here, ahead of its own
+ * layers: the table needs a member of the literal type as its key.
  */
-const effectivePolicy = (
+const effectiveBehavior = (
   node: OperatorNode,
   declared: ValidatedParameter,
   resolved: Record<string, unknown>
-): NullPolicyValue => {
-  if (typeof declared.nullPolicy === 'string') return declared.nullPolicy
-  const compiled: CompiledNullPolicy = declared.nullPolicy
-  const selectorDeclared = node.entry.definition.parameters[compiled.selector]
-  const selectorValue = resolved[compiled.selector]
+): NullBehavior => {
+  const behavior = declared.nullBehavior
+  if (typeof behavior === 'string') return behavior
+  const selectorDeclared = node.entry.definition.parameters[behavior.selector]
+  const selectorValue = resolved[behavior.selector]
   const typed = checkType(selectorValue, selectorDeclared.type)
-  if (!typed.ok) throw typeError(node, compiled.selector, typed)
+  if (!typed.ok) throw typeError(node, behavior.selector, typed)
   // The table has a row per member of the literal type, and the type check
   // is membership, so a miss here is a compiler defect
-  return compiled.table.find((entry) => entry.value === selectorValue)!.policy
+  return behavior.table.find((entry) => entry.value === selectorValue)!.behavior
 }
 
 const replaceNulls = async (
