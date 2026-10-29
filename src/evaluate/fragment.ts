@@ -47,7 +47,7 @@ import { FigTreeError, isFigTreeError, type FallbackError } from '../FigTreeErro
 import { ErrorCodes } from '../errorCodes'
 import type { FragmentEntry, FragmentParameter } from '../fragments'
 import { toNodePath, type CompiledNode, type FragmentCallNode, type LinkedPath } from '../compile'
-import { checkDeclared, describeType, nullMeansOmitted } from '../typeCheck'
+import { checkDeclared, describeType } from '../typeCheck'
 import { isPlainObject, noop, once } from '../utils'
 import { DeferredScope } from './abort'
 import {
@@ -269,7 +269,7 @@ const resolveArgument = (
   ctx: EvaluationContext
 ): unknown => {
   const normalized = value === undefined ? null : value
-  if (normalized === null && nullMeansOmitted(declared)) return declared.default ?? null
+  if (normalized === null && declared.nullBehavior === 'omit') return declared.default ?? null
 
   const checked = checkDeclared(normalized, declared)
   if (!checked.ok)

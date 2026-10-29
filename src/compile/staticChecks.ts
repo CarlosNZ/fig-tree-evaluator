@@ -13,14 +13,7 @@
 import { ErrorCodes } from '../errorCodes'
 import { FALLBACK_ERROR_FIELDS } from '../FigTreeError'
 import type { Severity } from '../issues'
-import {
-  checkDeclared,
-  checkType,
-  defaultFor,
-  isOmitted,
-  NO_DEFAULT,
-  nullMeansOmitted,
-} from '../typeCheck'
+import { checkDeclared, checkType, defaultFor, isOmitted, NO_DEFAULT } from '../typeCheck'
 import { typesIntersect } from '../typeIntersection'
 import { staticType } from './staticType'
 import type { Constraints, ExpectedType } from '../typeCheck'
@@ -282,6 +275,7 @@ interface ReceivingDeclaration {
   constraints?: Constraints
   elementNullPolicy?: unknown
   evaluationMode?: EvaluationMode
+  nullBehavior: unknown
 }
 
 /**
@@ -514,7 +508,7 @@ const valueMismatch = (
   value: unknown,
   nullReplaced: boolean
 ): { code: string; reason: string } | undefined => {
-  if (value === null && (nullReplaced || nullMeansOmitted(declared))) return
+  if (value === null && (nullReplaced || declared.nullBehavior === 'omit')) return
   const checked = checkDeclared(value, declared)
   if (!checked.ok)
     return {

@@ -69,6 +69,7 @@ import {
   type TypeDeclaration,
 } from './typeCheck'
 import { findCycles, isPlainObject } from './utils'
+import { argumentNullBehaviorOf, elementNullBehaviorOf } from './nullBehavior'
 
 /**
  * A fragment parameter declaration as authored. Extends the same
@@ -112,6 +113,20 @@ export interface FragmentParameter {
   required: boolean
   default?: unknown
   constraints?: Constraints
+  /**
+   * What a `null` argument does, worked out at registration
+   * (src/nullBehavior.ts): `accept` where the type names `null`, which the
+   * body receives; else `omit` at an optional parameter, which takes its
+   * default, else `null`; else `error`.
+   */
+  nullBehavior: 'accept' | 'omit' | 'error'
+  /**
+   * What a `null` element (or an object's `null` value) does, wherever the
+   * type admits an array or an object: `error` where a `homogeneous`
+   * constraint without `any`, or an `elementShape`, rules it out; else
+   * `accept`.
+   */
+  elementNullBehavior?: 'accept' | 'error'
 }
 
 /**
@@ -443,13 +458,17 @@ const validateDeclaration = (
     }
   }
 
+  // A default implies optional; an explicit `required` wins where given
+  const required = (declared.required as boolean | undefined) ?? !hasDefault
   const normalized: FragmentParameter = {
     type,
-    // A default implies optional; an explicit `required` wins where given
-    required: (declared.required as boolean | undefined) ?? !hasDefault,
+    required,
+    nullBehavior: argumentNullBehaviorOf({ type, required }),
   }
   if (hasDefault) normalized.default = declared.default
   if (constraints !== undefined) normalized.constraints = constraints
+  const element = elementNullBehaviorOf(normalized)
+  if (element !== undefined) normalized.elementNullBehavior = element as 'accept' | 'error'
   return normalized
 }
 
