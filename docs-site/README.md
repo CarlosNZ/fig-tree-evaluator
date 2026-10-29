@@ -76,6 +76,7 @@ docs-site/
       Expression.astro        static expression block, evaluated at build time
       ExpressionTree.astro    an expression drawn as a tree, each node's result evaluated at build time
       FragmentSetup.astro     host code registering the Fragments page's fragments, from lib/fragments.ts
+      ImportCosts.astro       a table of what imports cost a consumer, measured from build/ at build time
       OperatorSource.astro    a custom operator's definition, shown from its file in lib/operators/
       TreeItem.astro          one entry in that tree, with its children
       OperatorReference.astro reference entries: the operators page, or a chosen few
@@ -87,7 +88,7 @@ docs-site/
         EvaluationToast.tsx   the tree editor's evaluation toasts
         ResultValue.tsx       how a result is shown
         Json5Editor.tsx       the CodeMirror JSON5 pane
-    lib/                    the shared FigTree instance and catalog, the SQLite database, JSON5, link encoding, notes, tree layout
+    lib/                    the shared FigTree instance and catalog, the SQLite database, JSON5, link encoding, notes, tree layout, import costs
       operators/            the Custom operators pages' operators, one file each, exactly as the pages show them
     styles/custom.css       the site's styles (classes use the `fds-` prefix)
     styles/palettes.mjs     the colour palette: greys, accent, code and callout colours

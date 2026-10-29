@@ -389,6 +389,28 @@
   opacity: 0.6;
 }
 
+/* ── Import costs (ImportCosts.astro) ───────────────────────────────────── */
+
+/*
+ * An import statement over two lines, as one block of code rather than an
+ * inline pill on each line, with its `from` indented under the clause
+ */
+.fds-import {
+  display: block;
+  width: max-content;
+  padding: 0.25rem 0.5rem;
+}
+
+.fds-import span {
+  display: block;
+  padding-left: 2ch;
+}
+
+/* The sizes, a step smaller than the text, so the statements lead each row */
+.fds-size {
+  font-size: var(--sl-text-sm);
+}
+
 /* ── Expression trees (ExpressionTree.astro) ────────────────────────────── */
 
 .fds-tree-figure {

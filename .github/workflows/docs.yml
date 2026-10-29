@@ -23,6 +23,7 @@ on:
       - 'pnpm-lock.yaml'
       - 'tsconfig.json'
       - 'rollup.config.mjs'
+      - 'codegen/bundleSize.mjs'
       - '.github/workflows/docs.yml'
   pull_request:
     paths:
@@ -32,6 +33,7 @@ on:
       - 'pnpm-lock.yaml'
       - 'tsconfig.json'
       - 'rollup.config.mjs'
+      - 'codegen/bundleSize.mjs'
       - '.github/workflows/docs.yml'
 
 jobs:
