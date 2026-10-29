@@ -42,10 +42,11 @@ export const nullBehaviorOf = (
     return 'error'
   if (!typeNamesNull(declared.type))
     return declared.required || mode === 'lazy' || mode === 'perElement' ? 'error' : 'omit'
+  // A type naming null always carries a policy
   if (typeof nullPolicy === 'string') return nullPolicy
   return {
-    selector: nullPolicy.selector,
-    table: nullPolicy.table.map(({ value, policy }) => ({ value, behavior: policy })),
+    selector: nullPolicy!.selector,
+    table: nullPolicy!.table.map(({ value, policy }) => ({ value, behavior: policy })),
   }
 }
 

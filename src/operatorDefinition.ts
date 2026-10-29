@@ -250,13 +250,12 @@ export interface ValidatedParameter {
   evaluationMode: EvaluationMode
   truthiness: boolean
   /**
-   * The declared policy, else `'accept'` where `truthiness` or a lazy
-   * delivery implies it, else `'propagate'`, filled in even where no policy
-   * can apply: at a type that doesn't name `null`, and at a holder (a
-   * parameter declaring `replacesNullAt`). What a `null` does is
-   * `nullBehavior`.
+   * Present only where a policy can be declared, where the type names
+   * `null`: the declared policy, else `'accept'` where `truthiness` or a
+   * lazy delivery implies it, else `'propagate'`. What a `null` does at
+   * every parameter is `nullBehavior`.
    */
-  nullPolicy: NullPolicyValue | CompiledNullPolicy
+  nullPolicy?: NullPolicyValue | CompiledNullPolicy
   elementNullPolicy?: NullPolicyValue
   /**
    * What a `null` at the parameter does, worked out at registration from

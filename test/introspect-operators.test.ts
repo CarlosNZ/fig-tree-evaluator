@@ -80,8 +80,15 @@ describe('what the snapshot contains', () => {
       default: 0,
       evaluationMode: 'eager', // never authored
       truthiness: false,
-      nullPolicy: 'propagate',
+      nullBehavior: 'omit', // optional, and its type excludes null
     })
+  })
+
+  test('a policy is reported only where one can be declared, where the type names null', () => {
+    const { parameters } = find(snapshot, 'divide')
+    expect(parameters.value.nullPolicy).toBe('propagate')
+    expect(Object.hasOwn(find(snapshot, 'round').parameters.decimals, 'nullPolicy')).toBe(false)
+    expect(find(snapshot, 'if').parameters.then.nullPolicy).toBe('accept')
   })
 
   test('a compiled conditional null-policy table is reported, never the function', () => {

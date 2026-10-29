@@ -4,15 +4,15 @@
  * operator node receives, and whether it can fail its type check. It
  * follows `resolveParams` in src/evaluate/params.ts layer by layer, over
  * what is known of each child's output rather than over values: the
- * default chain, null meaning omitted, `replacesNullAt`, the null policies,
- * then the type check and constraints.
+ * default chain, null meaning omitted, `replacesNullAt`, the null
+ * behaviours, then the type check and constraints.
  */
 import { isTruthy } from '../primitives/truthiness'
-import { defaultFor, NO_DEFAULT, nullMeansOmitted, typeNamesNull } from '../typeCheck'
+import { defaultFor, NO_DEFAULT, nullMeansOmitted } from '../typeCheck'
 import { isPlainObject } from '../utils'
 import type { ExpectedType } from '../typeCheck'
 import type { CompiledNode, OperatorNode } from '../compile/artifact'
-import type { ValidatedParameter } from '../operatorDefinition'
+import type { NullBehavior, ValidatedParameter } from '../operatorDefinition'
 import type { FragmentParameter } from '../fragments'
 import {
   ANY,
@@ -93,21 +93,21 @@ const literalContainer = (declared: ValidatedParameter, supplied: CompiledNode):
     : supplied.kind === 'elements'
 
 /**
- * The policies a null at this parameter can meet: one, or either where a
- * conditional policy's selector is not known exactly.
+ * The behaviours a null at this parameter can meet: one, or either where a
+ * conditional behaviour's selector is not known exactly.
  */
-const policiesOf = (
+const behaviorsOf = (
   declared: ValidatedParameter,
   pending: Record<string, Pending>
-): Set<'propagate' | 'accept'> => {
-  const policy = declared.nullPolicy
-  if (typeof policy === 'string') return new Set([policy])
-  const selector = pending[policy.selector]?.known ?? NOTHING
+): Set<NullBehavior> => {
+  const behavior = declared.nullBehavior
+  if (typeof behavior === 'string') return new Set([behavior])
+  const selector = pending[behavior.selector]?.known ?? NOTHING
   const exact = selector.every((member) => 'exact' in member)
   const rows = exact
-    ? policy.table.filter((row) => selector.some((m) => 'exact' in m && m.exact === row.value))
-    : policy.table
-  return new Set(rows.map((row) => row.policy))
+    ? behavior.table.filter((row) => selector.some((m) => 'exact' in m && m.exact === row.value))
+    : behavior.table
+  return new Set(rows.map((row) => row.behavior))
 }
 
 export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>): Inputs => {
@@ -184,11 +184,11 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
   }
 
   // The defaults pass: an omitted parameter takes its default chain, or is
-  // removed. A null is omitted at an optional parameter whose type excludes it
+  // removed. A null is omitted where its null behaviour is `omit`
   for (const [name, declared] of whole) {
     if (delivered.has(name)) continue
     const value = pending[name] ?? { known: NOTHING, absent: true }
-    const nullOmitted = nullMeansOmitted(declared) && admitsNull(value.known)
+    const nullOmitted = declared.nullBehavior === 'omit' && admitsNull(value.known)
     if (!value.absent && !nullOmitted) continue
     const chain = defaultOf(node, name, declared)
     const kept = nullOmitted ? withoutNull(value.known) : value.known
@@ -219,22 +219,20 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
       }
     }
 
-    // `propagate` is inert on a lazily delivered parameter
-    const lazily = declared.evaluationMode !== 'eager' && declared.evaluationMode !== 'literal'
-    if (admitsNull(known) && typeNamesNull(declared.type) && !lazily) {
-      const policies = policiesOf(declared, pending)
-      if (policies.has('propagate')) {
-        const certain = policies.size === 1 && onlyNull(known)
+    if (admitsNull(known)) {
+      const behaviors = behaviorsOf(declared, pending)
+      if (behaviors.has('propagate')) {
+        const certain = behaviors.size === 1 && onlyNull(known)
         propagates = certain ? 'yes' : 'maybe'
         if (certain) {
           ends ??= 'null'
           break
         }
-        if (policies.size === 1) known = withoutNull(known)
+        if (behaviors.size === 1) known = withoutNull(known)
       }
     }
 
-    if (declared.elementNullPolicy === 'propagate') {
+    if (declared.elementNullBehavior === 'propagate') {
       const nulls = containsNull(known)
       if (nulls !== 'no') {
         propagates = nulls === 'yes' ? 'yes' : 'maybe'

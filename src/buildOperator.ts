@@ -94,22 +94,21 @@ export const assembleOperator = (
     const compiled = compiledPolicies.get(paramName)
     const declaredPolicy = typeof d.nullPolicy === 'string' ? d.nullPolicy : undefined
     const type = d.type ?? 'any'
-    // Where the type admits null, truthiness implies 'accept', and so does
-    // a lazy delivery, the only policy legal there
+    // Truthiness implies 'accept', and so does a lazy delivery, the only
+    // policy legal there
     const lazily =
       d.evaluationMode !== undefined &&
       d.evaluationMode !== 'eager' &&
       d.evaluationMode !== 'literal'
-    const impliedPolicy: NullPolicyValue =
-      (d.truthiness === true || lazily) && typeNamesNull(type) ? 'accept' : 'propagate'
+    const impliedPolicy: NullPolicyValue = d.truthiness === true || lazily ? 'accept' : 'propagate'
 
     const parameter: Declared = {
       type: cloneTypeExpression(type),
       required: d.required ?? !('default' in d),
       evaluationMode: (d.evaluationMode as EvaluationMode) ?? 'eager',
       truthiness: d.truthiness ?? false,
-      nullPolicy: compiled ?? declaredPolicy ?? impliedPolicy,
     }
+    if (typeNamesNull(type)) parameter.nullPolicy = compiled ?? declaredPolicy ?? impliedPolicy
     if ('default' in d) parameter.default = d.default
     if (d.elementNullPolicy !== undefined) parameter.elementNullPolicy = d.elementNullPolicy
     if (d.constraints !== undefined) parameter.constraints = deepClone(d.constraints)
