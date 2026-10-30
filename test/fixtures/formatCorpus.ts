@@ -42,6 +42,7 @@ export const formatCorpus: [string, unknown][] = [
   ['leading and rest', { $buildString: ['%1 and %2', 'a', 'b'] }],
   ['leading, empty rest', { $buildString: ['plain'] }],
   ['template only', { operator: 'buildString', template: 'plain' }],
+  ['template only, single value', { $buildString: 'Hi {{$data.name}}' }],
   ['an empty rest', { $and: [] }],
   ['a computed rest', { $min: '$data.scores' }],
   ['a computed rest by node', { operator: 'or', values: { $map: ['$d.items', '$e.ok'] } }],
