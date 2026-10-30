@@ -6,30 +6,41 @@ sidebar:
   order: 3
 ---
 
+import Callout from '../../../components/Callout.astro'
 import Playground from '../../../components/playground/Playground.tsx'
+import Screenshot from '../../../components/Screenshot.astro'
+import toShorthandButton from '../../../assets/tooling/to-shorthand-button.png'
+import toShorthandButtonDark from '../../../assets/tooling/to-shorthand-button-dark.png'
+import toGetNodeButton from '../../../assets/tooling/to-get-node-button.png'
+import toGetNodeButtonDark from '../../../assets/tooling/to-get-node-button-dark.png'
 
-{/* STAND-IN: Carl to rewrite */}
-You're building something that reads or rewrites FigTree expressions: a visual editor, say, or a layer that stores expressions in canonical form but shows them to people as shorthand. [Shorthand and canonical forms](/concepts/forms/#converting) introduced the functions that convert between the forms. This page has all of them, with their options.
+FigTree expressions can be written in [more than one form](/concepts/forms/), and even the main form (shorthand) has [named, positional and single-value variants](/concepts/expressions/#parameters). The `/format` subpath provides a set of tools for converting between all these forms, such as an editor would use to switch a node from one form to another.
 
-{/* STAND-IN: Carl to rewrite */}
-The subpath also exports the functions FigTree's own compiler uses to read an expression, so a tool that walks one itself reads it exactly as FigTree does.
+The subpath also exports the functions FigTree's own compiler uses to read an expression.
 
 ## `toCanonical()` and `toShorthand()`
 
-Each one rewrites every node in an expression into one form, without changing what it means. They take your FigTree instance too, since mapping a positional payload such as `[1, 2]` onto parameters needs each operator's positions, and whether a `$`-prefixed key is an operator or a fragment depends on what's registered:
+These rewrite every node in an expression into the target form, without changing its meaning at all:
 
 ```ts title="convert.ts"
+import { FigTree } from 'fig-tree-evaluator'
 import { toCanonical, toShorthand } from 'fig-tree-evaluator/format'
 
+const fig = new FigTree()
+
 const average = {
-  $round: [{ $divide: ['$data.totalSpend', '$data.orderCount'], fallback: 0 }, 2],
+  $round: [
+    // Values given by name
+    { $divide: { value: '$data.totalSpend', by: '$data.orderCount' }, fallback: 0 },
+    2,
+  ],
 }
 
 const canonical = toCanonical(average, fig)
-toShorthand(canonical, fig) // => the same as average
+const backAgain = toShorthand(canonical, fig)
 ```
 
-Here's `canonical`:
+Here's the `toCanonical()` output:
 
 ```json5
 {
@@ -44,75 +55,135 @@ Here's `canonical`:
 }
 ```
 
-Neither function changes the expression you pass it.
+And converted back to shorthand:
 
-The instance is only read for its operators' names, aliases and positions, and its fragments' names, so anything with `getOperators()` and `getFragments()` methods that return those will do. That suits an editor that has no instance of its own, only the operators and fragments a server sent it:
-
-```ts title="registry.ts"
-declare const expression: unknown
-// ---cut---
-import { toShorthand } from 'fig-tree-evaluator/format'
-
-// Sent by the server, from its own fig.getOperators()
-// and fig.getFragments()
-const { operators, fragments } = await fetch('/api/fig-tree').then((res) => res.json())
-
-toShorthand(expression, {
-  getOperators: () => operators,
-  getFragments: () => fragments,
-})
+```json5
+{
+  $round: [{ $divide: ['$data.totalSpend', '$data.orderCount'], fallback: 0 }, 2],
+}
 ```
+
+Note the `$divide` here has come back in positional form, unlike the original above. The output form can be specified with the `arguments` option, as [described below](#options).
+
+<Callout kind="tip" title="Switching between shorthand forms">
+  `toShorthand()` can take a node in _any_ form, so it also switches shorthand between **named** and **positional**: `toShorthand({ $round: { value: '$data.price', decimals: 2 } }, fig)` gives `{ $round: ['$data.price', 2] }`, and with `arguments: 'named'` it goes the other way.
+</Callout>
 
 ### Options
 
-Both functions take an options object as their third argument:
+```ts
+import type { FigTree, Spelling } from 'fig-tree-evaluator'
+declare namespace Format {
+// ---cut---
+function toCanonical(
+  expression: unknown,
+  fig: FigTree,
+  options?: {
+    operatorNames?: Spelling
+    referenceNames?: Spelling
+    referencesAsGet?: boolean
+    recursive?: boolean
+  }
+): unknown
 
-- **`operatorNames`** and **`referenceNames`**: how operator names and reference namespaces are spelt, where an operator has a symbolic alias, such as `plus` (`+`), and for the namespaces' short forms, such as `$data` (`$d`):
-  - **`'preserve'`** (the default): as written.
-  - **`'canonical'`**: `plus`, `$data`.
-  - **`'alias'`**: `+`, `$d`. An operator with no alias keeps its name.
-- **`arguments`** (`toShorthand()` only): `'positional'`, the default, gives a node its values in an array wherever it can, as in `{ $plus: [1, 2] }` ([Positional or named](#positional-or-named)). `'named'` always gives them by name, as in `{ $plus: { values: [1, 2] } }`.
-- **`getAsReference`** (`toShorthand()` only): `true` by default, turning each `get` node that has a reference form into one, so `{ operator: 'get', path: 'user.name' }` becomes `'$d.user.name'`. The namespace is spelt `$d` unless `referenceNames` is `'canonical'`, since there's nothing written to preserve. A `get` with a `//` comment keeps its node, so the comment isn't lost.
-- **`referencesAsGet`** (`toCanonical()` only): `false` by default, since a reference is just as much at home in canonical form. Set to `true` to turn each reference into its `get` node, so `{ $upper: '$data.user.name' }` becomes `{ operator: 'upper', value: { operator: 'get', path: 'user.name' } }`.
-- **`recursive`**: `true` by default. Set to `false` to convert only the node you pass, so `toCanonical(average, fig, { recursive: false })` converts the `$round` and leaves its `$divide` as written. The editor's toolbar on a shorthand node works this way: it converts the node alone to canonical form, to edit it a parameter at a time, then back again, leaving the nodes inside it in whatever form they were written in.
+function toShorthand(
+  expression: unknown,
+  fig: FigTree,
+  options?: {
+    operatorNames?: Spelling
+    referenceNames?: Spelling
+    arguments?: 'positional' | 'named'
+    getAsReference?: boolean
+    recursive?: boolean
+  }
+): unknown
+// ---cut-after---
+}
+```
+
+- **`operatorNames`** and **`referenceNames`**: when rewriting a node, what happens to operator and [reference](/concepts/data/#every-reference) names:
+  - **`'preserve'`** (the default): don't change them
+  - **`'canonical'`**: e.g. `plus`, `$data`
+  - **`'alias'`**: e.g. `+`, `$d` (an operator with no alias keeps its name)
+- **`arguments`**: which shorthand form to use ([Positional or named](#positional-or-named)):
+  - **`'positional'`** (the default): by position where possible, e.g. `{ $plus: [1, 2] }`
+  - **`'named'`**: always by name, e.g. `{ $plus: { values: [1, 2] } }`
+- **`getAsReference`**: whether to turn `get` nodes into [references](/concepts/data/#the-get-operator), when converting to shorthand:
+  - **`true`** (the default): where possible, e.g. `{ operator: 'get', path: 'user.name' }` becomes `'$d.user.name'`
+  - **`false`**: keep them as nodes, e.g. `{ $get: 'user.name' }`
+- **`referencesAsGet`**: whether to turn references into `get` nodes, when converting to canonical:
+  - **`false`** (the default): leave them, since a reference is just as much at home in canonical form
+  - **`true`**: convert them, e.g. `'$data.user.name'` becomes `{ operator: 'get', path: 'user.name' }`
+- **`recursive`**: whether to convert all descendant nodes as well:
+  - **`true`** (the default): the whole expression
+  - **`false`**: only the top-level node
 
 ### Positional or named
 
-With `arguments: 'positional'`, `toShorthand()` writes a node's values as an array only where that array reads back as the same node, and by name otherwise. So some nodes come out named, and some keep an array around a single value:
+With `arguments: 'positional'`, `toShorthand()` writes each node in the briefest form that reads back as the same node, based on which parameters it has and the operator's [positional parameters](/custom-operators/writing/#positional-parameters):
 
-| Node                                                       | Shorthand                                           | Why                                                          |
-| ---------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------ |
-| `{ operator: 'not', value: '$data.isMember' }`             | `{ $not: '$data.isMember' }`                        | A single value needs no array                                |
-| `{ operator: 'if', condition: '$data.isMember', else: 0 }` | `{ $if: { condition: '$data.isMember', else: 0 } }` | `then` is missing, and a position can't be left empty        |
-| `{ operator: 'plus', values: [5] }`                        | `{ $plus: [5] }`                                    | `{ $plus: 5 }` would make `values` the number `5`, not an array |
-| `{ operator: 'min', values: '$data.scores' }`              | `{ $min: '$data.scores' }`                          | `values` is computed, so it goes in whole                    |
+- **single value** if only the first positional parameter is given, and its value isn't itself an array or a plain object
+- **array** if the parameters given run from the first positional one, with no gaps
+- **named** otherwise
+
+For example:
+
+```ts title="positional.ts"
+import { toShorthand } from 'fig-tree-evaluator/format'
+// ---cut---
+// A single value needs no array
+toShorthand({ operator: 'buildString', template: 'Hi {{$data.firstName}}' }, fig)
+// => { $buildString: 'Hi {{$data.firstName}}' }
+
+// The parameters run from the first positional one, with no gaps
+toShorthand(
+  {
+    $if: {
+      condition: '$data.isMember',
+      then: 'Member price',
+      else: 'Standard price',
+    },
+  },
+  fig
+)
+// => { $if: ['$data.isMember', 'Member price', 'Standard price'] }
+
+// 'then' is missing, and a position can't be left empty
+toShorthand({ operator: 'if', condition: '$data.isMember', else: 0 }, fig)
+// => { $if: { condition: '$data.isMember', else: 0 } }
+
+// { $plus: 5 } would make 'values' the number 5, not an array
+toShorthand({ operator: 'plus', values: [5] }, fig)
+// => { $plus: [5] }
+
+// 'values' is computed, so it goes in whole
+toShorthand({ operator: 'min', values: '$data.scores' }, fig)
+// => { $min: '$data.scores' }
+```
 
 A fragment call always takes its arguments by name, and one whose `parameters` is a reference, such as `{ fragment: 'greet', parameters: '$data.person' }`, stays canonical, since a shorthand fragment call needs an object.
 
 ### When a conversion throws
 
-The conversions read an expression as FigTree's compiler does, so a node the compiler can't read stops them. They throw a [`FigTreeError`](/api/errors/#figtreeerror) with the compiler's own code, such as `unknown-operator` or `malformed-node`, and a `path` to the node from wherever the conversion started:
-
-```ts title="throws.ts"
-import { toShorthand } from 'fig-tree-evaluator/format'
-// ---cut---
-toShorthand(
-  {
-    operator: 'if',
-    condition: '$data.isMember',
-    then: { operator: 'memberPrice' },
-    else: '$data.price',
-  },
-  fig
-)
-// Throws a FigTreeError, with code 'unknown-operator' and path ['then']
-```
-
-Anything else is left for [`validate()`](/guides/validation/) to find, such as a parameter of the wrong type, or a `$vars` reference with no variable to read. A tool often converts part of an expression on its own, such as the `each` of a `map`, which reads `$element` from the `map` around it, or a node someone is still building, which doesn't have all its parameters yet.
+The conversions check only what they need to rewrite each node, such as whether its operator is registered and its positional values fit. Where a node fails those checks, they throw a [`FigTreeError`](/api/errors/#figtreeerror) with a `path` to it, from wherever the conversion started. Anything else, such as a parameter of the wrong type, comes through as written, for [`validate()`](/guides/validation/) to report.
 
 ## `toGet()` and `toReference()`
 
-These two convert a single reference to its `get` node, and back. Each returns `null` where its input has no other form, which tells an editor whether to offer the conversion at all, so neither one throws:
+```ts
+import type { Spelling } from 'fig-tree-evaluator'
+declare namespace Format {
+// ---cut---
+function toGet(
+  reference: unknown,
+  options?: { referenceNames?: Spelling }
+): Record<string, unknown> | null
+
+function toReference(node: unknown, options?: { referenceNames?: Spelling }): string | null
+// ---cut-after---
+}
+```
+
+These two convert a single reference to its `get` node, and back. Each returns `null` for anything it can't convert, whatever it is, and never throws:
 
 ```ts title="references.ts"
 import { toGet, toReference } from 'fig-tree-evaluator/format'
@@ -124,18 +195,53 @@ toGet('$index') // => null, since it's a number, with no path to read
 toGet('Kia ora') // => null
 
 toReference({ $get: 'user.name' }) // => '$d.user.name'
-toReference({ $get: 'user.name', fallback: 'Guest' }) // => null
+toReference({ $get: { path: 'total', from: '$vars.order' } })
+  // => '$vars.order.total'
+toReference({ '//': 'Member price', $get: 'price.member' })
+  // => '$d.price.member' (⚠️ the comment is dropped)
+toReference({
+  $get: {
+    path: 'NZ',
+    from: { NZ: 'New Zealand', AU: 'Australia' },
+  },
+}) // => null, since it can't be written as a reference
 ```
 
-`toReference()` takes a `get` node in any form, and returns `null` wherever a reference couldn't read the same thing, such as a `get` with a `fallback` or a `default`, which a string has nowhere to put, or one whose path is computed. A `//` comment doesn't stop it, but is dropped.
+<Callout kind="caution" title="Converting a get node to shorthand">
 
-Both take `referenceNames`, as [`toCanonical()` and `toShorthand()`](#options) do.
+Since `toGet()` returns a canonical node, passing it to `toShorthand()` turns it straight back into a reference. To keep it as a shorthand `get` node, pass `getAsReference: false` as well:
 
-Since `toGet()` returns a canonical node, passing it to `toShorthand()` turns it straight back into a reference. To show it as a shorthand `get`, pass `getAsReference: false` as well.
+```ts
+import { toGet, toShorthand } from 'fig-tree-evaluator/format'
+// ---cut---
+toShorthand(toGet('$d.user.name'), fig) // => '$d.user.name'
+toShorthand(toGet('$d.user.name'), fig, { getAsReference: false })
+  // => { $get: 'user.name' }
+```
+
+</Callout>
 
 ## Trying them in the editor
 
-The editor in this site's playgrounds is built on these functions. In this one, press **Expand editor**, then hover over a node just below its name, at the top right, to see its conversion button. Each button converts the node and everything inside it, and the JSON5 pane on the left shows what the conversion returned:
+The editor used throughout this site is a React component built on these functions, as well as the [catalog](/tooling/catalog/). To try these conversions here, press **Expand editor** (or just click the Editor panel), then hover over a node, just below its name, at the top right, to see its conversion button:
+
+<Screenshot
+  src={toShorthandButton}
+  dark={toShorthandButtonDark}
+  align="left"
+  alt="The editor showing an if node in canonical form, with its To shorthand button at the top right"
+/>
+
+A data reference has a `{}` button among its edit tools, which turns it into a `get` node:
+
+<Screenshot
+  src={toGetNodeButton}
+  dark={toGetNodeButtonDark}
+  align="left"
+  alt="A reference in the editor, with its {} button among the edit tools beside it"
+/>
+
+Each button converts the node and everything inside it, and the JSON5 pane on the left shows what changed:
 
 <Playground
   client:visible
@@ -160,50 +266,66 @@ The editor in this site's playgrounds is built on these functions. In this one, 
   caption="Hover just below a node's name, at its top right, for its conversion button. A reference has a `{}` button among its edit tools, which turns it into a `get` node."
 />
 
-| Button             | On                                              | Calls                                                   |
-| ------------------ | ----------------------------------------------- | ------------------------------------------------------- |
-| **To shorthand**   | A canonical node, such as the `if`              | `toShorthand(node, fig, { arguments: 'named' })`        |
-| **To positional**  | Named shorthand, such as the `$multiply`        | `toShorthand(node, fig)`                                |
-| **To canonical**   | Positional shorthand, such as the `$and`        | `toCanonical(node, fig)`                                |
-| **To reference**   | A `get` node with a reference form              | `toShorthand(node, fig)`, which turns it into one       |
-| `{}`               | A reference, such as `'$data.order.subtotal'`   | `toGet(reference)`, shown as named shorthand            |
-
 ## Reading primitives
 
-{/* STAND-IN: Carl to rewrite */}
-A tool that walks an expression itself, such as an editor deciding how to show each part of one, has to read it exactly as FigTree does, or the two will disagree about what's a node and what's data. So rather than leaving you to copy FigTree's rules, `/format` exports the functions its compiler uses. Each one reads a single object or string, and the walk itself, including knowing where in the expression you are, stays your tool's job.
+A tool that walks an expression, such as an editor deciding how to show each part, should read it exactly as FigTree does, or the two will disagree about what's a FigTree node and what's data. So `/format` exports the functions the compiler uses. Each one answers a single question about one part of an expression — the walk itself stays your tool's job.
 
 ### `classifyObject()`
 
-`classifyObject()` says what an object is, by its keys: an operator node, a fragment call, a shorthand node, plain data, or malformed. Whether a `$`-prefixed key invokes anything depends on what's registered, so you pass it a function that answers that. To agree with FigTree, it should answer `true` for `literal`, every operator's name and alias, and every fragment's name:
+```ts
+import type { ObjectClass } from 'fig-tree-evaluator'
+declare namespace Format {
+// ---cut---
+function classifyObject(
+  object: Record<string, unknown>,
+  recognizes: (name: string) => boolean
+): ObjectClass
+// ---cut-after---
+}
+```
+
+`classifyObject()` says what an object is, by its keys: an operator node, a fragment call, a shorthand node, plain data, or malformed. Whether a `$`-prefixed key invokes anything depends on what's registered, so you pass it a function that answers that, built once and reused for every object your tool reads. To agree with FigTree, it should answer `true` for every operator's name and alias, every fragment's name, and `literal`:
 
 ```ts title="classify.ts"
 import { classifyObject } from 'fig-tree-evaluator/format'
 
-const names = new Set(['literal'])
+const names = new Set<string>()
 for (const { name, alias } of fig.getOperators()) {
   names.add(name)
   if (alias !== undefined) names.add(alias)
 }
 for (const { name } of fig.getFragments()) names.add(name)
+names.add('literal')
 const recognizes = (name: string) => names.has(name)
 
-classifyObject({ operator: 'plus', values: [1, 2] }, recognizes) // => { kind: 'operator' }
+classifyObject({ operator: 'plus', values: [1, 2] }, recognizes)
+  // => { kind: 'operator' }
 classifyObject({ $plus: [1, 2], fallback: 0 }, recognizes)
   // => { kind: 'shorthand', key: '$plus' }
 classifyObject({ $plus: [1], $multiply: [2] }, recognizes)
   // => { kind: 'malformed', message: "one node, one invocation: …" }
-classifyObject({ $plsu: [1, 2] }, recognizes) // => { kind: 'plain' }
+classifyObject({ $plsu: [1, 2] }, recognizes)
+  // => { kind: 'plain' }, since nothing is registered as 'plsu'
 ```
-
-An object whose only `$`-prefixed key is unrecognised, such as a typo, is plain data, as it is to the compiler, which reports the key as an error when it checks the expression.
 
 ### `recognizeReference()`
 
+```ts
+import type { ReferenceRecognition } from 'fig-tree-evaluator'
+declare namespace Format {
+// ---cut---
+function recognizeReference(
+  value: string,
+  scope?: { bindings?: readonly string[] }
+): ReferenceRecognition
+// ---cut-after---
+}
+```
+
 `recognizeReference()` says whether a string is a reference, and to what. The `kind` in its result is one of:
 
-- **`'reference'`**: a well-formed reference, with its `namespace` (`'data'`, `'vars'`, `'params'`, `'element'`, `'index'` or `'error'`, whichever spelling was used), its path as `segments`, and `drill`, the path's text after the namespace, as written. A tool can use `drill` to respell the namespace without rebuilding the path.
-- **`'invalid'`**: a namespace used in a way FigTree rejects, such as `'$index.x'`, with a `reason`, and a `code` where the rule broken has one of its own, such as `bare-vars` for a bare `'$vars'`.
+- **`'reference'`**: a well-formed reference, with its `namespace` (`'data'`, `'vars'`, `'params'`, `'element'`, `'index'` or `'error'`), its path as `segments`, and `drill`, the path's text after the namespace, as written. (A tool can use `drill` to respell the namespace without rebuilding the path.)
+- **`'invalid'`**: a namespace used in a way FigTree rejects, such as `'$index.x'`, with a `reason` for people to read, and a `code` where the rule broken has one of its own, such as `bare-vars` for a bare `'$vars'`.
 - **`'unrecognized'`**: a string starting with `$` that names no namespace, such as `'$5.00'`, which FigTree reads as plain text.
 - **`'plain'`**: a string that doesn't start with `$`.
 
@@ -243,10 +365,26 @@ recognizeReference('$item.price') // => { kind: 'unrecognized' }
 
 ### `positionalLayout()` and `singlePositionalTarget()`
 
-These two say how a positional payload binds to an operator's parameters. They take the operator as [`getOperators()`](/api/figtree/#getoperators-and-getfragments) reports it:
+```ts
+declare namespace Format {
+// ---cut---
+function positionalLayout(
+  operator: { positionalParams?: readonly string[]; restParam: string | null },
+  length: number
+): { bound: number; restAt: number | null } | null
 
-- **`positionalLayout(operator, length)`** takes an array's length, and returns how many leading parameters the array fills (`bound`), and the index where the rest parameter's values start (`restAt`), or `null` if there's no rest. The rest is bound whenever the leading parameters are all filled, even with nothing left over, as an empty array. It returns `null` where an array that long can't bind.
-- **`singlePositionalTarget(operator)`** names the parameter a single value, not in an array, fills.
+function singlePositionalTarget(operator: {
+  positionalParams?: readonly string[]
+  restParam: string | null
+}): string | null
+// ---cut-after---
+}
+```
+
+For most operators, matching values to the operator's [`positionalParams`](/custom-operators/writing/#positional-parameters) by index is enough. These two cover the cases where it isn't, using FigTree's own rules, so your tool reads a positional payload exactly as the compiler does. Pass each the operator as [`getOperators()`](/api/figtree/#getoperators-and-getfragments) reports it:
+
+- **`positionalLayout(operator, length)`**: takes the number of values in a positional array, such as 3 for `['Hi %1 %2', '$data.first', '$data.last']`, and returns how many of them fill the leading parameters (`bound`), and the index where the rest parameter takes the remaining values (`restAt`, or `null` if there's no rest parameter).[^layout] Once the leading parameters are filled, the rest parameter is always set, to an empty array if nothing is left over. It returns `null` if the array is too long for the operator.
+- **`singlePositionalTarget(operator)`**: the parameter a single value goes to, when it isn't in an array. That's normally the first positional parameter. But where the first _is_ the rest parameter, as for `min`, the value becomes the whole rest parameter, so `{ $min: '$data.scores' }` sets `values` to that array.
 
 ```ts title="positions.ts"
 import { positionalLayout, singlePositionalTarget } from 'fig-tree-evaluator/format'
@@ -254,6 +392,8 @@ import { positionalLayout, singlePositionalTarget } from 'fig-tree-evaluator/for
 const operators = fig.getOperators()
 const buildString = operators.find((op) => op.name === 'buildString')!
 const ifOperator = operators.find((op) => op.name === 'if')!
+const round = operators.find((op) => op.name === 'round')!
+const min = operators.find((op) => op.name === 'min')!
 
 // buildString's positions: ['template', '...substitutions']
 positionalLayout(buildString, 3) // => { bound: 1, restAt: 1 }
@@ -261,24 +401,45 @@ positionalLayout(buildString, 3) // => { bound: 1, restAt: 1 }
 // if's positions: ['condition', 'then', 'else']
 positionalLayout(ifOperator, 2) // => { bound: 2, restAt: null }
 positionalLayout(ifOperator, 4) // => null, since if has only three
-singlePositionalTarget(ifOperator) // => 'condition'
-```
 
-So `{ $buildString: ['Hi %1 %2', '$data.first', '$data.last'] }` binds `template` to the first value, and `substitutions` to the other two.
+// round's positions: ['value', 'decimals']
+singlePositionalTarget(round) // => 'value', as in { $round: 3.14159 }
+
+// min's positions: ['...values']
+singlePositionalTarget(min) // => 'values'
+```
 
 ### `typesIntersect()`
 
-`typesIntersect()` says whether two declared types have any value in common. It's the check behind [`returns-mismatch`](/api/errors/#static-errors), the static error for a node whose result can never fit where it's used. An editor can use it the same way, to offer only the operators whose result could fit where the author is adding one:
+```ts
+import type { ExpectedType } from 'fig-tree-evaluator'
+declare namespace Format {
+// ---cut---
+function typesIntersect(a: ExpectedType, b: ExpectedType): boolean
+// ---cut-after---
+}
+```
+
+`typesIntersect()` says whether two declared types have any value in common. It's the check behind [`returns-mismatch`](/api/errors/#static-errors), the static error for a node whose result can never fit as input into a parent node:
 
 ```ts title="picker.ts"
 import { typesIntersect } from 'fig-tree-evaluator/format'
 
 const operators = fig.getOperators()
 const by = operators.find((op) => op.name === 'divide')!.parameters.by
+const plus = operators.find((op) => op.name === 'plus')!
+const upper = operators.find((op) => op.name === 'upper')!
 
-// by takes a number or null, so this includes plus, round and length,
-// but not and or upper, which return a boolean and a string
+by.type // => ['number', 'null']
+plus.returns // => ['number', 'string', 'array', 'object']
+upper.returns // => 'string'
+
+typesIntersect(plus.returns, by.type) // => true, since both include 'number'
+typesIntersect(upper.returns, by.type) // => false
+
+// So an editor can offer only the operators whose result could fit
+// divide's 'by'
 const offered = operators.filter((op) => typesIntersect(op.returns, by.type))
 ```
 
-The `message` of a malformed object and the `reason` of an invalid reference are written for people, and may change between versions, so a tool shouldn't depend on their text.
+[^layout]: It returns positions rather than the parameters by name, since a tool working on the array as written, such as an editor labelling each value, needs each value's index to put an edit back in the right place. To get a node's parameters by name, convert it with `toCanonical(node, fig, { recursive: false })`. The logic is short, but using the compiler's own means your tool agrees with FigTree on the edge cases, such as an empty rest parameter or an array that's too long.
