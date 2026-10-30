@@ -73,6 +73,7 @@ docs-site/
       operator-notes/       the docs' own notes on operators, one optional file each
     components/
       Callout.astro           the callout kinds (note, tip, caution, danger, why), over Starlight's <Aside>
+      Coverage.astro          an expression and its fallbackCoverage() report, analysed at build time
       Expression.astro        static expression block, evaluated at build time
       ExpressionTree.astro    an expression drawn as a tree, each node's result evaluated at build time
       FragmentSetup.astro     host code registering the Fragments page's fragments, from lib/fragments.ts
