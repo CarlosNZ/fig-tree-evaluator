@@ -6,23 +6,222 @@ sidebar:
   order: 4
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import Callout from '../../../components/Callout.astro'
+import Coverage from '../../../components/Coverage.astro'
+import Expression from '../../../components/Expression.astro'
+import OperatorSource from '../../../components/OperatorSource.astro'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+Failed expressions need [fallbacks](/guides/fallbacks/) to prevent `evaluate()` from throwing. But a fallback on one node might still allow an uncaught failure on a sibling branch to propagate to the root, and 💥! An expression that can never throw can be said to be "covered".
+
+<Callout kind="tip" title="The simplest way to be covered">
+  The simplest way to cover your expression is a fallback at the root node. But careful! — a fallback that's an expression [can fail too](/guides/fallbacks/#when-a-fallback-fails). So the *sure-fire* way to be covered is a fallback at the root that's a _plain value_, with nothing to evaluate.
+</Callout>
+
+So why not just put a plain-value fallback at the root and be done with it? It does stop `evaluate()` from throwing, but it's a blunt instrument: a failure _anywhere_ gives the same result, even when it's in one insignificant branch and everything else worked. In this example, the customer's discount arrived as text, so the price can't be worked out at all. But uncomment the fallback on the discount, and the rest of the result is kept — the customer just pays a bit extra rather than having to make a call to support over a broken website.
+
+<Expression
+  title="A fallback at the root"
+  code={`
+    {
+      $subtract: [
+        '$data.order.subtotal',
+        // Take off the customer's discount
+        {
+          $multiply: ['$data.order.subtotal', '$data.customer.discountRate'],
+          // Uncomment for no discount if it can't be worked out
+          // fallback: 0,
+        },
+      ],
+      fallback: 'Price unavailable',
+    }
+  `}
+  data={`
+    {
+      order: { subtotal: 80 },
+      // From a form, so it arrived as text 🙄. A rate of 0.1 works
+      customer: { discountRate: '10%' },
+    }
+  `}
+/>
+
+So it's worth knowing not just _whether_ a failure can reach the root, but _where_ each one can happen, and which fallback will catch it.
+
+That's where `fallbackCoverage()` comes in — a function that tells you if an expression is covered or not, with a detailed report about the coverage status throughout the expression tree, including which fallback catches each failure.
+
+{/* TO-DO: the Playground has no Safe flag yet. Bring it across from the editor demo, or cut this paragraph before the site goes live */}
+
+The demo on the [Playground](/playground/) page on this site shows a "Safe" flag indicating if the current expression is covered, and is powered by `fallbackCoverage()`.
 
 ## `fallbackCoverage()`
 
-Every way an expression can fail, split into failures a fallback catches and failures that reach the host.
+```ts title="coverage.ts"
+declare const expression: unknown
+// ---cut---
+import { fallbackCoverage } from 'fig-tree-evaluator/authoring'
+
+const report = await fallbackCoverage(fig, expression)
+```
+
+Pass it your FigTree instance and an expression. It checks the expression as that instance would evaluate it, with its operators, fragments and options. It doesn't evaluate the expression, though, so it needs no data.
+
+In this example, an average is worked out from the data:
+
+<Coverage
+  title="Average order value"
+  code={`
+    { $round: [{ $divide: ['$data.total', '$data.count'] }, 2] }
+  `}
+/>
+
+Each failure nothing catches is in `uncovered`. Since `$data.total` and `$data.count` could be anything, `divide` may fail its type check on either, and `count` could be 0. Give the `divide` a fallback, and the same three failures move to `covered`, each with the node whose fallback catches it in `coveredBy`:
+
+<Coverage
+  title="Average order value, with a fallback"
+  code={`
+    { $round: [{ $divide: ['$data.total', '$data.count'], fallback: 0 }, 2] }
+  `}
+/>
+
+So in CI, a test can check that no stored expression has anything uncovered:
+
+```ts title="coverage.test.ts"
+declare function test(name: string, fn: () => Promise<void>): void
+declare function expect(value: unknown): { toEqual(expected: unknown): void }
+declare const storedExpressions: Record<string, unknown>
+// ---cut---
+import { fallbackCoverage } from 'fig-tree-evaluator/authoring'
+
+for (const [name, expression] of Object.entries(storedExpressions)) {
+  test(`${name} has a fallback for every failure`, async () => {
+    const { uncovered } = await fallbackCoverage(fig, expression)
+    expect(uncovered).toEqual([])
+  })
+}
+```
+
+<Callout kind="caution" title="The instance's options, not the call's">
+  `fallbackCoverage()` reads the options the instance was created with, so a [`timeout`](/api/options/#timeout) or [`strictDataPaths`](/api/options/#strictdatapaths) you only pass to `evaluate()` isn't in effect. To check under one, pass an instance that has it, such as `fig.with({ timeout: 5000 })`.
+</Callout>
+
+The one option of its own, `strictNumbers`, makes it stricter about numbers. By default, it assumes numbers in your data are finite and that arithmetic doesn't overflow. With `strictNumbers: true`, `{ $plus: ['$data.price', 1] }` may also fail with `non-finite-result`, on an extreme number.
 
 ## Reading the report
 
-`uncovered` and `covered` findings, their paths and codes, and `may` versus `always`.
+Each finding is one way one node can fail:
 
-{/* NOTE (from Fallbacks and errors): a worked example, checked against the build. `await fallbackCoverage(fig, { $round: [{ $divide: ['$data.total', '$data.count'] }, 2] })` gives three `uncovered` findings, all at `path: ['$round', 0]` with `operator: 'divide'` and `certainty: 'may'`: `type-check` on `parameter: 'value'` and on `'by'` ("may receive something other than number | null"), and `non-finite-result` on `'by'` ("non-finite-result when 'by' is 0"); `covered: []`. Put `fallback: 0` on the `divide` and all three move to `covered`, each with `coveredBy: ['$round', 0]`. Each finding: `path` (where the failure starts; for a fragment body, the call), `code`, `message`, `certainty` ('always' whenever the node is reached, 'may' for some inputs), `operator`, `parameter`, `fragment`/`fragmentPath`; a covered one adds `coveredBy` (+ `coveredByFragmentPath`) and `givesNull: true` when the catching fallback reads `$error` and would itself fail (its node gives null). An expression with a static error reports every static error as uncovered and walks nothing. Under the instance's own `timeout`, it reports each node that leaves the expression unshielded (no static fallback), wherever anything in the expression can wait. It's async, and runs under the instance's options. Fallbacks and errors links here from its "Covering the whole expression" tip, and has no section of its own on it. Types: src/authoringTypes.ts; spec: docs-dev/v3-specs/v3-fallback-coverage.md. */}
+```ts
+import type { FigTreeErrorCode } from 'fig-tree-evaluator'
+// ---cut---
+interface CoverageFinding {
+  // The node where the failure starts
+  path: (string | number)[]
+  // The code its error would carry, such as 'type-check'
+  code: FigTreeErrorCode
+  message: string
+  // 'always' if the node fails whenever it's reached,
+  // 'may' if it fails for some inputs
+  certainty: 'may' | 'always'
+  operator?: string
+  parameter?: string
+  // For a failure inside a fragment: the fragment, and where in it
+  // the failure starts. The path is then the fragment call's
+  fragment?: string
+  fragmentPath?: (string | number)[]
+}
 
+// A finding in covered also has:
+interface CoveredFinding extends CoverageFinding {
+  // The node whose fallback catches it, and where in a fragment
+  // that fallback is, if it's inside one
+  coveredBy: (string | number)[]
+  coveredByFragmentPath?: (string | number)[]
+  // The failure is in a fallback that reads $error, so the node
+  // returns null rather than the fallback's value
+  givesNull?: true
+}
+```
+
+- **A failure is reported once, where it starts,** never again on the nodes above it. A fallback on that node, or on any node above it, covers it, and `coveredBy` names the nearest.
+- **Most findings are `may`.** The analysis goes by the types each operator declares, and by values where it knows them, such as those written into the expression. It knows nothing about your data, so any operator reading `$data` directly may receive the wrong type.
+- **A failure in a variable is reported for each place it reaches:** covered where a read of the variable is under a fallback, and uncovered where one isn't.
+- **An expression with a [static error](/guides/validation/#static-errors) reports only its static errors,** all `uncovered` and `always`, since `evaluate()` refuses it before anything runs. The first is the one `evaluate()` would throw.
+- **Under a `timeout`,** where something in the expression can wait, such as a request, each top-level value without a plain-value fallback gets an uncovered `timeout` finding ([Timeout shielding](/guides/fallbacks/#timeout-shielding)). Once every one has one, each value that can wait gets a covered `timeout` finding instead.
 
 ## Custom operators
 
-Describing how a custom operator can fail, so the analysis covers it.
+{/* STAND-IN: Carl to rewrite */}
+
+FigTree knows how its own operators can fail, but not yours. Unless you tell it, it treats a custom operator like a request: something that may fail whatever its inputs, so every node of it gets an `operator-failure` finding, and only a fallback covers it.
+
+The definition's `analysis` field tells it more. Declaring one says how the operator can fail, beyond the [checks FigTree already makes](/custom-operators/writing/#what-the-engine-does-for-you) on its parameters, and that its result depends on its parameters alone, so the analysis can run `evaluate` where it knows them. This operator fails on a string that isn't a date:
+
+<OperatorSource name="daysBetween" />
+
+With both dates written into the expression, the analysis runs it, and knows whether it fails. With either one from the data, it may:
+
+<Coverage
+  customOperators
+  title="Dates known and unknown"
+  code={`
+    {
+      trialLength: { $daysBetween: ['2026-01-01', '2026-03-01'] },
+      overdueBy: { $daysBetween: ['$data.dueDate', '$data.today'] },
+      // Make this a date, and its finding goes
+      daysToGo: { $daysBetween: ['2026-01-01', 'next Tuesday'] },
+    }
+  `}
+/>
+
+<Callout kind="caution" title="Only for an operator whose result depends on its parameters">
+  The analysis may call `evaluate` with values from the expression, so an operator whose result depends on anything else, such as one that sends a request or reads the current time, should leave `analysis` out.
+</Callout>
+
+Here's the field's shape:
+
+```ts
+import type { DeclaredOutput, ExpectedType, FallbackErrorCode } from 'fig-tree-evaluator'
+// ---cut---
+interface OperatorAnalysis {
+  // The ways evaluate can fail. Leave it out if it never fails
+  failures?: FailureRule[]
+  // The same as leaving analysis out: it may fail whatever its inputs
+  external?: true
+  // What a node returns, where its inputs narrow its returns
+  output?: DeclaredOutput
+}
+
+interface FailureRule {
+  // The code its error carries
+  code: FallbackErrorCode
+  // The parameter it's about, which its finding names
+  parameter?: string
+  // Tests on what parameters receive, by name. The rule holds when
+  // every test passes, and always holds without any
+  when?: Record<string, FailureTest>
+  // Options the failure needs, such as { strictDataPaths: true }
+  options?: Record<string, unknown>
+  // The tests passing makes the failure possible, not certain
+  may?: true
+  // Only extreme numbers cause it, so it counts under strictNumbers only
+  overflow?: true
+}
+
+type FailureTest =
+  | string // equals this value
+  | number
+  | boolean
+  | null
+  | { type: ExpectedType } // has this type
+  | { below: number } // a number less than this
+  | { empty: true } // an empty array, string or object
+  | { supplied: boolean } // has a value, given or default
+  | { invalid: true } // the operator's validate hook refuses it
+  | { some: FailureTest } // any element or value passes
+  | { not: FailureTest }
+```
+
+For example, the core `divide` declares `{ code: 'non-finite-result', parameter: 'by', when: { by: 0 } }`. A test reads what the parameter receives after its default is applied, and `{ invalid: true }` reuses the operator's [`validate` hook](/custom-operators/validate/#the-validate-hook), on a value the hook couldn't see because it was computed.
+
+`output` tells the analysis more about what a node returns than `returns` does. For an operator that returns a count of at least 1, `output: { type: 'integer', min: 1 }` means dividing by its result can't divide by 0. Its other forms are in the `DeclaredOutput` type.
+
+[`defineOperator()`](/custom-operators/writing/#defineoperator) checks `analysis` like the rest of the definition, such as that every parameter a rule names is declared.
