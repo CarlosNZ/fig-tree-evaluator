@@ -57,13 +57,13 @@ const malformed = (message: string): ObjectClass => ({ kind: 'malformed', messag
  * the compile reports the key.
  */
 export const classifyObject = (
-  raw: Record<string, unknown>,
+  object: Record<string, unknown>,
   recognizes: (name: string) => boolean
 ): ObjectClass => {
-  const hasOperator = 'operator' in raw
-  const hasFragment = 'fragment' in raw
+  const hasOperator = 'operator' in object
+  const hasFragment = 'fragment' in object
   const shorthand: string[] = []
-  for (const key in raw) {
+  for (const key in object) {
     if (key.startsWith('$') && recognizes(key.slice(1))) shorthand.push(key)
   }
 
