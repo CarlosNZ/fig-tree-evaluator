@@ -60,9 +60,11 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
   - Before: "An `http` request's headers are `http.headers`, then the node's own `headers`."; "When a runtime failure isn't caught"
   - After: "…are merged from `http.headers`, then the node's own `headers`, each one overriding the one before."; "When no fallback catches a runtime failure"
   - Added: "a _global_ `timeout`", to tell it apart from the per-request one
-- **Don't pick a word that implies more than is true.**
+- **Don't pick a word, or an example, that implies more than is true.** Where an example happens to come out better than the API promises, change it so it shows the difference.
   - Before: "A value stored as `null`…"
   - After: "A data value that is actually `null`…", since it doesn't have to be stored
+  - Before: `toShorthand(canonical, fig) // => the same as average`, true only because `average` was already positional
+  - After: an `average` with a named `$divide`, its output shown back in positional form, and "Note the `$divide` here has come back in positional form…"
 - **State a requirement flatly, and a convention as a recommendation.** A "can" or "might" inside a rule makes it sound vague. But where something is good practice rather than enforced, say what the core operators do and when the reader would want the same.
   - Before: "The key should include everything that can change what `fn` returns."
   - After: "The key should include everything `fn`'s result depends on."
@@ -261,6 +263,9 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
 - **Real-world examples with realistic values,** whose outcomes a real expression would produce, and differ visibly. Inputs are ones a casual reader can supply without looking anything up, from the domains FigTree configs live in, such as forms, countries and customers.
   - Before: `'Hi %1'` against `'Hi there'`; `{ country: 'NZ' }`
   - After: `'Call %1'` against `'No phone number on file'`; `country: 'New Zealand'`
+- **Show the bare mechanism before the practical use.** Give the inputs and the result plainly first, then the realistic application, so the reader sees what the function does before working out what the usage around it does.
+  - Before: only `operators.filter((op) => typesIntersect(op.returns, by.type))`, with a comment listing what it includes
+  - After: `by.type`, `plus.returns` and `upper.returns` with their values, two `typesIntersect()` calls on them, then the filter
 - **One example, one idea.** Keep only the moving parts the point needs. Don't combine two features where one could pass for the normal form of the other, and leave out any detail that hints at a problem the example doesn't have. A pattern repeated through an example reads as a rule.
   - Before: one `get` example with `path: '$data.user.language'` beside a `from` table, which reads as though a path beside `from` starts with `$data`
   - After: `path: 'mi'` beside the table first, then the same example with only the `path` line computed
@@ -313,7 +318,9 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
 ## Punctuation, formatting and links
 
 - **No full stop on a one-sentence summary,** such as a page's frontmatter `description`.
-- **A bullet's headline is bold and capitalised, with the colon inside the bold,** as in "**Passed on:**", or outside where the label is code alone: "**`map`**:". A bullet with a headline ends with a full stop.
+- **A bullet's headline is bold and capitalised, with the colon inside the bold,** as in "**Passed on:**", or outside where the label is code alone: "**`map`**:". A bullet that's a sentence ends with a full stop; a short phrase doesn't, and nor does a bracketed note that isn't a sentence of its own, which starts lowercase.
+  - Before: "**`'alias'`**: `+`, `$d`. An operator with no alias keeps its name."
+  - After: "**`'alias'`**: e.g. `+`, `$d` (an operator with no alias keeps its name)"
 - **A reference in prose takes no quotes.** Quotes only where the point is that it's a string.
   - Before: "a bare `'$data'` gives the whole data object"
   - Kept: "Any other string is plain text, even one starting with `$`, such as `'$5.00'`."
