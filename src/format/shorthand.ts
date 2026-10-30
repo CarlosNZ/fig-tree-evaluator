@@ -7,7 +7,7 @@
  */
 import { isPlainDataObject } from '../plainData'
 import type { ShorthandOptions } from '../formatTypes'
-import { classifiesAsNode } from '../compile/grammar'
+import { classifiesAsNode, singlePositionalTarget } from '../compile/grammar'
 import type { Lookup, OperatorRead, OperatorShape } from './read'
 import { paramsToReference, respell } from './references'
 import {
@@ -46,6 +46,15 @@ const choosePayload = (
   const positional = operator.positionalParams
   // No parameters takes the named form: an empty array binds an empty rest
   if (positional === undefined || params.length === 0) return NAMED
+  // A single value binds its target and nothing else, so it's exact when
+  // that's the one parameter supplied
+  if (
+    params.length === 1 &&
+    params[0][0] === singlePositionalTarget(operator) &&
+    standsAlone(params[0][1], lookup)
+  )
+    return { kind: 'single', value: params[0][1] }
+
   const rest = operator.restParam
   const leading = rest === null ? positional : positional.slice(0, -1)
   const supplied = new Map(params)
@@ -63,16 +72,11 @@ const choosePayload = (
   if (rest !== null && restBound !== (bound === leading.length)) return NAMED
 
   const lead = leading.slice(0, bound).map((name) => supplied.get(name))
-  if (restBound) {
-    const value = supplied.get(rest!)
-    // A spread rest is never collapsed: `{ $plus: 5 }` would bind values: 5
-    if (Array.isArray(value)) return { kind: 'array', value: [...lead, ...value] }
-    // A computed rest binds unchanged as the single value
-    if (leading.length === 0 && standsAlone(value, lookup)) return { kind: 'single', value }
-    return NAMED
-  }
-  if (bound === 1 && standsAlone(lead[0], lookup)) return { kind: 'single', value: lead[0] }
-  return { kind: 'array', value: lead }
+  if (!restBound) return { kind: 'array', value: lead }
+  // A rest is spread into the array, so a computed one beside leading
+  // values has no positional form
+  const value = supplied.get(rest!)
+  return Array.isArray(value) ? { kind: 'array', value: [...lead, ...value] } : NAMED
 }
 
 export const shorthandWriter = (options: ShorthandOptions = {}): Writer => {

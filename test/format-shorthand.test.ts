@@ -65,7 +65,9 @@ describe('choosing the payload', () => {
     // Leading positions and a rest
     ['both', 'with the rest', { t: 'x', xs: ['a'] }, { $both: ['x', 'a'] }],
     ['both', 'an empty rest: never collapsed', { t: 'x', xs: [] }, { $both: ['x'] }],
-    ['both', 'the rest unsupplied', { t: 'x' }, { $both: { t: 'x' } }],
+    ['both', 'the rest unsupplied: collapse', { t: 'x' }, { $both: 'x' }],
+    ['both', 'the rest unsupplied: an array', { t: [1] }, { $both: { t: [1] } }],
+    ['both', 'the rest unsupplied: a plain object', { t: { x: 1 } }, { $both: { t: { x: 1 } } }],
     ['both', 'the leading unsupplied', { xs: [1] }, { $both: { xs: [1] } }],
     ['both', 'a computed rest', { t: 'x', xs: '$d.xs' }, { $both: { t: 'x', xs: '$d.xs' } }],
   ])('%s: %s', (operator, _label, params, expected) => {
@@ -112,11 +114,7 @@ describe('with the core operators', () => {
       { operator: 'buildString', template: 't', substitutions: [] },
       { $buildString: ['t'] },
     ],
-    [
-      'buildString, no rest',
-      { operator: 'buildString', template: 't' },
-      { $buildString: { template: 't' } },
-    ],
+    ['buildString, no rest', { operator: 'buildString', template: 't' }, { $buildString: 't' }],
     ['and, nothing supplied', { operator: 'and' }, { $and: {} }],
     ['min, a computed rest', { operator: 'min', values: '$d.xs' }, { $min: '$d.xs' }],
     ['nested', { operator: 'not', value: { operator: 'abs', value: -1 } }, { $not: { $abs: -1 } }],
