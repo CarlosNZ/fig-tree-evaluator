@@ -78,6 +78,7 @@ docs-site/
       FragmentSetup.astro     host code registering the Fragments page's fragments, from lib/fragments.ts
       ImportCosts.astro       a table of what imports cost a consumer, measured from build/ at build time
       OperatorSource.astro    a custom operator's definition, shown from its file in lib/operators/
+      Screenshot.astro        a screenshot of the site's UI, with a light and an optional dark version
       TreeItem.astro          one entry in that tree, with its children
       OperatorReference.astro reference entries: the operators page, or a chosen few
       OperatorEntry.astro     one operator's entry
@@ -123,6 +124,20 @@ Set `throws` on an example that shows an error. `trace` evaluates the example wi
 **HTTP requests** in examples go to [JSONPlaceholder](https://jsonplaceholder.typicode.com), which needs no key and allows cross-origin requests. In the browser they're real requests. At build time they're replayed from `src/lib/httpRecordings.json` (generated, never hand-edited), so the build stays offline; a request with no recording fails the build, even one whose failure a fallback in the example catches. After adding or changing an example's request, run `pnpm record:http`, which builds the site against the real API and rewrites the recordings with every response the build asked for. The site's instance caches responses for the default 30 minutes, so running an example again sends nothing; an example whose point is the requests it sends sets `noCache`, which evaluates it on an instance that never caches, in the editor too.
 
 **SQL queries** in examples run against a few tables of Northwind (`categories`, `suppliers`, `products`, `customers`) in an in-memory SQLite, through [sql.js](https://sql.js.org): for real in the browser, and at build time too, so their results are checked like any other. The data is `src/lib/northwind.sql`, plain SQL that can be edited by hand. `src/lib/sqlite.ts` holds sql.js and the data, and the site's connection imports it only on the first query, so no page loads it until an example runs one. Each page load starts from a fresh copy.
+
+**Screenshots** go through `<Screenshot>`, which centres one with room around it and a shadow, and switches to the dark version with the site's theme:
+
+```mdx
+import Screenshot from '../../../components/Screenshot.astro'
+import toShorthandButton from '../../../assets/tooling/to-shorthand-button.png'
+import toShorthandButtonDark from '../../../assets/tooling/to-shorthand-button-dark.png'
+
+<Screenshot src={toShorthandButton} dark={toShorthandButtonDark} alt="…" />
+```
+
+A screenshot is centred in the column unless it's given `align="left"`.
+
+Take them at 2x and save them as PNG in `src/assets/`, uncompressed: the build converts them to WebP at 1x and 2x, so compressing them beforehand gains nothing. Files in `public/` are served as they are, so screenshots don't go there.
 
 **Reference entries:** `<OperatorReference all />` is the operators page, every operator by category. Any other page can show a few: `<OperatorReference names={['plus', 'if']} />`, with `showCategory` to label each one's category.
 

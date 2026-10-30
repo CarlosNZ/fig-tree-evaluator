@@ -1,0 +1,36 @@
+---
+/**
+ * A screenshot of the site's UI, centred with room around it and a soft
+ * shadow, so it reads as a picture of the app rather than part of the page.
+ *
+ * Take screenshots at 2x (a Retina display's default) and save them as PNG
+ * in src/assets/, with no compression beforehand: the build converts them to
+ * WebP and serves the 1x and 2x sizes. `src` is shown in the light theme,
+ * and `dark`, where given, in the dark theme. `align` places it in the
+ * column: centred by default, or `'left'`.
+ */
+import { Image } from 'astro:assets'
+import type { ImageMetadata } from 'astro'
+
+interface Props {
+  src: ImageMetadata
+  dark?: ImageMetadata
+  alt: string
+  align?: 'center' | 'left'
+}
+
+const { src, dark, alt, align = 'center' } = Astro.props
+
+// Screenshots are 2x, so each is shown at half its pixel width
+const attrs = (image: ImageMetadata) => ({
+  src: image,
+  alt,
+  width: Math.round(image.width / 2),
+  densities: [1, 2],
+})
+---
+
+<figure class:list={['fds-screenshot', { 'fds-screenshot--left': align === 'left' }]}>
+  <Image {...attrs(src)} class:list={{ 'dark:sl-hidden': Boolean(dark) }} />
+  {dark && <Image {...attrs(dark)} class="light:sl-hidden" />}
+</figure>

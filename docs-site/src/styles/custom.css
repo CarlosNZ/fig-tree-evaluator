@@ -411,6 +411,44 @@
   font-size: var(--sl-text-sm);
 }
 
+/* ── Screenshots (Screenshot.astro) ─────────────────────────────────────── */
+
+/*
+ * Narrower than the column and centred, so the shadow has room and the
+ * picture sits apart from the text around it
+ */
+.fds-screenshot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 2rem auto;
+  max-width: 85%;
+}
+
+/* align="left": against the column's left edge, keeping the space below */
+.fds-screenshot--left {
+  align-items: flex-start;
+  margin-inline: 0;
+}
+
+/* No `display` here: Starlight's light:/dark:sl-hidden pick the theme's image */
+.fds-screenshot img {
+  border-radius: 0.5rem;
+  box-shadow:
+    0 1px 2px hsl(0deg 0% 0% / 0.08),
+    0 4px 12px hsl(0deg 0% 0% / 0.1),
+    0 12px 32px hsl(0deg 0% 0% / 0.12);
+}
+
+/* A shadow barely shows on a dark page, so a faint edge sets the picture off */
+:root[data-theme='dark'] .fds-screenshot img {
+  box-shadow:
+    0 0 0 1px hsl(0deg 0% 100% / 0.1),
+    0 1px 2px hsl(0deg 0% 0% / 0.3),
+    0 4px 12px hsl(0deg 0% 0% / 0.35),
+    0 12px 32px hsl(0deg 0% 0% / 0.45);
+}
+
 /* ── Expression trees (ExpressionTree.astro) ────────────────────────────── */
 
 .fds-tree-figure {
