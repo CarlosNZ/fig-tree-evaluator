@@ -93,7 +93,10 @@ export const classifiesAsNode = (
   return false
 }
 
-/** The part of an operator's definition the positional grammar reads. */
+/**
+ * The two fields of an operator that its positional payload is read by.
+ * `getOperators()` reports both, so an operator can be passed as it reports it.
+ */
 export interface PositionalShape {
   positionalParams?: readonly string[]
   restParam: string | null
@@ -102,8 +105,8 @@ export interface PositionalShape {
 /**
  * How an array payload of `length` elements binds: `bound` leading
  * positions from index 0, then, when `restAt` is a number, the rest
- * parameter takes the slice from `restAt` on. `null` when the shape has no
- * positional form, or the payload is longer than the leading positions with
+ * parameter takes the slice from `restAt` on. `null` when the operator has
+ * no positional form, or the payload is longer than the leading positions with
  * no rest to take the surplus. A layout rather than the bound values, so
  * the compiler can keep each value's payload index without allocating.
  */
@@ -113,12 +116,12 @@ export interface PositionalLayout {
 }
 
 export const positionalLayout = (
-  shape: PositionalShape,
+  operator: PositionalShape,
   length: number
 ): PositionalLayout | null => {
-  const positional = shape.positionalParams
+  const positional = operator.positionalParams
   if (positional === undefined) return null
-  const rest = shape.restParam
+  const rest = operator.restParam
   // A rest entry is always the last positional one (`defineOperator`
   // enforces it), so the leading entries are the list up to it
   const leading = rest === null ? positional.length : positional.length - 1
@@ -136,10 +139,10 @@ export const positionalLayout = (
 /**
  * The parameter a single non-array payload binds, verbatim: the first
  * position, or the rest parameter when the rest comes first. `null` when
- * the shape has no positional form.
+ * the operator has no positional form.
  */
-export const singlePositionalTarget = (shape: PositionalShape): string | null => {
-  const first = shape.positionalParams?.[0]
+export const singlePositionalTarget = (operator: PositionalShape): string | null => {
+  const first = operator.positionalParams?.[0]
   if (first === undefined) return null
-  return first.startsWith('...') ? shape.restParam : first
+  return first.startsWith('...') ? operator.restParam : first
 }
