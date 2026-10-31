@@ -189,9 +189,9 @@ const fig = new FigTree({
 
 ## Covering the whole expression
 
-A fallback only covers its own node, so a failure in another branch without one carries on up the tree, and if nothing above it has a fallback, `evaluate()` still throws. An expression where no runtime failure can cause it to throw is said to be "covered".
+A fallback only covers its own node, so a failure in another branch without one carries on up the tree, and if nothing above it has a fallback, `evaluate()` still throws. An expression where no runtime failure can cause it to throw is said to be "fully covered".
 
-The simplest way to cover your expression is a fallback at the root node. But careful! — a fallback that's an expression [can fail too](#when-a-fallback-fails). So the _sure-fire_ way to be covered is a fallback at the root that's a _plain value_, with nothing to evaluate.
+The simplest way to fully cover your expression is a fallback at the root node. But careful! — a fallback that's an expression [can fail too](#when-a-fallback-fails). So the _sure-fire_ way to be fully covered is a fallback at the root that's a _plain value_, with nothing to evaluate.
 
 So why not just always put a plain-value fallback at the root and be done with it? It does stop `evaluate()` from throwing, but it's a blunt instrument: a failure _anywhere_ gives the same result, even when it's in one insignificant branch and everything else worked. In the following example, the customer's discount arrived as text (in `data`), so the price can't be worked out at all. But uncomment the fallback on the discount, and the rest of the result is kept — the customer just pays a bit extra rather than having to make a call to support over a broken website.
 
