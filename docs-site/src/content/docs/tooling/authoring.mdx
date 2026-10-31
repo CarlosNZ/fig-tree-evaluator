@@ -7,46 +7,12 @@ sidebar:
 ---
 
 import Callout from '../../../components/Callout.astro'
-import Coverage from '../../../components/Coverage.astro'
 import Expression from '../../../components/Expression.astro'
 import OperatorSource from '../../../components/OperatorSource.astro'
 
-Failed expressions need [fallbacks](/guides/fallbacks/) to prevent `evaluate()` from throwing. But a fallback on one node might still allow an uncaught failure on a sibling branch to propagate to the root, and 💥! An expression that can never throw can be said to be "covered".
+Failures in expressions need [fallbacks](/guides/fallbacks/) to prevent `evaluate()` from throwing. But a fallback on one node might still allow an uncaught failure on a sibling branch to propagate to the root, and 💥! A plain-value fallback at the root is the sure-fire way to prevent this, but it's a blunt instrument, and you'll usually want fallbacks nearer each failure as well ([Covering the whole expression](/guides/fallbacks/#covering-the-whole-expression)). So it's worth knowing not just _whether_ a failure can reach the root, but _where_ each one can happen, and which fallback will catch it.
 
-<Callout kind="tip" title="The simplest way to be covered">
-  The simplest way to cover your expression is a fallback at the root node. But careful! — a fallback that's an expression [can fail too](/guides/fallbacks/#when-a-fallback-fails). So the *sure-fire* way to be covered is a fallback at the root that's a _plain value_, with nothing to evaluate.
-</Callout>
-
-So why not just put a plain-value fallback at the root and be done with it? It does stop `evaluate()` from throwing, but it's a blunt instrument: a failure _anywhere_ gives the same result, even when it's in one insignificant branch and everything else worked. In this example, the customer's discount arrived as text, so the price can't be worked out at all. But uncomment the fallback on the discount, and the rest of the result is kept — the customer just pays a bit extra rather than having to make a call to support over a broken website.
-
-<Expression
-  title="A fallback at the root"
-  code={`
-    {
-      $subtract: [
-        '$data.order.subtotal',
-        // Take off the customer's discount
-        {
-          $multiply: ['$data.order.subtotal', '$data.customer.discountRate'],
-          // Uncomment for no discount if it can't be worked out
-          // fallback: 0,
-        },
-      ],
-      fallback: 'Price unavailable',
-    }
-  `}
-  data={`
-    {
-      order: { subtotal: 80 },
-      // From a form, so it arrived as text 🙄. A rate of 0.1 works
-      customer: { discountRate: '10%' },
-    }
-  `}
-/>
-
-So it's worth knowing not just _whether_ a failure can reach the root, but _where_ each one can happen, and which fallback will catch it.
-
-That's where `fallbackCoverage()` comes in — a function that tells you if an expression is covered or not, with a detailed report about the coverage status throughout the expression tree, including which fallback catches each failure.
+That's where `fallbackCoverage()` comes in — a function that tells you if an expression is covered (no runtime failure can reach the root) or not, with a detailed report about the coverage status throughout the expression tree, including which fallback catches each failure.
 
 {/* TO-DO: the Playground has no Safe flag yet. Bring it across from the editor demo, or cut this paragraph before the site goes live */}
 
@@ -64,23 +30,36 @@ const report = await fallbackCoverage(fig, expression)
 
 Pass it your FigTree instance and an expression. It checks the expression as that instance would evaluate it, with its operators, fragments and options. It doesn't evaluate the expression, though, so it needs no data.
 
-In this example, an average is worked out from the data:
+In this example, a summary line is built from the data:
 
-<Coverage
-  title="Average order value"
+<Expression
+  coverage
+  title="Order summary"
   code={`
-    { $round: [{ $divide: ['$data.total', '$data.count'] }, 2] }
+    {
+      $buildString: [
+        '%1 placed %2 orders, averaging %3',
+        { $upper: '$data.customer' },
+        '$data.count',
+        {
+          $round: [{ $divide: ['$data.total', '$data.count'] }, 2],
+          // Uncomment to cover the average
+          // fallback: 'n/a',
+        },
+      ],
+    }
   `}
+  data={`
+    { customer: 'Ada', total: 129.5, count: 3 }
+  `}
+  caption="Uncomment the average's fallback, and watch the coverage report change."
 />
 
-Each failure nothing catches is in `uncovered`. Since `$data.total` and `$data.count` could be anything, `divide` may fail its type check on either, and `count` could be 0. Give the `divide` a fallback, and the same three failures move to `covered`, each with the node whose fallback catches it in `coveredBy`:
+Each failure that no fallback catches is in `uncovered`, with the `path` to the node where it happens. Here, the runtime data could hold anything, so `upper` may receive something that isn't a string, `divide` may fail its type check on either number, and `count` could be 0.
 
-<Coverage
-  title="Average order value, with a fallback"
-  code={`
-    { $round: [{ $divide: ['$data.total', '$data.count'], fallback: 0 }, 2] }
-  `}
-/>
+The report lists only the ways a node can fail. A node that can't, like the `buildString` here, with its template written in and substitutions that accept any value, isn't mentioned at all.
+
+Uncomment the average's fallback in the editor, and `divide`'s three failures move to `covered`. The fallback is on `round`, not `divide` itself, but a fallback covers every node below it, so `divide`'s `coveredBy` names `round`'s path. Nothing catches `upper`'s failure, though, so it's still uncovered.
 
 So in CI, a test can check that no stored expression has anything uncovered:
 
@@ -159,7 +138,9 @@ The definition's `analysis` field tells it more. Declaring one says how the oper
 
 With both dates written into the expression, the analysis runs it, and knows whether it fails. With either one from the data, it may:
 
-<Coverage
+<Expression
+  coverage
+  throws
   customOperators
   title="Dates known and unknown"
   code={`
@@ -169,6 +150,9 @@ With both dates written into the expression, the analysis runs it, and knows whe
       // Make this a date, and its finding goes
       daysToGo: { $daysBetween: ['2026-01-01', 'next Tuesday'] },
     }
+  `}
+  data={`
+    { dueDate: '2026-03-01', today: '2026-03-15' }
   `}
 />
 
