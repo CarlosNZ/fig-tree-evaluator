@@ -11,7 +11,8 @@
  * An example that sets `trace` is evaluated with tracing on, and shows the
  * trace below its result or error (lib/trace.ts), computed at build time
  * like the result. Its editor has a Show trace button, unless the example
- * names another action.
+ * names another action. One that sets `coverage` shows the expression's
+ * fallbackCoverage() report the same way, with a Show coverage button.
  *
  * "Open in editor" opens the example in a full-size editor over the page
  * (ExpressionEditor.tsx), with `caption` at its foot if given. Its address
@@ -22,6 +23,7 @@
 import { Code } from '@astrojs/starlight/components'
 import JSON5 from 'json5'
 import { isFigTreeError } from 'fig-tree-evaluator'
+import { fallbackCoverage } from 'fig-tree-evaluator/authoring'
 import { exampleFigTree } from '../lib/figTree'
 import { trackMissing } from '../lib/httpReplay'
 import { dedent } from '../lib/dedent'
@@ -50,6 +52,8 @@ interface Props {
   throws?: boolean
   /** Evaluate with tracing on, and show the trace, with a Show trace button in its editor. */
   trace?: boolean
+  /** Show the expression's fallbackCoverage() report, with a Show coverage button in its editor. */
+  coverage?: boolean
   /** `false` for no "Open in editor" at all. */
   editor?: boolean
   /** What to do or notice in the editor, at the foot of its overlay. */
@@ -60,13 +64,15 @@ const {
   title = 'Expression',
   throws = false,
   trace = false,
+  coverage = false,
   editor = true,
   fragments,
   customOperators,
   noCache,
   caption,
 } = Astro.props
-const action: ExampleActionName | undefined = Astro.props.action ?? (trace ? 'showTrace' : undefined)
+const action: ExampleActionName | undefined =
+  Astro.props.action ?? (trace ? 'showTrace' : coverage ? 'showCoverage' : undefined)
 const figTree = exampleFigTree({ fragments, customOperators, noCache })
 const code = dedent(Astro.props.code)
 const dataSource = Astro.props.data === undefined ? undefined : dedent(Astro.props.data)
@@ -122,6 +128,8 @@ if (outcome.ok && throws)
 if (!outcome.ok && !throws)
   throw new Error(`${where}\n\nThis example threw ${outcome.code}: ${outcome.message}`)
 
+const report = coverage ? toJson5(await fallbackCoverage(figTree, expression)) : undefined
+
 const href = editor ? playgroundHref({
       expression: code,
       data: dataSource,
@@ -173,10 +181,20 @@ const href = editor ? playgroundHref({
     // After the island, which hydrates when it comes into view: below a long
     // trace, it wouldn't have by the time its link above was clicked
     traced !== undefined && (
-      <div class="fds-expression-trace" data-collapsed>
+      <div class="fds-expression-report" data-collapsed>
         <Code code={traced} lang="json5" title="Trace" />
-        <button class="fds-trace-toggle" type="button" aria-expanded="false" hidden>
+        <button class="fds-report-toggle" type="button" aria-expanded="false" hidden>
           Show full trace
+        </button>
+      </div>
+    )
+  }
+  {
+    report !== undefined && (
+      <div class="fds-expression-report" data-collapsed>
+        <Code code={report} lang="json5" title="Coverage" />
+        <button class="fds-report-toggle" type="button" aria-expanded="false" hidden>
+          Show full report
         </button>
       </div>
     )
@@ -184,23 +202,25 @@ const href = editor ? playgroundHref({
 </div>
 
 <script>
-  // A trace starts cut down to a few lines, fading out, with a button to
-  // show it all. One short enough to fit shows whole, with no button.
-  for (const trace of document.querySelectorAll<HTMLElement>('.fds-expression-trace')) {
-    const code = trace.querySelector('pre')!
-    const button = trace.querySelector<HTMLButtonElement>('.fds-trace-toggle')!
+  // A trace or report starts cut down to a few lines, fading out, with a
+  // button to show it all. One short enough to fit shows whole, with no
+  // button.
+  for (const block of document.querySelectorAll<HTMLElement>('.fds-expression-report')) {
+    const code = block.querySelector('pre')!
+    const button = block.querySelector<HTMLButtonElement>('.fds-report-toggle')!
+    const showLabel = button.textContent!.trim()
     // A pixel's grace, for rounding
     if (code.scrollHeight <= code.clientHeight + 1) {
-      trace.removeAttribute('data-collapsed')
+      block.removeAttribute('data-collapsed')
       continue
     }
     button.hidden = false
     button.addEventListener('click', () => {
-      const collapsed = trace.toggleAttribute('data-collapsed')
-      button.textContent = collapsed ? 'Show full trace' : 'Collapse'
+      const collapsed = block.toggleAttribute('data-collapsed')
+      button.textContent = collapsed ? showLabel : 'Collapse'
       button.setAttribute('aria-expanded', String(!collapsed))
-      // Collapsing a long trace leaves the reader below it, so bring it back
-      if (collapsed) trace.scrollIntoView({ block: 'nearest' })
+      // Collapsing a long block leaves the reader below it, so bring it back
+      if (collapsed) block.scrollIntoView({ block: 'nearest' })
     })
   }
 </script>

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import JSON5 from 'json5'
 import { deepEqual, isFigTreeError } from 'fig-tree-evaluator'
+import { fallbackCoverage } from 'fig-tree-evaluator/authoring'
 import { FigTreeEditor, type Evaluation, type SetExpressionOptions } from 'fig-tree-editor-react'
 import 'fig-tree-editor-react/style.css'
 import { exampleFigTree } from '../../lib/figTree'
@@ -56,6 +57,9 @@ type Outcome =
   | { status: 'failed'; code: string; message: string; trace?: string }
   | { status: 'blocked'; reason: string }
 
+/** The fallbackCoverage() report, as JSON5, or why there isn't one. */
+type CoverageOutcome = { status: 'done'; report: string } | { status: 'blocked'; reason: string }
+
 const useNarrow = (element: React.RefObject<HTMLElement | null>) => {
   const [narrow, setNarrow] = useState(false)
   useLayoutEffect(() => {
@@ -92,8 +96,10 @@ const useNarrow = (element: React.RefObject<HTMLElement | null>) => {
  *
  * An example whose action shows its trace evaluates with tracing on, and the
  * button swaps the tree for the trace, shown as the static example's Trace
- * block shows it. The tree stays mounted while it's hidden, so it's as it was
- * when the trace is put away.
+ * block shows it. One whose action shows coverage swaps it for the
+ * expression's fallbackCoverage() report instead, worked out again as the
+ * expression changes. The tree stays mounted while it's hidden, so it's as
+ * it was when the view is put away.
  */
 export default function PlaygroundWidget(props: PlaygroundProps) {
   const seed = useMemo(
@@ -105,7 +111,8 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
   const figTree = seed ? exampleFigTree(seed) : (props.figTree ?? exampleFigTree(props))
   const action = (seed ?? props).action
   const actionSpec = action === undefined ? undefined : exampleAction(action)
-  const traces = actionSpec !== undefined && 'view' in actionSpec
+  const view = actionSpec !== undefined && 'view' in actionSpec ? actionSpec.view : undefined
+  const traces = view === 'trace'
 
   const initial = useMemo(() => parseJson5(initialText), [initialText])
   const [text, setText] = useState(initialText)
@@ -291,6 +298,32 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
   const [viewing, setViewing] = useState(false)
   const actionTimer = useRef<ReturnType<typeof setTimeout>>()
   useEffect(() => () => clearTimeout(actionTimer.current), [])
+
+  // The coverage report is worked out only while it's showing. It needs no
+  // data, so only the expression moves it.
+  const [coverage, setCoverage] = useState<CoverageOutcome | null>(null)
+  const [coverageStale, setCoverageStale] = useState(true)
+  const coverageRun = useRef(0)
+  useEffect(() => {
+    if (view !== 'coverage' || !viewing) return
+    const id = ++coverageRun.current
+    const settle = (next: CoverageOutcome) => {
+      if (id !== coverageRun.current) return
+      setCoverage(next)
+      setCoverageStale(false)
+    }
+    if (parseError)
+      return settle({ status: 'blocked', reason: 'The expression text has a syntax error' })
+    setCoverageStale(true)
+    const timer = setTimeout(async () => {
+      try {
+        settle({ status: 'done', report: toJson5(await fallbackCoverage(figTree, expression)) })
+      } catch (error) {
+        settle({ status: 'blocked', reason: String(error) })
+      }
+    }, EVALUATE_DELAY)
+    return () => clearTimeout(timer)
+  }, [expression, parseError, viewing])
   const actionIcon = actionSpec && (
     <svg viewBox="0 0 16 16" aria-hidden="true">
       {actionSpec.icon}
@@ -358,13 +391,14 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
     />
   )
 
-  const tracePane = viewing && (
+  const viewStale = (view === 'coverage' ? coverageStale : stale) || inputPending
+  const viewPane = viewing && (
     <div
-      className={`fds-widget-pane fds-widget-pane--trace${stale || inputPending ? ' fds-widget-pane--stale' : ''}`}
+      className={`fds-widget-pane fds-widget-pane--${view}${viewStale ? ' fds-widget-pane--stale' : ''}`}
       aria-live="polite"
     >
-      <div className="fds-widget-pane-label">Trace</div>
-      <TraceView outcome={outcome} />
+      <div className="fds-widget-pane-label">{view === 'coverage' ? 'Coverage' : 'Trace'}</div>
+      {view === 'coverage' ? <CoverageView coverage={coverage} /> : <TraceView outcome={outcome} />}
     </div>
   )
 
@@ -427,7 +461,7 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
             <div className="fds-widget-pane-label">Editor</div>
             {treeEditor}
           </div>
-          {tracePane}
+          {viewPane}
           <EvaluationToast toast={toast} onClose={() => setToast(null)} />
         </div>
       </div>
@@ -461,7 +495,7 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
 
       <div className={inlinePanes}>
         {textPane}
-        {tracePane ||
+        {viewPane ||
           (!narrow && <TreePreview onOpen={() => setExpanded(true)}>{treeEditor}</TreePreview>)}
       </div>
 
@@ -547,6 +581,14 @@ const TraceView = ({ outcome }: { outcome: Outcome | null }) => {
       </div>
     )
   return <Json5Editor value={outcome.trace} label="Trace (JSON5)" readOnly />
+}
+
+/** The coverage report, or why there isn't one. */
+const CoverageView = ({ coverage }: { coverage: CoverageOutcome | null }) => {
+  if (!coverage) return <div className="fds-widget-result-message">Analysing…</div>
+  if (coverage.status === 'blocked')
+    return <div className="fds-widget-result-message">{coverage.reason}</div>
+  return <Json5Editor value={coverage.report} label="Coverage report (JSON5)" readOnly />
 }
 
 const ResultView = ({ outcome }: { outcome: Outcome | null }) => {
