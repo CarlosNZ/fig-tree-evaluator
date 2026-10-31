@@ -281,19 +281,19 @@
   color: var(--sl-color-gray-3);
 }
 
-/* An example's trace, below its figure (Expression.astro) */
-.fds-expression-trace {
+/* An example's trace or coverage report, below its figure (Expression.astro) */
+.fds-expression-report {
   margin-top: 0.5rem;
 }
 
 /* About a dozen lines of it, fading out, until it's shown in full */
-.fds-expression-trace[data-collapsed] .expressive-code pre {
+.fds-expression-report[data-collapsed] .expressive-code pre {
   max-height: 18rem;
   overflow: hidden;
   mask-image: linear-gradient(to bottom, black calc(100% - 4rem), transparent);
 }
 
-.fds-trace-toggle {
+.fds-report-toggle {
   margin-top: 0.4rem;
   padding: 0;
   border: none;
@@ -304,7 +304,7 @@
   cursor: pointer;
 }
 
-.fds-trace-toggle:hover {
+.fds-report-toggle:hover {
   text-decoration: underline;
 }
 
@@ -1307,7 +1307,7 @@
   background: var(--fds-tree-bg);
 }
 
-/* The tree, put away while an example's trace is showing in its place */
+/* The tree, put away while an example's trace or coverage is showing in its place */
 .fds-widget-pane[hidden] {
   display: none;
 }
