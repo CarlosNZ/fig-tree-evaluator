@@ -53,7 +53,7 @@ They differ in what they do with the results:
 <Callout kind="note" title="Just pulling out one field?">
   To read the same path from every element, a wildcard [`[*]`](/concepts/data/#path-syntax) in the path is a convenient shorthand: `'$data.items[*].name'`, rather than `{ $map: ['$data.items', '$element.name'] }`.
 
-  The two differ slightly at the edges, though: an input array (`items` here) that's missing, or isn't an array, gives `null` from `[*]`, but makes `map` fail ([below](#empty-and-missing-input)).[^strict]
+  The two differ slightly at the edges, though: an input array (`items` here) that's missing, or isn't an array, gives `null` from `[*]`, but makes `map` fail ([below](#empty-and-missing-input))[^strict].
 </Callout>
 
 ## `$element` and `$index`

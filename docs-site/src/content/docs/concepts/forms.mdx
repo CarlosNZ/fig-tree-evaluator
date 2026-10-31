@@ -20,7 +20,7 @@ The examples on this site are written in _shorthand_ — using `$`-prefixed keys
 
 You won't need it when writing expressions by hand, but it's useful when, for example:
 
-- **You're building a tool, such as a visual editor:** each object in the JSON is exactly one node of the underlying [expression tree](/concepts/expressions/#nodes-inside-nodes-the-tree), so it maps cleanly onto the UI components that represent the tree.[^internal]
+- **You're building a tool, such as a visual editor:** each object in the JSON is exactly one node of the underlying [expression tree](/concepts/expressions/#nodes-inside-nodes-the-tree), so it maps cleanly onto the UI components that represent the tree[^internal].
 - **Expressions are stored where `$` keys can't go,** such as Firebase, which rejects them, or MongoDB, where they clash with its own query operators.
 
 Both forms mean exactly the same thing, and you can [convert](#converting) from one to the other at any time.

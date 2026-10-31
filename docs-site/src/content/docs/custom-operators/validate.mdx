@@ -260,7 +260,7 @@ const validate: OperatorValidate = ({ path }, { parsePath }) => {
 The hook runs whenever an expression is checked, which is always before any of its nodes are evaluated. So it only ever sees what's written into the expression, not what each parameter evaluates to. A value computed as the expression runs reaches the operator's `evaluate` function without the hook seeing it.
 
 - **`fig.validate()`**: every call.
-- **`fig.compile()` and `fig.evaluate()`**: the first time an expression is compiled. Compiling is the first thing `fig.evaluate()` does, before it evaluates any nodes.[^evaluate] The two share compiled expressions, so a later call with the same expression doesn't run the hook again.
+- **`fig.compile()` and `fig.evaluate()`**: the first time an expression is compiled. Compiling is the first thing `fig.evaluate()` does, before it evaluates any nodes[^evaluate]. The two share compiled expressions, so a later call with the same expression doesn't run the hook again.
 - **Fragments:** when a fragment is registered, for each node in its body ([Checked when registered](/guides/fragments/#checked-when-registered)). An error there makes the call that registers it, such as `new FigTree()` or `updateOptions()`, throw `invalid-options`.
 
 Since an expression is compiled once, the hook costs nothing however often it's evaluated.
