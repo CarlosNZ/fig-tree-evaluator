@@ -24,14 +24,17 @@ import type {
   StaticFallback,
 } from '../compile/artifact'
 import type { FragmentEntry, FragmentParameter } from '../fragments'
+import type { OperatorAnalysis } from '../authoringTypes'
+import type { ValidatedOperatorDefinition } from '../operatorDefinition'
 import type { PathSegment } from '../primitives/path'
 import { isDemand, liftCatcher, liftFailure } from './findings'
 import type { Caught, Failure, Pending } from './findings'
 import { argumentInput, checkElementResult, resolveInputs } from './inputs'
-import { mayWait, ownFailures, rulesOf } from './rules'
+import { analysisOf, ownFailures } from './rules'
 import { atBoundary, operatorOutput } from './outputs'
+import { hooked } from './helpers'
 import { runNode } from './run'
-import type { Child, Ran, Stalled } from './run'
+import type { Child, Ran } from './run'
 import type { RuleOptions } from './rules'
 import {
   ANY,
@@ -269,14 +272,16 @@ const skeletonOutput = (node: SkeletonNode, outputs: Known[]): Known => {
 export class Analysis {
   private readonly bodies = new Map<FragmentEntry, Map<string, Analysed>>()
 
-  private readonly stalled: Stalled = new Set()
-
   /** Every node whose evaluation can wait on something outside it. */
   readonly waiting = new Set<CompiledNode>()
 
   private readonly strict: boolean
 
-  constructor(private readonly options: RuleOptions) {
+  constructor(
+    private readonly options: RuleOptions,
+    /** The host operators' analyses, by definition */
+    private readonly analyses: ReadonlyMap<ValidatedOperatorDefinition, OperatorAnalysis>
+  ) {
     this.strict = options.evaluation.strictDataPaths === true
   }
 
@@ -394,6 +399,10 @@ export class Analysis {
         elements[name] = apart.result.output
       }
     }
+    // A host operator is never run, so its analysis's hooks answer for it
+    const analysis = analysisOf(definition, this.analyses)
+    const host =
+      typeof analysis === 'object' ? hooked(node, analysis, inputs, elements, items) : analysis
 
     // An eager child that always fails means the body never runs: its own
     // checks are moot, and only a race's elements, started beside the eager
@@ -410,9 +419,9 @@ export class Analysis {
           passed: new Set(),
           fails: true,
         }
-      : rulesOf(definition) === 'external'
+      : analysis !== 'core'
         ? undefined
-        : await runNode(node, outputs, children, this.options, this.stalled)
+        : await runNode(node, outputs, children, this.options)
     for (const name of Object.keys(items))
       certainForEvery(
         children.filter((child) => child.param === name && (ran?.reached.has(child) ?? true))
@@ -421,7 +430,7 @@ export class Analysis {
     if (ran === undefined) {
       append(own, inputs.failures)
       // A null that must propagate means the body never runs
-      if (inputs.propagates !== 'yes') append(own, ownFailures(node, inputs, this.options))
+      if (inputs.propagates !== 'yes') append(own, ownFailures(node, inputs, this.options, host))
     } else append(own, ran.failures)
     for (const child of children) {
       if (ran !== undefined && !ran.passed.has(child)) continue
@@ -440,7 +449,14 @@ export class Analysis {
 
     const { output, boundary } =
       ran === undefined
-        ? operatorOutput(node, inputs, elements, this.options.strictNumbers, items)
+        ? operatorOutput(
+            node,
+            inputs,
+            elements,
+            this.options.strictNumbers,
+            items,
+            typeof host === 'object' ? host : undefined
+          )
         : atBoundary(node, ran.output, this.options.strictNumbers, false)
     // One `non-finite-result` finding a node, whether a rule or the result
     // boundary says so
@@ -462,8 +478,10 @@ export class Analysis {
     const attempt = combine(own, parts, output)
     // Every run failed: the node never returns
     if (ran?.fails === true) Object.assign(attempt, { verdict: 'always', output: NOTHING })
-    // An operator of the host's, or one doing I/O, can wait on anything
-    if (mayWait(definition)) attempt.waits = true
+    // An operator of the host's, or one doing I/O, can wait on anything,
+    // whether or not it is declared: a declaration says what a body fails
+    // on and returns, not how long it takes
+    if (analysis !== 'core') attempt.waits = true
     return this.withFallback(node, attempt, inner)
   }
 

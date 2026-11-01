@@ -31,13 +31,14 @@
  * value from the data, so one compiled node serves every combination.
  */
 import { FigTree, coreOperators, isFigTreeError } from '../src'
-import type { FailureRule, ValidatedOperatorDefinition } from '../src'
+import type { ValidatedOperatorDefinition } from '../src'
 import { viewHandle } from '../src/FigTree'
 import type { OperatorNode } from '../src/compile/artifact'
 import { checkElementResult, resolveInputs } from '../src/authoring/inputs'
 import { elementsOf, exactly, tupleOf, union } from '../src/authoring/known'
 import type { Known } from '../src/authoring/known'
 import { CORE_RULES, answerRule, ownFailures, testKnown } from '../src/authoring/rules'
+import type { FailureRule } from '../src/authoring/rules'
 import { operatorOutput } from '../src/authoring/outputs'
 import { runNode } from '../src/authoring/run'
 import type { Child, Ran } from '../src/authoring/run'
@@ -282,7 +283,7 @@ const predict = (
     if (Object.hasOwn(outputs, name)) elements[name] = outputs[name]
   const { output, boundary } = operatorOutput(node, inputs, elements, level.strictNumbers)
   if (boundary !== undefined) failures.push(boundary)
-  if (inputs.propagates !== 'yes') failures.push(...ownFailures(node, inputs, options))
+  if (inputs.propagates !== 'yes') failures.push(...ownFailures(node, inputs, options, 'core'))
   return {
     inputs,
     output,

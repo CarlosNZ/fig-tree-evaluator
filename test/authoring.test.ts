@@ -6,7 +6,7 @@
  * checked against the engine in test/coverage-rules.test.ts.
  *
  * The tests of where findings sit and which fallback covers them use
- * `risky`, a host operator that declares no `analysis`, so is external: it
+ * `risky`, a host operator with no analysis, so is external: it
  * gives one `operator-failure` wherever it is, and nothing else.
  *
  * The subpath's types export from the root. test/exports.test.ts lists
@@ -15,17 +15,19 @@
  */
 import { ErrorCodes, FigTree, OperatorFailure, coreOperators, defineOperator } from '../src'
 import type {
+  Answer,
   CoverageFinding,
-  FailureTest,
   CoveredFinding,
-  FailureRule,
+  FailureEntry,
   FallbackCoverage,
   FallbackCoverageOptions,
   FigTreeOptions,
+  Gamut,
+  GamutHelpers,
   OperatorAnalysis,
 } from '../src'
 import * as authoring from '../src/authoring'
-import { fallbackCoverage } from '../src/authoring'
+import { declareAnalysis, fallbackCoverage } from '../src/authoring'
 
 const risky = defineOperator({
   name: 'risky',
@@ -61,15 +63,16 @@ const uncovered = async (expression: unknown, instance: FigTree = fig) =>
 const external = 'operator-failure'
 const node = { $risky: 1 }
 
-test('the subpath exports fallbackCoverage alone, and its types from the root', async () => {
-  expect(Object.keys(authoring)).toEqual(['fallbackCoverage'])
-  const options: FallbackCoverageOptions = { strictNumbers: true }
+test('the subpath exports fallbackCoverage and declareAnalysis, and its types from the root', async () => {
+  expect(Object.keys(authoring)).toEqual(['declareAnalysis', 'fallbackCoverage'])
+  const gamut = (params: Record<string, Gamut>, helpers: GamutHelpers): Gamut =>
+    helpers.union(params.value, helpers.exactly(null))
+  const occurs: Answer = 'maybe'
+  const entry: FailureEntry = { code: 'operator-failure', parameter: 'value', occurs }
+  const declared: OperatorAnalysis = declareAnalysis(risky, { gamut, failures: [entry] })
+  const options: FallbackCoverageOptions = { strictNumbers: true, operators: [declared] }
   const result: FallbackCoverage = await fallbackCoverage(fig, 1, options)
   expect(result).toEqual({ uncovered: [], covered: [] })
-  const test: FailureTest = { not: { below: 0 } }
-  const rule: FailureRule = { code: 'operator-failure', when: { value: test } }
-  const declared: OperatorAnalysis = { failures: [rule] }
-  expect(declared.failures).toHaveLength(1)
 })
 
 test('a finding carries its code, certainty, operator, parameter and message', async () => {
@@ -655,26 +658,23 @@ describe('what a node returns', () => {
     ])
   })
 
-  test("a host operator's declared output", async () => {
+  test("a host operator's gamut", async () => {
     const echo = defineOperator({
       name: 'echo',
       category: 'other',
       parameters: { value: {} },
       positionalParams: ['value'],
-      analysis: { failures: [], output: { param: 'value' } },
       evaluate: ({ value }) => value,
     })
     const hosts = new FigTree({ operators: [coreOperators, [echo]] })
-    expect((await fallbackCoverage(hosts, { $upper: { $echo: 'x' } })).uncovered).toEqual([])
-    expect(() =>
-      defineOperator({
-        name: 'bad',
-        category: 'other',
-        parameters: { value: {} },
-        analysis: { output: { param: 'nope' } },
-        evaluate: () => 1,
-      })
-    ).toThrow(expect.objectContaining({ code: ErrorCodes.invalidDefinition }))
+    const operators = [declareAnalysis(echo, { gamut: ({ value }) => value, failures: [] })]
+    const expression = { $upper: { $echo: 'x' } }
+    expect((await fallbackCoverage(hosts, expression, { operators })).uncovered).toEqual([])
+    // Without one, it returns its `returns`, anything
+    const typed = [declareAnalysis(echo, { failures: [] })]
+    expect(
+      (await fallbackCoverage(hosts, expression, { operators: typed })).uncovered.map(where)
+    ).toEqual([{ path: [], code: ErrorCodes.typeCheck, parameter: 'value' }])
   })
 
   describe('the result boundary, under strict numbers', () => {
@@ -689,17 +689,19 @@ describe('what a node returns', () => {
         parameters: { value: { type: 'any' } },
         positionalParams: ['value'],
         returns,
-        analysis: { failures: [] },
         evaluate: ({ value }) => value,
       })
-    const hosted = new FigTree({
-      operators: [handOn('toNumber', 'number'), handOn('pass', 'any')],
-    })
+    const toNumber = handOn('toNumber', 'number')
+    const pass = handOn('pass', 'any')
+    const hosted = new FigTree({ operators: [toNumber, pass] })
+    const operators = [toNumber, pass].map((op) => declareAnalysis(op, { failures: [] }))
     const hostFindings = async (expression: unknown, options?: FallbackCoverageOptions) =>
-      (await fallbackCoverage(hosted, expression, options)).uncovered.map((finding) => ({
-        ...where(finding),
-        certainty: finding.certainty,
-      }))
+      (await fallbackCoverage(hosted, expression, { ...options, operators })).uncovered.map(
+        (finding) => ({
+          ...where(finding),
+          certainty: finding.certainty,
+        })
+      )
 
     test('a NaN from the data is refused only where it must be a number', async () => {
       expect(await hostFindings({ $toNumber: '$data.n' }, strict)).toEqual([nonFinite])
@@ -709,9 +711,9 @@ describe('what a node returns', () => {
     })
 
     test('a NaN known exactly is refused at either level', async () => {
-      expect(await hostFindings({ $toNumber: NaN })).toEqual([
-        { ...nonFinite, certainty: 'always' },
-      ])
+      // A host body is never run, so nothing shows it returns the NaN it is
+      // given rather than a number
+      expect(await hostFindings({ $toNumber: NaN })).toEqual([nonFinite])
       expect(await hostFindings({ $pass: NaN })).toEqual([])
     })
 
@@ -790,7 +792,7 @@ describe('value ranges', () => {
     expect(await findings(divisor(0))).toEqual([byZero])
   })
 
-  describe("a host operator's declared range", () => {
+  describe("a host operator's range", () => {
     const values = { values: { type: 'array' as const } }
     const total = defineOperator({
       name: 'total',
@@ -798,17 +800,15 @@ describe('value ranges', () => {
       parameters: values,
       positionalParams: ['...values'],
       returns: 'number',
-      analysis: { output: { sum: 'values' } },
       evaluate: ({ values }) => (values as number[]).reduce((sum, value) => sum + value, 0),
     })
-    const word = defineOperator({
-      name: 'word',
+    const dash = defineOperator({
+      name: 'dash',
       category: 'string',
       parameters: { value: { type: 'string' } },
       positionalParams: ['value'],
       returns: 'string',
-      analysis: { output: { type: 'string', minLength: 1 } },
-      evaluate: ({ value }) => value || '-',
+      evaluate: () => '-',
     })
     const picky = defineOperator({
       name: 'picky',
@@ -816,24 +816,46 @@ describe('value ranges', () => {
       parameters: { value: { type: 'string' } },
       positionalParams: ['value'],
       returns: 'string',
-      analysis: { failures: [{ code: 'operator-failure', when: { value: { empty: true } } }] },
       evaluate: ({ value }) => {
         if (value === '') throw new OperatorFailure('nothing to pick')
         return value
       },
     })
-    const hosts = new FigTree({ operators: [coreOperators, [total, word, picky]] })
+    const hosts = new FigTree({ operators: [coreOperators, [total, dash, picky]] })
+    const operators = [
+      // Non-negative elements sum to at least 0
+      declareAnalysis(total, {
+        gamut: ({ values }, helpers) => {
+          const each = helpers.span(helpers.elementOf(values))
+          return each !== undefined && each.min >= 0
+            ? helpers.range({ min: 0, integer: each.integer })
+            : helpers.type('number')
+        },
+        failures: [{ code: 'non-finite-result', overflow: true }],
+      }),
+      declareAnalysis(dash, { gamut: (_, helpers) => helpers.exactly('-'), failures: [] }),
+      declareAnalysis(picky, {
+        failures: ({ value }, helpers) => [
+          { code: 'operator-failure', occurs: helpers.isEmpty(value) },
+        ],
+      }),
+    ]
+    const hostFindings = async (expression: unknown) =>
+      (await fallbackCoverage(hosts, expression, { operators })).uncovered.map((finding) => ({
+        ...where(finding),
+        certainty: finding.certainty,
+      }))
 
-    test('reaches the rules of the node it feeds', async () => {
-      expect(await findings({ $picky: { $word: text } }, hosts)).toEqual([])
-      expect(await findings({ $picky: text }, hosts)).toEqual([
+    test('reaches the failures of the node it feeds', async () => {
+      expect(await hostFindings({ $picky: { $dash: text } })).toEqual([])
+      expect(await hostFindings({ $picky: text })).toEqual([
         { path: [], code: ErrorCodes.operatorFailure, certainty: 'may' },
       ])
     })
 
     test('a sum over an array that may be empty may be 0', async () => {
       const ones = { $map: { input: '$data.list', nullInputDefault: [], each: 1 } }
-      expect(await findings({ $divide: [1, { $total: ones }] }, hosts)).toEqual([
+      expect(await hostFindings({ $divide: [1, { $total: ones }] })).toEqual([
         { ...byZero, path: [] },
         {
           path: ['$divide', 1, '$total'],
@@ -842,43 +864,14 @@ describe('value ranges', () => {
           certainty: 'may',
         },
       ])
-    })
-
-    test('defineOperator() refuses a malformed range', () => {
-      const declare = (output: unknown) => () =>
-        defineOperator({
-          name: 'ranged',
-          category: 'math',
-          parameters: { value: { type: 'number' }, values: { type: 'array' } },
-          analysis: { output },
-          evaluate: () => 1,
-        } as unknown as Parameters<typeof defineOperator>[0])
-      const refused = expect.objectContaining({ code: ErrorCodes.invalidDefinition })
-      for (const output of [
-        { type: 'integer', min: 0, max: 9 },
-        { type: 'string', minLength: 1 },
-        { arrayOf: 'string', minLength: 1 },
-        { difference: ['value', 'value'] },
-        { byParam: 'value', cases: { '': 'string' }, otherwise: { type: 'array', minLength: 1 } },
-        { oneOf: [{ sum: 'values' }, { product: 'values' }, { abs: 'value' }] },
-        { oneOf: [{ min: 'values' }, { max: 'values' }] },
+      expect(await hostFindings({ $divide: [1, { $plus: [{ $total: ones }, 1] }] })).toEqual([
+        {
+          path: ['$divide', 1, '$plus', 0, '$total'],
+          code: ErrorCodes.typeCheck,
+          parameter: 'input',
+          certainty: 'may',
+        },
       ])
-        expect(declare(output)).not.toThrow()
-      for (const output of [
-        { type: 'integer', min: 'a' },
-        { type: 'integer', min: 2, max: 1 },
-        { type: 'number', max: Infinity },
-        { type: 'integer', minLength: 1 },
-        { type: 'string', min: 0 },
-        { type: 'any', min: 0 },
-        { type: 'array', minLength: -1 },
-        { arrayOf: 'string', minLength: 0.5 },
-        { difference: ['value'] },
-        { difference: ['value', 'nope'] },
-        { sum: 'nope' },
-        { byParam: 'value', cases: {}, otherwise: { param: 'nope' } },
-      ])
-        expect(declare(output)).toThrow(refused)
     })
   })
 })
@@ -939,27 +932,51 @@ describe("an operator's own failures", () => {
     const picky = defineOperator({
       ...base,
       name: 'picky',
-      analysis: {
-        failures: [{ code: 'operator-failure', parameter: 'value', when: { value: '' } }],
-      },
       evaluate: ({ value }) => {
         if (value === '') throw new OperatorFailure('nothing to pick')
         return value
       },
     })
-    const fetching = defineOperator({ ...base, name: 'fetching', analysis: { external: true } })
+    const fetching = defineOperator({ ...base, name: 'fetching' })
     const hosts = new FigTree({ operators: [coreOperators, [picky, fetching]] })
+    const operators = [
+      declareAnalysis(picky, {
+        failures: ({ value }, helpers) => [
+          {
+            code: 'operator-failure',
+            parameter: 'value',
+            occurs: helpers.is(value, ''),
+            message: "'value' is empty",
+          },
+        ],
+      }),
+      // A gamut alone: it may still fail whatever its inputs
+      declareAnalysis(fetching, { gamut: (_, helpers) => helpers.type('string') }),
+    ]
+    const hostFindings = async (expression: unknown) =>
+      (await fallbackCoverage(hosts, expression, { operators })).uncovered
 
-    test('a declared one fails only as its rules say', async () => {
-      expect(await ownFindings({ $picky: 'x' }, hosts)).toEqual([])
-      expect(await ownFindings({ $picky: '' }, hosts)).toEqual([
-        { path: [], code: ErrorCodes.operatorFailure, parameter: 'value', certainty: 'always' },
+    test('a declared one fails only as its entries say', async () => {
+      expect(await hostFindings({ $picky: 'x' })).toEqual([])
+      expect(await hostFindings({ $picky: '' })).toEqual([
+        {
+          path: [],
+          code: ErrorCodes.operatorFailure,
+          message: "picky – operator-failure when 'value' is empty",
+          certainty: 'always',
+          operator: 'picky',
+          parameter: 'value',
+        },
       ])
     })
 
-    test('an undeclared one, or one declared external, may fail whatever its inputs', async () => {
+    test('an undeclared one, or one declaring no failures, may fail whatever its inputs', async () => {
       expect(await ownFindings(node)).toEqual([{ path: [], code: external, certainty: 'may' }])
-      expect(await ownFindings({ $fetching: 'x' }, hosts)).toEqual([
+      expect((await hostFindings({ $fetching: 'x' })).map(where)).toEqual([
+        { path: [], code: external },
+      ])
+      // Without its analysis, picky is external too
+      expect(await ownFindings({ $picky: 'x' }, hosts)).toEqual([
         { path: [], code: external, certainty: 'may' },
       ])
     })
@@ -972,23 +989,126 @@ describe("an operator's own failures", () => {
       ])
     })
 
-    test('defineOperator() refuses a malformed analysis', () => {
-      const refused = (analysis: unknown) =>
-        expect(() =>
-          defineOperator({ ...base, name: 'bad', analysis } as unknown as Parameters<
-            typeof defineOperator
-          >[0])
-        ).toThrow(expect.objectContaining({ code: ErrorCodes.invalidDefinition }))
-      refused([])
-      refused({ extra: true })
-      refused({ external: false })
-      refused({ external: true, failures: [] })
-      refused({ failures: [{}] })
-      refused({ failures: [{ code: 'x', when: { nope: 1 } }] })
-      refused({ failures: [{ code: 'x', when: { value: { below: 'a' } } }] })
-      refused({ failures: [{ code: 'x', parameter: 'nope' }] })
-      refused({ failures: [{ code: 'x', may: false }] })
+    test('an entry counts as the core rules do: by its answer, its flags and its options', async () => {
+      const flagged = defineOperator({ ...base, name: 'flagged' })
+      const flaggedHosts = new FigTree({ operators: [[flagged]] })
+      const run = async (entries: FailureEntry[], instance = flaggedHosts) =>
+        (
+          await fallbackCoverage(
+            instance,
+            { $flagged: 'x' },
+            {
+              operators: [declareAnalysis(flagged, { failures: entries })],
+            }
+          )
+        ).uncovered.map(({ certainty, message }) => ({ certainty, message }))
+      const code = 'operator-failure'
+      expect(await run([{ code, occurs: 'no' }])).toEqual([])
+      expect(await run([{ code }])).toEqual([
+        { certainty: 'may', message: 'flagged – operator-failure' },
+      ])
+      expect(await run([{ code, occurs: 'yes', may: true }])).toEqual([
+        { certainty: 'may', message: 'flagged – operator-failure possible' },
+      ])
+      expect(await run([{ code: 'non-finite-result', occurs: 'yes', overflow: true }])).toEqual([])
+      expect(await run([{ code, occurs: 'yes', options: { strictDataPaths: true } }])).toEqual([])
+      expect(
+        await run(
+          [{ code, occurs: 'yes', options: { strictDataPaths: true } }],
+          new FigTree({ operators: [[flagged]], strictDataPaths: true })
+        )
+      ).toEqual([{ certainty: 'always', message: 'flagged – operator-failure' }])
     })
+  })
+})
+
+describe('declareAnalysis', () => {
+  const base = {
+    category: 'string' as const,
+    parameters: { value: { type: 'string' as const } },
+    positionalParams: ['value'],
+    returns: 'string' as const,
+    evaluate: ({ value }: { value: string }) => value,
+  }
+  const mine = defineOperator({ ...base, name: 'mine' })
+  const other = defineOperator({ ...base, name: 'other' })
+  const hosts = new FigTree({ operators: [coreOperators, [mine]] })
+  const invalidDefinition = expect.objectContaining({ code: ErrorCodes.invalidDefinition })
+  const invalidOptions = expect.objectContaining({ code: ErrorCodes.invalidOptions })
+
+  test('refuses anything but a built definition with a hook of the right kind', () => {
+    const declare = (operator: unknown, hooks: unknown) => () =>
+      declareAnalysis(operator as never, hooks as never)
+    expect(declare({ ...base, name: 'raw' }, { failures: [] })).toThrow(invalidDefinition)
+    expect(declare(mine, [])).toThrow(invalidDefinition)
+    expect(declare(mine, {})).toThrow(invalidDefinition)
+    expect(declare(mine, { failures: [], extra: 1 })).toThrow(invalidDefinition)
+    expect(declare(mine, { gamut: [] })).toThrow(invalidDefinition)
+    expect(declare(mine, { failures: {} })).toThrow(invalidDefinition)
+    expect(declare(mine, { failures: null })).toThrow(invalidDefinition)
+    expect(declare(mine, { failures: [] })).not.toThrow()
+    expect(declare(mine, { gamut: () => [] })).not.toThrow()
+    expect(Object.isFrozen(declareAnalysis(mine, { failures: [] }))).toBe(true)
+  })
+
+  test("refuses an 'operators' option that is not one analysis each of the instance's own", async () => {
+    const coverage = (operators: unknown) =>
+      fallbackCoverage(hosts, 1, { operators: operators as OperatorAnalysis[] })
+    const analysis = declareAnalysis(mine, { failures: [] })
+    await expect(coverage(analysis)).rejects.toThrow(invalidOptions)
+    await expect(coverage([{ operator: mine, failures: [] }])).rejects.toThrow(invalidOptions)
+    await expect(coverage([declareAnalysis(other, { failures: [] })])).rejects.toThrow(
+      invalidOptions
+    )
+    await expect(coverage([analysis, declareAnalysis(mine, { failures: [] })])).rejects.toThrow(
+      invalidOptions
+    )
+    const divide = coreOperators.find((op) => op.name === 'divide')!
+    await expect(coverage([declareAnalysis(divide, { failures: [] })])).rejects.toThrow(
+      invalidOptions
+    )
+    await expect(coverage([analysis])).resolves.toEqual({ uncovered: [], covered: [] })
+  })
+
+  test("a hook's mistake fails the analysis, naming the operator", async () => {
+    const coverage = (hooks: Pick<OperatorAnalysis, 'gamut' | 'failures'>) =>
+      fallbackCoverage(hosts, { $mine: '$data.s' }, { operators: [declareAnalysis(mine, hooks)] })
+    const naming = (message: RegExp) =>
+      expect.objectContaining({
+        code: ErrorCodes.invalidDefinition,
+        operator: 'mine',
+        message: expect.stringMatching(message),
+      })
+    await expect(
+      coverage({
+        failures: () => {
+          throw new Error('oops')
+        },
+      })
+    ).rejects.toThrow(naming(/'mine' threw in its 'failures' hook: oops/))
+    await expect(coverage({ gamut: () => 'x' as never })).rejects.toThrow(
+      naming(/other than a gamut/)
+    )
+    await expect(coverage({ gamut: () => [{ type: 'colour' }] as never })).rejects.toThrow(
+      naming(/other than a gamut/)
+    )
+    for (const failures of [
+      () => 'x' as never,
+      [{ occurs: 'yes' }] as never,
+      [{ code: 'operator-failure', occurs: 'sometimes' }] as never,
+      [{ code: 'operator-failure', parameter: 'nope' }],
+    ])
+      await expect(coverage({ failures })).rejects.toThrow(naming(/not a list of entries/))
+    await expect(
+      coverage({ failures: (_, helpers) => [{ code: 'x', occurs: helpers.isSupplied('nope') }] })
+    ).rejects.toThrow(naming(/'nope' is not a declared parameter/))
+    await expect(
+      coverage({
+        failures: ({ value }, helpers) => [
+          { code: 'x', occurs: helpers.is(value, ['a'] as never) },
+        ],
+      })
+    ).rejects.toThrow(naming(/is\(\) compares with/))
   })
 })
 
@@ -1102,53 +1222,43 @@ describe('running a node', () => {
     expect(await findings({ $map: { input: [1], nullInputDefault: node, each } })).toEqual([])
   })
 
-  test('a declared host body is run, async or not, and its run replaces its rules', async () => {
+  test('a host body is never run, declared or not: its analysis answers for it', async () => {
+    let calls = 0
     const later = defineOperator({
       name: 'later',
       category: 'other',
       parameters: { value: { type: 'number' } },
       positionalParams: ['value'],
       returns: 'number',
-      analysis: {},
       evaluate: async ({ value }) => {
+        calls++
         await Promise.resolve()
         if (value < 0) throw new OperatorFailure('negative')
         return value
       },
     })
     const hosts = new FigTree({ operators: [coreOperators, [risky, later]] })
-    expect(await findings({ $later: -1 }, hosts)).toEqual([
+    const operators = [
+      declareAnalysis(later, {
+        gamut: ({ value }) => value,
+        failures: ({ value }, helpers) => [
+          { code: 'operator-failure', occurs: helpers.isBelow(value, 0) },
+        ],
+      }),
+    ]
+    const hostFindings = async (expression: unknown) =>
+      (await fallbackCoverage(hosts, expression, { operators })).uncovered.map((finding) => ({
+        ...where(finding),
+        certainty: finding.certainty,
+      }))
+    expect(await hostFindings({ $later: -1 })).toEqual([
       { path: [], code: ErrorCodes.operatorFailure, certainty: 'always' },
     ])
-    expect(await findings({ $divide: [1, { $later: 2 }] }, hosts)).toEqual([])
-    // An undeclared one is never run
-    expect(await findings({ $risky: 2 }, hosts)).toEqual([
+    expect(await hostFindings({ $divide: [1, { $later: 2 }] })).toEqual([])
+    expect(await hostFindings({ $risky: 2 })).toEqual([
       { path: [], code: external, certainty: 'may' },
     ])
-  })
-
-  test('a declared body that does not settle is given up on, and not run again', async () => {
-    let calls = 0
-    const waiting = defineOperator({
-      name: 'waiting',
-      category: 'other',
-      parameters: { value: { type: 'string' } },
-      positionalParams: ['value'],
-      returns: 'string',
-      analysis: {},
-      evaluate: () => {
-        calls++
-        return new Promise<string>(() => {})
-      },
-    })
-    const hosts = new FigTree({ operators: [coreOperators, [waiting]] })
-    // Its rules and its `returns` decide: a string, which may be empty
-    const expression = {
-      a: { $divide: [1, { $length: { $waiting: 'x' } }] },
-      b: { $waiting: 'y' },
-    }
-    expect(await findings(expression, hosts)).toEqual([divisor(['a'], 'may')])
-    expect(calls).toBe(1)
+    expect(calls).toBe(0)
   })
 })
 
@@ -1262,7 +1372,7 @@ describe('per-element walks', () => {
     expect(await findings({ $map: { input: [], each: { $divide: [1, 0] } } })).toEqual([])
   })
 
-  test('a host body asking for an element the input does not have is not run', async () => {
+  test("a host iterator's each is given to its hooks as its elements gave it", async () => {
     const sixth = defineOperator({
       name: 'sixth',
       category: 'array',
@@ -1271,15 +1381,33 @@ describe('per-element walks', () => {
         each: { type: 'any', evaluationMode: 'perElement', over: 'input' },
       },
       positionalParams: ['input', 'each'],
-      analysis: {},
       evaluate: ({ each }) => each.evaluate(5),
     })
     const hosts = new FigTree({ operators: [coreOperators, [sixth]] })
-    // The engine binds no element, so it returns null and nothing fails; a
-    // run giving it the one element's value would say the root always does
-    const { uncovered } = await fallbackCoverage(hosts, {
-      $divide: [1, { $subtract: [{ $sixth: { input: [2], each: '$element' } }, 2] }],
+    const all = declareAnalysis(sixth, {
+      gamut: ({ each }, helpers) => helpers.arrayOf(each),
+      failures: [],
     })
+    const doubled = { $sixth: { input: [1, 2], each: { $multiply: ['$element', 2] } } }
+    expect(
+      (
+        await fallbackCoverage(
+          hosts,
+          { $divide: [1, { $find: [doubled, true] }] },
+          {
+            operators: [all],
+          }
+        )
+      ).uncovered
+    ).toEqual([])
+    // The engine binds no element, so it returns null and nothing fails; a
+    // hook giving the one element's value would say the root always does
+    const one = declareAnalysis(sixth, { failures: [] })
+    const { uncovered } = await fallbackCoverage(
+      hosts,
+      { $divide: [1, { $subtract: [{ $sixth: { input: [2], each: '$element' } }, 2] }] },
+      { operators: [one] }
+    )
     expect(uncovered.map(({ path, certainty }) => ({ path, certainty }))).toEqual([
       { path: [], certainty: 'may' },
       { path: ['$divide', 1], certainty: 'may' },

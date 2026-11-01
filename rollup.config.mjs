@@ -129,7 +129,9 @@ export default [
   // pass above under the source's own path) into one self-contained .d.ts
   // beside its bundle. Separate passes, so no entry's types import from
   // another's: the types shared by two entries are structural, so a copy in
-  // each is the same type
+  // each is the same type. Not one branded by a unique symbol, whose copies
+  // are two types: a subpath's signatures take none (the packed-package
+  // check in codegen/checkPackage.mjs passes root-typed values to them)
   ...ENTRIES.map(({ name, source }, i) => ({
     input: source.replace(/^src\//, './build/dts/').replace(/\.ts$/, '.d.ts'),
     output: { file: `build/${name}.d.ts`, format: 'es' },

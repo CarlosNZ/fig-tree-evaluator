@@ -79,7 +79,7 @@ Three things an author never declares, because the walk derives them:
 - **A fallback's values.** A node with a fallback returns its fallback's values too; the walk adds them.
 - **The parameters' own layers.** What a parameter receives is its child's output after the engine's layers: the default where it is unsupplied or a null means omitted, the replacement where `replacesNullAt` applies, and the propagating null removed.
 
-**What is contract.** `Gamut` and `Answer` are exported types, and both hooks are typed by them. The member list is not contract: a hook reads and builds gamuts through the helpers below, never by writing `[{ type: 'number', min: 1 }]` or reading `.min` off a member. The reason is soundness, not secrecy. A hook that switched on member kinds would go quietly wrong when a kind is added, because a gamut it does not recognise must still come back as a superset, and a hook that returns too little hides failures downstream. The helpers absorb that, and core writes against the same helpers, so a host's hook reads like core's.
+**What is contract.** `Gamut` and `Answer` are exported types, and both hooks are typed by them. The member list is not contract: a hook reads and builds gamuts through the helpers below, never by writing `[{ type: 'number', min: 1 }]` or reading `.min` off a member. The reason is soundness, not secrecy. A hook that switched on member kinds would go quietly wrong when a kind is added, because a gamut it does not recognise must still come back as a superset, and a hook that returns too little hides failures downstream. The helpers absorb that, and core writes against the same helpers, so a host's hook reads like core's. `Gamut` is therefore an opaque type, a brand on the walk's own list with no runtime wrapper: the walk passes its lists as they are and TypeScript refuses `.min` or an index on one, so the boundary costs nothing.
 
 ## The `gamut` hook
 
@@ -127,7 +127,7 @@ The hook is called for a node the walk does not run. For one it runs, the run's 
 
 ## The helpers
 
-One bag, `helpers`, the second argument of both hooks, as it is of `validate`. It holds what is common across operators or saves an implementation an author should not attempt, and nothing else: a step one operator needs is written in that operator's hook, as `divide`'s quotient is. Every helper that asks a question asks it of the value the parameter receives, over everything that value could be, and returns an `Answer`: "is it 0?" rather than "does the set include 0?", since the finding's certainty needs the three-way form. The one exception, `helpers.isSupplied`, asks about the parameter rather than its value, and is a boolean.
+One bag, `helpers`, the second argument of both hooks, as it is of `validate`. It holds what is common across operators or saves an implementation an author should not attempt, and nothing else: a step one operator needs is written in that operator's hook, as `divide`'s quotient is. Every helper that asks a question asks it of the value the parameter receives, over everything that value could be, and returns an `Answer`: "is it 0?" rather than "does the set include 0?", since the finding's certainty needs the three-way form. Two helpers ask about the parameter rather than its value, `isSupplied` and `refused`, and take its name; `isSupplied` is three-way too, since a parameter whose null means omitted is absent only when a null arrives.
 
 ### Asking
 
@@ -138,7 +138,7 @@ One bag, `helpers`, the second argument of both hooks, as it is of `validate`. I
 | `helpers.isBelow(gamut, n)`                                                 | is the value a number less than `n`. `helpers.not(helpers.isBelow(decimals, 300))` is "300 or more"                                                                                                              |
 | `helpers.isEmpty(gamut)`                                                    | is the value an empty array, string or object                                                                                                                                                                    |
 | `helpers.refused(parameter)`                                                | would the operator's own `validate` hook refuse what this parameter receives: `maybe` while the value is not known, the hook's own answer once it is, given every parameter known exactly and none of the others |
-| `helpers.isSupplied(gamut)`                                                 | a boolean, not an answer, since it is always known: whether the parameter received anything, given or by default                                                                                                 |
+| `helpers.isSupplied(parameter)`                                             | did the parameter receive anything, given or by default: `maybe` for one whose null means omitted, `nullBehavior: 'omit'` with no default, when a null may arrive                                                |
 | `helpers.all(...answers)`, `helpers.any(...answers)`, `helpers.not(answer)` | combine answers: `all` is `no` if any is, `yes` if all are; `any` the reverse; `not` swaps `yes` and `no`                                                                                                        |
 
 ### Reading
@@ -224,7 +224,7 @@ declareAnalysis(plus, {
     {
       code: 'empty-aggregate',
       parameter: 'values',
-      occurs: helpers.all(helpers.isEmpty(values), helpers.isSupplied(expect) ? 'no' : 'yes'),
+      occurs: helpers.all(helpers.isEmpty(values), helpers.not(helpers.isSupplied('expect'))),
     },
     ...(['number', 'string', 'array', 'object'] as const).map((kind) => ({
       code: 'type-check' as const,

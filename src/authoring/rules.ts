@@ -8,22 +8,63 @@
  *
  * The core operators' rules are a table here, keyed by the built
  * definitions themselves, so a host operator reusing a core name never
- * inherits them, and the root never carries them. A host operator declares
- * its own in the definition's `analysis` field. An operator with neither,
- * the I/O operators included, is external: it may fail whatever its inputs.
+ * inherits them, and the root never carries them. A host operator's come
+ * from the `failures` hook of its analysis (./helpers.ts). An operator with
+ * neither, the I/O operators included, is external: it may fail whatever
+ * its inputs.
  */
-import { authoredNames } from '../compile/artifact'
-import { validateHelpers } from '../compile/helpers'
 import { coreOperators } from '../operators'
 import { isPlainObject } from '../utils'
-import type { FailureTest, FailureRule } from '../authoringTypes'
+import type { FailureEntry, OperatorAnalysis } from '../authoringTypes'
+import type { FallbackErrorCode } from '../errorCodes'
 import type { OperatorNode } from '../compile/artifact'
 import type { ValidatedOperatorDefinition } from '../operatorDefinition'
 import type { ExpectedType } from '../typeCheck'
-import { ANY, any, combine, fits, mayBeInfinite } from './known'
+import { hostEntries, presence, refused } from './helpers'
+import type { Hooked } from './helpers'
+import { ANY, any, combine, fits, isBelow, isEmpty, isValue, mayBeInfinite, not } from './known'
 import type { Answer, Known, Member } from './known'
 import type { Inputs } from './inputs'
 import type { Failure } from './findings'
+
+/**
+ * One way a core operator's body can fail: the code its error carries, and
+ * the conditions on what its parameters receive under which it does.
+ */
+export interface FailureRule {
+  code: FallbackErrorCode
+  /** The parameter the failure is about, which its finding names */
+  parameter?: string
+  /** Tests on parameters, by name; every one must hold. Absent: always holds */
+  when?: Record<string, FailureTest>
+  /** Options the rule needs, such as { strictDataPaths: true } */
+  options?: Record<string, unknown>
+  /** Holding makes the failure possible, not certain */
+  may?: true
+  /** A failure only extreme numbers reach: counted under strictNumbers only */
+  overflow?: true
+}
+
+/** A test on what one parameter receives. */
+export type FailureTest =
+  /** Equals this value */
+  | string
+  | number
+  | boolean
+  | null
+  /** Has this type */
+  | { type: ExpectedType }
+  /** A number less than this */
+  | { below: number }
+  /** An empty array, string or object */
+  | { empty: true }
+  /** The parameter has a value, supplied or defaulted, or has none */
+  | { supplied: boolean }
+  /** The operator's `validate` hook refuses it */
+  | { invalid: true }
+  /** Some element of an array, or value of an object, passes */
+  | { some: FailureTest }
+  | { not: FailureTest }
 
 const NON_FINITE = 'non-finite-result'
 const EMPTY = 'empty-aggregate'
@@ -111,75 +152,32 @@ export const CORE_RULES: Record<string, FailureRule[]> = {
 
 let core: Map<ValidatedOperatorDefinition, FailureRule[]> | undefined
 
-/**
- * An operator's own failure rules, or `external` for one that may fail
- * whatever its inputs.
- */
-export const rulesOf = (definition: ValidatedOperatorDefinition): FailureRule[] | 'external' => {
-  const declared = definition.analysis
-  if (declared !== undefined) return declared.external ? 'external' : (declared.failures ?? [])
-  core ??= new Map(coreOperators.map((built) => [built, CORE_RULES[built.name] ?? []]))
-  return core.get(definition) ?? 'external'
-}
+const coreRules = () =>
+  (core ??= new Map(coreOperators.map((built) => [built, CORE_RULES[built.name] ?? []])))
 
 /**
- * Whether an operator's body can wait on something outside the evaluation,
- * so a timeout can cut it off: one doing I/O, and any of the host's, since
- * declaring `analysis` says what a body fails on and returns, not how long
- * it takes. A core body waits only on its children.
+ * Where an operator's analysis comes from: the host's declaration, the
+ * core table, or nowhere, which makes it external.
  */
-export const mayWait = (definition: ValidatedOperatorDefinition): boolean =>
-  definition.analysis !== undefined || rulesOf(definition) === 'external'
+export const analysisOf = (
+  definition: ValidatedOperatorDefinition,
+  analyses: ReadonlyMap<ValidatedOperatorDefinition, OperatorAnalysis>
+): OperatorAnalysis | 'core' | 'external' =>
+  analyses.get(definition) ?? (coreRules().has(definition) ? 'core' : 'external')
+
+/** A core operator's failure rules. */
+export const rulesOf = (definition: ValidatedOperatorDefinition): FailureRule[] =>
+  coreRules().get(definition) ?? []
 
 // ── The tests ───────────────────────────────────────────────────────
 
-const invert = (answer: Answer): Answer =>
-  answer === 'yes' ? 'no' : answer === 'no' ? 'yes' : 'maybe'
-
 /** A test against one member of what a parameter receives. */
 const testMember = (test: FailureTest, member: Member): Answer => {
-  if (test === null || typeof test !== 'object') {
-    if ('exact' in member) return member.exact === test ? 'yes' : 'no'
-    const type: ExpectedType = test === null ? 'null' : { literal: [test] }
-    return fits([member], type) === 'no' ? 'no' : 'maybe'
-  }
+  if (test === null || typeof test !== 'object') return isValue([member], test)
   if ('type' in test) return fits([member], test.type)
-  if ('not' in test) return invert(testMember(test.not, member))
-  if ('below' in test) {
-    if ('exact' in member)
-      return typeof member.exact === 'number' && member.exact < test.below ? 'yes' : 'no'
-    if (member.type === 'number' || member.type === 'integer')
-      return (member.max ?? Infinity) < test.below
-        ? 'yes'
-        : (member.min ?? -Infinity) >= test.below
-          ? 'no'
-          : 'maybe'
-    // An infinity of either sign
-    return member.type === 'infinite' ? 'maybe' : 'no'
-  }
-  if ('empty' in test) {
-    if ('exact' in member) {
-      const { exact } = member
-      if (typeof exact === 'string' || Array.isArray(exact))
-        return exact.length === 0 ? 'yes' : 'no'
-      return isPlainObject(exact) && Object.keys(exact).length === 0 ? 'yes' : 'no'
-    }
-    switch (member.type) {
-      case 'array':
-        if (member.length !== undefined) return member.length === 0 ? 'yes' : 'no'
-        return member.minLength ? 'no' : 'maybe'
-      case 'object':
-        return member.keys === undefined
-          ? 'maybe'
-          : Object.keys(member.keys).length === 0
-            ? 'yes'
-            : 'no'
-      case 'string':
-        return member.minLength ? 'no' : 'maybe'
-      default:
-        return 'no'
-    }
-  }
+  if ('not' in test) return not(testMember(test.not, member))
+  if ('below' in test) return isBelow([member], test.below)
+  if ('empty' in test) return isEmpty([member])
   if ('some' in test) {
     if ('exact' in member) {
       const { exact } = member
@@ -217,46 +215,19 @@ const testMember = (test: FailureTest, member: Member): Answer => {
 export const testKnown = (test: FailureTest, known: Known): Answer =>
   known.length === 0 ? 'no' : combine(known.map((member) => testMember(test, member)))
 
-const exactValue = (known: Known | undefined): { value: unknown } | undefined =>
-  known !== undefined && known.length === 1 && 'exact' in known[0]
-    ? { value: known[0].exact }
-    : undefined
-
-/**
- * Whether the operator's `validate` hook refuses a parameter's value, once
- * it is known exactly. The hook is given every parameter known exactly and
- * none of the others, as the static check gives it the values known before
- * evaluation.
- */
-const refused = (node: OperatorNode, name: string, inputs: Inputs): Answer => {
-  const { validate } = node.entry.definition
-  if (validate === undefined) return 'no'
-  if (exactValue(inputs.received[name]) === undefined) return 'maybe'
-  const literals: Record<string, unknown> = {}
-  for (const [parameter, known] of Object.entries(inputs.received)) {
-    const exact = exactValue(known)
-    if (exact !== undefined && !inputs.absent.has(parameter)) literals[parameter] = exact.value
-  }
-  const findings = validate(literals, validateHelpers, authoredNames(node))
-  return findings.some((finding) => finding.severity === 'error' && finding.parameter === name)
-    ? 'yes'
-    : 'no'
-}
-
 const testParameter = (
   node: OperatorNode,
   name: string,
   test: FailureTest,
   inputs: Inputs
 ): Answer => {
-  const known = inputs.received[name]
-  const present: Answer = known === undefined ? 'no' : inputs.absent.has(name) ? 'maybe' : 'yes'
+  const present = presence(inputs, name)
   if (test !== null && typeof test === 'object' && 'supplied' in test)
-    return test.supplied ? present : invert(present)
+    return test.supplied ? present : not(present)
   if (present === 'no') return 'no'
   if (test !== null && typeof test === 'object' && 'invalid' in test)
     return refused(node, name, inputs)
-  return testKnown(test, known)
+  return testKnown(test, inputs.received[name])
 }
 
 // ── Messages ────────────────────────────────────────────────────────
@@ -273,20 +244,24 @@ const phrase = (test: FailureTest): string => {
   return `with some element ${phrase(test.some)}`
 }
 
-const describeRule = (operator: string, rule: FailureRule): string => {
+/** A rule's conditions, as a finding's message gives them. */
+const conditionsOf = (rule: FailureRule): string | undefined => {
   const conditions = Object.entries(rule.when ?? {}).map(([name, test]) =>
     test !== null && typeof test === 'object' && 'some' in test
       ? `some element of '${name}' is ${phrase(test.some)}`
       : `'${name}' is ${phrase(test)}`
   )
-  const when =
-    conditions.length > 0
-      ? `when ${conditions.join(' and ')}`
-      : rule.overflow
-        ? 'on extreme numbers'
-        : 'whatever its inputs'
-  return `${operator} – ${rule.code} ${rule.may ? 'possible ' : ''}${when}`
+  return conditions.length > 0 ? conditions.join(' and ') : undefined
 }
+
+const describe = (operator: string, entry: FailureEntry): string =>
+  `${operator} – ${entry.code}${entry.may ? ' possible' : ''}${
+    entry.message !== undefined
+      ? ` when ${entry.message}`
+      : entry.overflow
+        ? ' on extreme numbers'
+        : ''
+  }`
 
 // ── Rule 5 ──────────────────────────────────────────────────────────
 
@@ -300,6 +275,22 @@ export interface RuleOptions {
 const infiniteOperand = (inputs: Inputs, strictNumbers: boolean): boolean =>
   Object.values(inputs.received).some((known) => mayBeInfinite(known, strictNumbers))
 
+/**
+ * Whether a failure counts here at all: one that needs an option only under
+ * it, and an overflow only under `strictNumbers`, or where an operand is an
+ * infinity known exactly, since arithmetic on one can make NaN
+ * (Infinity - Infinity).
+ */
+const counts = (
+  failure: { overflow?: true; options?: Record<string, unknown> },
+  inputs: Inputs,
+  options: RuleOptions
+): boolean =>
+  !(failure.overflow && !options.strictNumbers && !infiniteOperand(inputs, false)) &&
+  Object.entries(failure.options ?? {}).every(
+    ([key, value]) => (options.evaluation[key] ?? false) === value
+  )
+
 /** One rule's answer for a node, or `no` where its gates shut it. */
 export const answerRule = (
   node: OperatorNode,
@@ -307,11 +298,7 @@ export const answerRule = (
   inputs: Inputs,
   options: RuleOptions
 ): Answer => {
-  // Arithmetic on an infinity can make NaN (Infinity - Infinity), which an
-  // overflow rule stands for at either level
-  if (rule.overflow && !options.strictNumbers && !infiniteOperand(inputs, false)) return 'no'
-  for (const [key, value] of Object.entries(rule.options ?? {}))
-    if ((options.evaluation[key] ?? false) !== value) return 'no'
+  if (!counts(rule, inputs, options)) return 'no'
   const answers = Object.entries(rule.when ?? {}).map(([name, test]) =>
     testParameter(node, name, test, inputs)
   )
@@ -320,23 +307,36 @@ export const answerRule = (
 }
 
 /**
- * The node's own failures, by its rules: one finding for each rule that can
- * hold, `always` where it must and no null can end the node first. An
- * overflow takes extreme numbers, which a rule cannot ask for, so it is
- * never certain; nor is a non-finite result where an operand may be an
- * infinity, which the body carries through instead of failing
- * (`Infinity / 0`). An external operator may fail whatever its inputs, with
- * whatever code its own code throws, which the one `operator-failure`
- * finding stands for.
+ * The node's own failures, by its rules or its analysis's entries: one
+ * finding for each that can happen, `always` where it must and no null can
+ * end the node first. An overflow takes extreme numbers, which nothing can
+ * ask for, so it is never certain; nor is a non-finite result where an
+ * operand may be an infinity, which the body carries through instead of
+ * failing (`Infinity / 0`). An external operator may fail whatever its
+ * inputs, with whatever code its own code throws, which the one
+ * `operator-failure` finding stands for.
  */
 export const ownFailures = (
   node: OperatorNode,
   inputs: Inputs,
-  options: RuleOptions
+  options: RuleOptions,
+  analysis: Hooked | 'core' | 'external'
 ): Failure[] => {
-  const rules = rulesOf(node.entry.definition)
   const at = { path: node.path, operator: node.name, order: [node.order] }
-  if (rules === 'external')
+  const entries =
+    analysis === 'core'
+      ? rulesOf(node.entry.definition).map((rule) => {
+          const message = conditionsOf(rule)
+          return {
+            ...rule,
+            occurs: answerRule(node, rule, inputs, options),
+            ...(message !== undefined ? { message } : {}),
+          }
+        })
+      : analysis === 'external'
+        ? analysis
+        : hostEntries(analysis)
+  if (entries === 'external')
     return [
       {
         ...at,
@@ -347,22 +347,22 @@ export const ownFailures = (
     ]
   const failures: Failure[] = []
   const carried = infiniteOperand(inputs, options.strictNumbers)
-  for (const rule of rules) {
-    const answer = answerRule(node, rule, inputs, options)
-    if (answer === 'no') continue
+  for (const entry of entries) {
+    const answer = entry.occurs ?? 'maybe'
+    if (answer === 'no' || !counts(entry, inputs, options)) continue
     failures.push({
       ...at,
-      code: rule.code,
-      message: describeRule(node.name, rule),
+      code: entry.code,
+      message: describe(node.name, entry),
       certainty:
         answer === 'yes' &&
-        !rule.may &&
-        !rule.overflow &&
-        !(rule.code === NON_FINITE && carried) &&
+        !entry.may &&
+        !entry.overflow &&
+        !(entry.code === NON_FINITE && carried) &&
         inputs.propagates === 'no'
           ? 'always'
           : 'may',
-      ...(rule.parameter !== undefined ? { parameter: rule.parameter } : {}),
+      ...(entry.parameter !== undefined ? { parameter: entry.parameter } : {}),
     })
   }
   return failures

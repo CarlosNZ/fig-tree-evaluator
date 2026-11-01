@@ -32,6 +32,15 @@ The public switch. A host declares through `declareAnalysis` and passes the resu
 - **Tests:** every test that writes `analysis:` (test/authoring.test.ts, coverage-cases.test.ts, authoring-timeout.test.ts, introspect-operators.test.ts, and any `grep -rn "analysis:" test` finds) moves to `declareAnalysis` plus `operators`. The analysisCheck tests become `declareAnalysis` tests: a definition that is not built, a hook that is not a function or list, an operator the instance lacks, a duplicate, a hook that throws, a hook returning a non-gamut. test/exports.test.ts's type list follows.
 - **Close-out examples:** a host operator declared the old way and the new, with the same report; the root's size drop from the checker leaving.
 
+Departures, for the spec at close-out:
+
+- **A constant NaN or infinity on an input is carried into the output of a node not run.** A host body no longer runs, so `{ $toNumber: NaN }` on a host declared with `failures: []` and no `gamut` lost its boundary failure: only a constant counts at the ordinary level. The output now gains that constant (an infinity as both signs). Core is unaffected wherever it is run; the corpus and the rule checker are unchanged.
+- **The stall guard is gone** (`SETTLE_LIMIT`, `Stalled`): it existed for host bodies, which never run. "A body that does not settle" in v3-fallback-coverage.md goes with step 4.
+- **`declareAnalysis` takes `{ readonly name: string }`, not the definition type**, and `Gamut`'s brand is a string key. Each entry's declarations carry their own copy of the root types, and a type branded by a unique symbol (the definition's own, `WILDCARD` inside it) is a different type in each copy, so a `defineOperator()` result did not fit. Built-ness is checked at runtime, as `fallbackCoverage(fig: unknown)` does; checkPackage's packed typecheck holds it.
+- **A declaration with neither hook is refused:** it would mean exactly what no declaration does.
+- **A host may not declare a core operator** (its analysis is built in). The I/O operators are not core, so a host may declare one.
+- **`HandleView` carries the registry**, which `./authoring` matches declarations to by identity.
+
 Pause for Carl's check.
 
 ## Step 2 — Core on hooks

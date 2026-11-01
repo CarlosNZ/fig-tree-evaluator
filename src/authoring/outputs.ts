@@ -3,9 +3,10 @@
  * docs-dev/v3-specs/v3-fallback-coverage.md): what an operator node
  * returns. An operator whose `returns` is wider than what a node can return
  * declares how its inputs narrow it, in a table here for the core operators
- * and in a host's `analysis.output`; any other returns its `returns`. A
- * declaration can bound what it returns ("Value ranges"): the arithmetic
- * itself is in ./known.ts, so a declaration names only its operation.
+ * and in the `gamut` hook of a host's analysis (./helpers.ts); any other
+ * returns its `returns`. A declaration can bound what it returns ("Value
+ * ranges"): the arithmetic itself is in ./known.ts, so a declaration names
+ * only its operation.
  *
  * Then the result boundary: the engine refuses a NaN result from an operator
  * declared to return a number, and nothing else. Under `strictNumbers`,
@@ -14,7 +15,6 @@
  * passes every boundary.
  */
 import { coreOperators } from '../operators'
-import type { DeclaredOutput } from '../authoringTypes'
 import type { OperatorNode } from '../compile/artifact'
 import type { ValidatedOperatorDefinition } from '../operatorDefinition'
 import { typeNamesNumber } from '../typeCheck'
@@ -48,6 +48,53 @@ import {
 import type { Known, Member } from './known'
 import type { Inputs } from './inputs'
 import type { Failure } from './findings'
+import { hostGamut } from './helpers'
+import type { Hooked } from './helpers'
+
+/**
+ * What a core operator node returns, in terms of what its parameters
+ * receive ("Output declarations" in
+ * docs-dev/v3-specs/v3-fallback-coverage.md).
+ */
+export type DeclaredOutput =
+  /** A fixed type */
+  | ExpectedType
+  /** A number between `min` and `max`, inclusive, where they are given */
+  | { type: 'number' | 'integer'; min?: number; max?: number }
+  /** A string or array at least `minLength` long (a string in code points) */
+  | { type: 'string' | 'array'; minLength?: number }
+  /** What that parameter receives: each element or entry of a lazy container */
+  | { param: string }
+  /** An element of an array parameter */
+  | { elementOf: string }
+  /** The types of an array parameter's elements, as a sum of them is */
+  | { kindOf: string }
+  | { arrayOf: DeclaredOutput; minLength?: number }
+  | { oneOf: DeclaredOutput[] }
+  /** The type a literal parameter names */
+  | { typeNamedBy: string }
+  /**
+   * Chosen by a literal parameter: the case it names, else `otherwise`; all
+   * of them where it is not known
+   */
+  | { byParam: string; cases: Record<string, DeclaredOutput>; otherwise?: DeclaredOutput }
+  /** The first of an array parameter's elements that is not null */
+  | { firstNonNull: string }
+  /**
+   * The sum of an array parameter's elements, from 0 and in order: a range
+   * for numbers, the kind of anything else
+   */
+  | { sum: string }
+  /** The product of an array parameter's numbers, from 1 and in order */
+  | { product: string }
+  /** One number parameter less another */
+  | { difference: [string, string] }
+  /** A number parameter's absolute value */
+  | { abs: string }
+  /** The least of an array parameter's elements: numbers by value */
+  | { min: string }
+  /** The greatest of an array parameter's elements: numbers by value */
+  | { max: string }
 
 /** The core output declarations, by operator name. */
 export const CORE_OUTPUTS: Record<string, DeclaredOutput> = {
@@ -85,7 +132,6 @@ export const CORE_OUTPUTS: Record<string, DeclaredOutput> = {
 let core: Map<ValidatedOperatorDefinition, DeclaredOutput> | undefined
 
 const outputOf = (definition: ValidatedOperatorDefinition): DeclaredOutput | undefined => {
-  if (definition.analysis !== undefined) return definition.analysis.output
   core ??= new Map(
     coreOperators
       .filter((built) => Object.hasOwn(CORE_OUTPUTS, built.name))
@@ -198,32 +244,47 @@ const evaluate = (declared: DeclaredOutput, received: Received): Known => {
 const INFINITE: Known = [{ type: 'infinite' }]
 const NAN: Known = [{ type: 'nan' }]
 
+/** The NaN or infinity a value is exactly: an infinity of either sign. */
+const constantNonFinite = (known: Known): Known =>
+  unionOf(
+    known.map((member): Known => {
+      if (!('exact' in member) || typeof member.exact !== 'number' || Number.isFinite(member.exact))
+        return NOTHING
+      return Number.isNaN(member.exact) ? [member] : [{ exact: Infinity }, { exact: -Infinity }]
+    })
+  )
+
 /**
  * The node's output, and its failure at the result boundary if it can have
- * one. Without a run, a null that must propagate is all the node returns.
+ * one: a host operator's by its `gamut` hook, where it has one. Without a
+ * run, a null that must propagate is all the node returns.
  */
 export const operatorOutput = (
   node: OperatorNode,
   inputs: Inputs,
   elements: Record<string, Known>,
   strictNumbers: boolean,
-  items: Record<string, Known[]> = {}
+  items: Record<string, Known[]> = {},
+  host?: Hooked
 ): { output: Known; boundary?: Failure } => {
   if (inputs.propagates === 'yes') return { output: exactly(null) }
   const { definition } = node.entry
-  const declared = outputOf(definition)
+  const declared = host === undefined ? outputOf(definition) : undefined
   let output =
-    declared !== undefined
+    (host !== undefined ? hostGamut(host) : undefined) ??
+    (declared !== undefined
       ? evaluate(declared, { definition, inputs, elements, items })
-      : ofType(definition.returns)
+      : ofType(definition.returns))
   // A number computed from an infinity may be one too (floor, a sum), and
   // one from NaN is NaN, which only an `any` parameter can have received (a
-  // conversion). NaN made from infinities (Infinity - Infinity) is the
-  // overflow rules' to report
+  // conversion). A constant one stays a constant, of either sign for an
+  // infinity, since only a constant counts at the ordinary level. NaN made
+  // from infinities (Infinity - Infinity) is the overflow rules' to report
   if (fits(output, 'number') !== 'no') {
     const received = Object.values(inputs.received)
     if (received.some((known) => mayBeNonFinite(known) !== 'no')) output = union(output, INFINITE)
     if (received.some((known) => mayBeNaN(known) !== 'no')) output = union(output, NAN)
+    output = unionOf([output, ...received.map(constantNonFinite)])
   }
   if (inputs.propagates === 'maybe') output = union(output, exactly(null))
   return atBoundary(node, output, strictNumbers, inputs.propagates === 'no')

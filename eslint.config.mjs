@@ -202,7 +202,7 @@ export default tseslint.config(
             {
               regex:
                 '^(?!\\./|\\.\\./(FigTree|FigTreeError|OperatorFailure|errorCodes|compile/artifact|compile/helpers|' +
-                'operators|typeCheck|typeIntersection|primitives/path|primitives/truthiness|utils|validation)$)',
+                'operatorDefinition|operators|typeCheck|typeIntersection|primitives/path|primitives/truthiness|utils|validation)$)',
               allowTypeImports: true,
               message:
                 'src/authoring/ imports values only from inside the folder and the engine modules its chunks hold already (`import type` from anywhere).',

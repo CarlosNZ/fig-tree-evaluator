@@ -17,6 +17,7 @@ import { isLiteralType } from '../typeIntersection'
 import { WILDCARD, resolvePath } from '../primitives/path'
 import type { PathSegment } from '../primitives/path'
 import { isPlainObject } from '../utils'
+import type { Answer } from '../authoringTypes'
 
 export type Member =
   | { exact: unknown }
@@ -54,7 +55,7 @@ export type Member =
 export type Known = readonly Member[]
 
 /** no, maybe, yes: the answer to any question the walk asks of a Known. */
-export type Answer = 'no' | 'maybe' | 'yes'
+export type { Answer }
 
 export const NOTHING: Known = []
 
@@ -717,6 +718,59 @@ export const combine = (answers: Answer[]): Answer => {
   if (answers.every((answer) => answer === 'no')) return 'no'
   return 'maybe'
 }
+
+/** `yes` and `no` swapped. */
+export const not = (answer: Answer): Answer =>
+  answer === 'yes' ? 'no' : answer === 'no' ? 'yes' : 'maybe'
+
+/** One question asked of every member. Nothing at all answers no. */
+const ask = (known: Known, question: (member: Member) => Answer): Answer =>
+  known.length === 0 ? 'no' : combine(known.map(question))
+
+/** Whether the value is this one, a primitive. */
+export const isValue = (known: Known, value: unknown): Answer =>
+  ask(known, (member) => {
+    if ('exact' in member) return member.exact === value ? 'yes' : 'no'
+    const type = (value === null ? 'null' : { literal: [value] }) as ExpectedType
+    return fits([member], type) === 'no' ? 'no' : 'maybe'
+  })
+
+/** Whether the value is a number less than `n`. */
+export const isBelow = (known: Known, n: number): Answer =>
+  ask(known, (member) => {
+    if ('exact' in member)
+      return typeof member.exact === 'number' && member.exact < n ? 'yes' : 'no'
+    if (member.type === 'number' || member.type === 'integer')
+      return (member.max ?? Infinity) < n ? 'yes' : (member.min ?? -Infinity) >= n ? 'no' : 'maybe'
+    // An infinity of either sign
+    return member.type === 'infinite' ? 'maybe' : 'no'
+  })
+
+/** Whether the value is an empty array, string or object. */
+export const isEmpty = (known: Known): Answer =>
+  ask(known, (member) => {
+    if ('exact' in member) {
+      const { exact } = member
+      if (typeof exact === 'string' || Array.isArray(exact))
+        return exact.length === 0 ? 'yes' : 'no'
+      return isPlainObject(exact) && Object.keys(exact).length === 0 ? 'yes' : 'no'
+    }
+    switch (member.type) {
+      case 'array':
+        if (member.length !== undefined) return member.length === 0 ? 'yes' : 'no'
+        return member.minLength ? 'no' : 'maybe'
+      case 'object':
+        return member.keys === undefined
+          ? 'maybe'
+          : Object.keys(member.keys).length === 0
+            ? 'yes'
+            : 'no'
+      case 'string':
+        return member.minLength ? 'no' : 'maybe'
+      default:
+        return 'no'
+    }
+  })
 
 const both = (a: Answer, b: Answer): Answer =>
   a === 'no' || b === 'no' ? 'no' : a === 'yes' && b === 'yes' ? 'yes' : 'maybe'
