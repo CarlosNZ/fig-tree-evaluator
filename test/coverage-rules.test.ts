@@ -205,14 +205,16 @@ const deepEqual = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSO
 /**
  * A range around a value, of a shape `pick` chooses: a number bounded at
  * itself on one side or both, reaching 3 past it on the other, or a little
- * around it; a string or array at least its own length, or less, an
- * array's elements widened in turn, in order or not. An empty array may be
- * of numbers that are not there. Anything else stays exact.
+ * around it, or bounded at itself and an infinity besides; an infinity,
+ * or it and finite numbers on its far side; a string or array at least its
+ * own length, or less, an array's elements widened in turn, in order or
+ * not. An empty array may be of numbers that are not there. Anything else
+ * stays exact.
  */
 const around = (value: unknown, pick: () => number): Known => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     const type = Number.isInteger(value) ? 'integer' : 'number'
-    switch (pick() % 6) {
+    switch (pick() % 7) {
       case 0:
         return [{ type, min: value }]
       case 1:
@@ -223,10 +225,17 @@ const around = (value: unknown, pick: () => number): Known => {
         return [{ type, min: value, max: value + 3 }]
       case 4:
         return [{ type, min: value - 3, max: value }]
+      case 5:
+        // An infinity of either sign beside a bound it does not respect
+        return [{ type, min: value, max: value }, { type: 'infinite' }]
       default:
         return [{ type: 'number', min: value - 0.5, max: value + 0.5 }]
     }
   }
+  // An infinity, or the far side of finite numbers from it: what an operand
+  // that may be finite or infinite is as the walk knows it
+  if ((value === Infinity || value === -Infinity) && pick() % 2 === 0)
+    return [{ type: 'integer', min: value > 0 ? -9 : 3, max: value > 0 ? -3 : 9 }, { exact: value }]
   const least = (length: number) => (pick() % 2 === 0 ? length : 0)
   if (typeof value === 'string')
     return [{ type: 'string', minLength: least(Array.from(value).length) }]

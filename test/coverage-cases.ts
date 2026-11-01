@@ -802,6 +802,68 @@ export const sections: Record<string, CoverageCase[]> = {
       ],
     },
     {
+      name: 'the greater of anything and 1 is never 0',
+      expression: { $divide: [10, { $max: ['$data.x', 1] }] },
+      uncovered: [
+        { at: [], code: 'type-check', parameter: 'by' },
+        { at: ['$divide', 1], code: 'type-check', parameter: 'values', witness: { x: 'a' } },
+      ],
+      note: "A false positive the design accepts: max's homogeneous constraint does not drop the string case",
+    },
+    {
+      name: 'the lesser of anything and -1 is never 0',
+      expression: { $divide: [10, { $min: ['$data.x', -1] }] },
+      uncovered: [
+        { at: [], code: 'type-check', parameter: 'by' },
+        { at: ['$divide', 1], code: 'type-check', parameter: 'values', witness: { x: 'a' } },
+      ],
+      note: "A false positive the design accepts: min's homogeneous constraint does not drop the string case",
+    },
+    {
+      name: 'a quotient of a positive range is never 0',
+      expression: {
+        $divide: [10, { $divide: [{ $plus: [{ $length: '$data.list', fallback: 0 }, 2] }, 2] }],
+      },
+      covered: [
+        {
+          at: ['$divide', 1, '$divide', 0, '$plus', 0],
+          code: 'type-check',
+          parameter: 'value',
+          by: ['$divide', 1, '$divide', 0, '$plus', 0],
+          witness: { list: 1 },
+        },
+      ],
+    },
+    {
+      name: 'a divisor that may be an infinity makes a quotient that may be 0',
+      expression: { $divide: [1, { $divide: [1, { $if: ['$data.c', 2, Infinity] }] }] },
+      uncovered: [
+        { at: [], code: 'non-finite-result', parameter: 'by', witness: { c: false } },
+        { at: [], code: 'non-finite-result' },
+        { at: ['$divide', 1], code: 'non-finite-result' },
+      ],
+      note: 'False positives the design accepts: the overflow entries count, an operand being an infinity',
+    },
+    {
+      name: 'the length of a split on a delimiter is never 0',
+      expression: {
+        $divide: [10, { $length: { $split: [{ $lower: '$data.s', fallback: '' }, ','] } }],
+      },
+      covered: [
+        {
+          at: ['$divide', 1, '$length', '$split', 0],
+          code: 'type-check',
+          parameter: 'value',
+          by: ['$divide', 1, '$length', '$split', 0],
+          witness: { s: 1 },
+        },
+      ],
+    },
+    {
+      name: 'a known length is exact',
+      expression: { $divide: [10, { $length: 'abc' }] },
+    },
+    {
       name: 'a length less 1 may be 0',
       expression: { $divide: [10, { $subtract: [{ $length: '$data.s', fallback: 0 }, 1] }] },
       uncovered: [{ at: [], code: 'non-finite-result', parameter: 'by', witness: { s: 'a' } }],

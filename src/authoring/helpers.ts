@@ -103,8 +103,25 @@ export const refused = (node: OperatorNode, name: string, inputs: Inputs): Answe
     : 'no'
 }
 
-/** Any length: an integer from 0. */
-const LENGTH: Known = [{ type: 'integer', min: 0 }]
+/**
+ * The length of a string or array: exact where it is known, an integer
+ * from its least length where that is. A string is counted in code points,
+ * as `length` counts it. Anything else has none.
+ */
+const lengthOf = (known: Known): Known =>
+  unionOf(
+    known.map((member): Known => {
+      if ('exact' in member) {
+        const { exact } = member
+        if (typeof exact === 'string') return exactly(Array.from(exact).length)
+        return Array.isArray(exact) ? exactly(exact.length) : NOTHING
+      }
+      if (member.type === 'array' && member.length !== undefined) return exactly(member.length)
+      return member.type === 'string' || member.type === 'array'
+        ? [{ type: 'integer', min: member.minLength ?? 0 }]
+        : NOTHING
+    })
+  )
 
 /**
  * The hooks' arguments for one node. A parameter walked once per element
@@ -152,7 +169,7 @@ export const hooked = (
     exactValues,
     elementOf: elementsOf,
     valueOf: valuesOf,
-    lengthOf: () => LENGTH,
+    lengthOf,
     type: ofType,
     exactly,
     range: ({ min = -Infinity, max = Infinity, integer = false }) => ofSpan({ min, max, integer }),

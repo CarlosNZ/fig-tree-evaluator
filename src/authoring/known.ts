@@ -680,10 +680,12 @@ export const absOf = (known: Known): Known => {
 
 /**
  * The least or greatest of an array's elements (`min`, `max`): for numbers,
- * a span between the elements' own, and anything else as it is. An
- * infinity has no span, and NaN compares equal to anything (though no
- * number check admits one), so where an element may be either, the answer
- * is any of the elements.
+ * a span between the elements' own, and anything else as it is. An element
+ * that may be NaN or an infinity bounds only one side: an infinity can only
+ * raise a `max` or lower a `min`, and NaN compares equal to anything
+ * (though no number check admits one), so such an element sets no least
+ * bound on a `max` and no greatest on a `min`, while its finite span still
+ * bounds the other side. `max(x, 1)` is from 1 whatever `x` is.
  */
 export const extremeOf = (known: Known, which: 'min' | 'max'): Known =>
   union(
@@ -693,13 +695,25 @@ export const extremeOf = (known: Known, which: 'min' | 'max'): Known =>
       known,
       (items) => {
         const spans = items.map(spanOf)
-        if (items.some((item) => mayBeNonFinite(item) !== 'no')) return ofSpan(hull(spans))
-        if (spans.length === 0 || spans.includes(undefined)) return NOTHING
+        const unbounded = items.map((item) => mayBeNonFinite(item) !== 'no')
+        // An element with no number at all, and no infinity either: the
+        // numbers' case never happens
+        if (spans.some((span, i) => span === undefined && !unbounded[i])) return NOTHING
+        const finite = spans.filter((span): span is Span => span !== undefined)
+        if (finite.length === 0) return NOTHING
         const pick = which === 'min' ? Math.min : Math.max
+        // The side an extreme element pushes towards, and the side it holds
+        const open = which === 'min' ? -Infinity : Infinity
+        const held = spans.map((span, i) =>
+          unbounded[i] ? -open : which === 'min' ? span!.max : span!.min
+        )
+        const reached = finite.map((span) => (which === 'min' ? span.min : span.max))
+        const near = held.reduce((a, b) => pick(a, b))
+        const far = reached.reduce((a, b) => pick(a, b))
         return ofSpan({
-          min: spans.map((span) => span!.min).reduce((a, b) => pick(a, b)),
-          max: spans.map((span) => span!.max).reduce((a, b) => pick(a, b)),
-          integer: spans.every((span) => span!.integer),
+          min: which === 'min' ? far : near,
+          max: which === 'min' ? near : far,
+          integer: finite.every((span) => span.integer),
         })
       },
       (element) => ofSpan(spanOf(element))

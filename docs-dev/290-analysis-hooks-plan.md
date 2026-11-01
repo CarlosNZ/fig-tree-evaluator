@@ -72,6 +72,12 @@ The three gaps the spec closes, each with corpus cases and a before/after run.
 - **`length` reads its value:** `helpers.lengthOf(value)` in place of an integer from 0. Case: `10 / length(split(s, ','))` has no finding; `10 / (length(x) - 1)` keeps its `may`.
 - `pnpm coverageCases` after the cases change.
 
+Departures, for the spec at close-out:
+
+- **The spec's `quotientOf` is unsound for a `by` that may be an infinity.** `helpers.span` holds the finite numbers only, and `1 / Infinity` is 0, which the corner range never holds where `by`'s finite part is bounded (`if(c, 2, Infinity)`). The hook adds 0 where `helpers.is(by, ±Infinity)` is not `no`, and returns that alone where `by` has no finite number. The worked example needs the same lines, and the spec should say what `span` leaves out, since a host's arithmetic meets the same trap.
+- **The rule checker's ranges widen a number by an infinity**, two ways: a finite value as its bounds plus `{ type: 'infinite' }`, and an infinite value as itself plus finite numbers on its far side. The second is what lets the checker see an unsound bound beside an infinity; before it, neither the `extremeOf` guard nor the quotient's 0 could be broken visibly. Both breaks are caught now.
+- **Six cases, not five:** `1 / (1 / if(c, 2, Infinity))` holds the quotient's 0, since without it only the overflow finding stays, which matches by code and place, so the soundness check alone would not miss it.
+
 Pause for Carl's check.
 
 ## Step 4 — Close-out

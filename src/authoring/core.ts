@@ -82,6 +82,32 @@ const firstNonNull = (known: Known): Known =>
     })
   )
 
+/**
+ * The quotient's range where `by` cannot be 0, any number where it can:
+ * one operator's step, so one operator's code. The result lies between the
+ * least and the greatest of four candidates, each end of `value`'s range
+ * divided by each end of `by`'s. An open end is an infinity, and an
+ * infinity over an infinity is NaN, which is no candidate: a `value` from 0
+ * to 5 over a `by` from 10 up is from 0 to 0.5. A span holds the finite
+ * numbers only, so a `by` that may itself be an infinity adds 0, what any
+ * finite `value` over it gives.
+ */
+const quotientOf = (value: Known, by: Known, h: Helpers): Known => {
+  const a = h.span(value)
+  // No finite number to divide: an infinite `value` is the walk's to carry
+  if (a === undefined) return h.nothing()
+  const infinite = h.any(h.is(by, Infinity), h.is(by, -Infinity))
+  const zero = infinite === 'no' ? h.nothing() : h.range({ min: 0, max: 0 })
+  const b = h.span(by)
+  if (b === undefined) return zero
+  // `by` may be 0: any number (or the body fails, which `failures` reports)
+  if (b.min <= 0 && b.max >= 0) return h.type('number')
+  const corners = [a.min / b.min, a.min / b.max, a.max / b.min, a.max / b.max].filter(
+    (corner) => !Number.isNaN(corner)
+  )
+  return h.union(h.range({ min: Math.min(...corners), max: Math.max(...corners) }), zero)
+}
+
 /** The kinds `plus` can be asked for, and that an operand can fail to be. */
 const KINDS = ['number', 'string', 'array', 'object'] as const
 
@@ -151,6 +177,7 @@ export const CORE_HOOKS: Record<string, Hooks> = {
     failures: [OVERFLOW],
   },
   divide: {
+    gamut: ({ value, by }, h) => quotientOf(value, by, h),
     failures: ({ by }, h) => [
       { code: NON_FINITE, parameter: 'by', occurs: h.is(by, 0), message: "'by' is 0" },
       OVERFLOW,
