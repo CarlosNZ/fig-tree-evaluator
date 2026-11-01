@@ -4,13 +4,14 @@
  * over edge-case values for each of its parameters, at both number levels.
  *
  * - Every failure the engine shows must be predicted: by a parameter's type
- *   check (`resolveInputs`), or by one of the operator's failure rules that
- *   does not answer no.
- * - Every rule must answer yes, or maybe for a `may` rule, at least once
- *   where the engine really fails with its code: no rule that never fires.
+ *   check (`resolveInputs`), or by an entry of the operator's `failures`
+ *   that does not answer no.
+ * - Every entry must answer yes, or maybe for one that is never certain, at
+ *   least once where the engine really fails with its code: no entry that
+ *   never occurs.
  * - Every value the engine returns must be admitted by the output the
- *   analysis gives the node: its output declaration, or its `returns`, past
- *   the result boundary.
+ *   analysis gives the node: its `gamut`, or its `returns`, past the result
+ *   boundary.
  * - Each of those holds again with every parameter known only by a range
  *   around its value ("Value ranges" in the spec): a number bounded on one
  *   side or both, a string or array by its least length, an array's
@@ -18,8 +19,8 @@
  *   ranges, not only over single values.
  * - Where the analysis says the node always fails, the engine must fail:
  *   `always` lets the walk drop the node's output and its parent's checks.
- * - A rule's test reads a range as it reads the values in it: a yes or a
- *   no on the range is its answer for every value there.
+ * - An entry answers a range as it answers the values in it: a yes or a no
+ *   on the range is its answer for every value there.
  * - Every run of the node (rule 4, src/authoring/run.ts), with each
  *   parameter known exactly, must end as the engine's evaluation does: the
  *   same value, or a certain failure with the same code. Every operator
@@ -31,14 +32,15 @@
  * value from the data, so one compiled node serves every combination.
  */
 import { FigTree, coreOperators, isFigTreeError } from '../src'
-import type { ValidatedOperatorDefinition } from '../src'
+import type { FailureEntry, ValidatedOperatorDefinition } from '../src'
 import { viewHandle } from '../src/FigTree'
 import type { OperatorNode } from '../src/compile/artifact'
 import { checkElementResult, resolveInputs } from '../src/authoring/inputs'
 import { elementsOf, exactly, tupleOf, union } from '../src/authoring/known'
 import type { Known } from '../src/authoring/known'
-import { CORE_RULES, answerRule, ownFailures, testKnown } from '../src/authoring/rules'
-import type { FailureRule } from '../src/authoring/rules'
+import { counts, ownFailures } from '../src/authoring/rules'
+import { CORE_HOOKS, coreAnalyses } from '../src/authoring/core'
+import { entriesOf, hooked } from '../src/authoring/helpers'
 import { operatorOutput } from '../src/authoring/outputs'
 import { runNode } from '../src/authoring/run'
 import type { Child, Ran } from '../src/authoring/run'
@@ -136,8 +138,11 @@ interface Report {
   unadmitted: string[]
   /** Certain failures the engine did not fail with */
   uncertain: string[]
-  /** Tests whose answer on a range is not their answer on a value in it */
+  /** Entries whose answer on a range is not their answer on a value in it */
   misread: string[]
+  /** The entries the operator's `failures` gives, by position */
+  entries: readonly FailureEntry[]
+  /** The positions of the entries seen live where the engine failed */
   fired: Set<number>
   /** Runs that ended otherwise than the engine's evaluation */
   misrun: string[]
@@ -281,12 +286,17 @@ const predict = (
   const elements: Record<string, Known> = {}
   for (const [name] of definition.resolution.perElement)
     if (Object.hasOwn(outputs, name)) elements[name] = outputs[name]
-  const { output, boundary } = operatorOutput(node, inputs, elements, level.strictNumbers)
+  const hooks = hooked(node, coreAnalyses().get(definition)!, inputs, elements, {})
+  const { output, boundary } = operatorOutput(node, inputs, level.strictNumbers, hooks)
   if (boundary !== undefined) failures.push(boundary)
-  if (inputs.propagates !== 'yes') failures.push(...ownFailures(node, inputs, options, 'core'))
+  if (inputs.propagates !== 'yes') failures.push(...ownFailures(node, inputs, options, hooks))
+  // The entries as given for these inputs, whether or not the node gets that
+  // far: what the firing and range checks read
+  const entries = entriesOf(hooks)
   return {
     inputs,
     output,
+    entries: entries === 'external' ? [] : entries,
     predicted: new Set(failures.map((failure) => failure.code)),
     certain: failures.some((failure) => failure.certainty === 'always'),
   }
@@ -298,7 +308,7 @@ const check = async (
   level: (typeof LEVELS)[number],
   report: Report
 ) => {
-  const rules: FailureRule[] = CORE_RULES[definition.name] ?? []
+  const options = { strictNumbers: level.strictNumbers, evaluation: level.evaluation }
   const names = Object.entries(definition.parameters)
     .filter(([, declared]) => declared.evaluationMode !== 'literal')
     .map(([name]) => name)
@@ -350,15 +360,8 @@ const check = async (
       const as = ` as ${JSON.stringify(widened, replacer)}`
       return { prediction: predict(node, definition, widened, level), as }
     })
-    const { inputs } = exact.prediction
-    const answers = rules.map((rule) =>
-      inputs.propagates === 'yes'
-        ? 'no'
-        : answerRule(node, rule, inputs, {
-            strictNumbers: level.strictNumbers,
-            evaluation: level.evaluation,
-          })
-    )
+    const { inputs, entries } = exact.prediction
+    if (entries.length > report.entries.length) report.entries = entries
 
     let failed: string | undefined
     let result: unknown
@@ -438,18 +441,20 @@ const check = async (
           )
       }
     }
-    for (const { prediction } of ranged)
-      for (const rule of rules)
-        for (const [name, test] of Object.entries(rule.when ?? {})) {
-          const range = prediction.inputs.received[name]
-          const value = inputs.received[name]
-          if (range === undefined || value === undefined) continue
-          const answer = testKnown(test, range)
-          if (answer !== 'maybe' && answer !== testKnown(test, value) && report.misread.length < 8)
-            report.misread.push(
-              `${JSON.stringify(test)} is ${answer} on ${JSON.stringify(range, replacer)}, not on ${JSON.stringify(value, replacer)}`
-            )
-        }
+    for (const { prediction, as } of ranged)
+      prediction.entries.forEach((entry, r) => {
+        const onRange = entry.occurs
+        const onValue = entries[r]?.occurs
+        if (
+          onRange !== undefined &&
+          onRange !== 'maybe' &&
+          onRange !== onValue &&
+          report.misread.length < 8
+        )
+          report.misread.push(
+            `entry ${r} (${entry.code}) is ${onRange}${as}, ${onValue} with ${JSON.stringify(values, replacer)}`
+          )
+      })
 
     for (const { prediction, as } of [exact, ...ranged]) {
       const shown = `with ${JSON.stringify(values, replacer)}${as}`
@@ -461,10 +466,15 @@ const check = async (
       } else if (!prediction.predicted.has(failed) && report.unpredicted.length < 8)
         report.unpredicted.push(`${failed} ${shown}`)
     }
-    if (failed === undefined) continue
-    rules.forEach((rule, r) => {
-      const fires = answers[r] === 'yes' || (rule.may === true && answers[r] === 'maybe')
-      if (fires && rule.code === failed) report.fired.add(r)
+    if (failed === undefined || inputs.propagates === 'yes') continue
+    // An entry is live where it answers yes, or maybe where that is all it
+    // ever says: one marked `may`, or one with no `occurs`
+    entries.forEach((entry, r) => {
+      const answer = entry.occurs ?? 'maybe'
+      const live =
+        answer === 'yes' ||
+        (answer === 'maybe' && (entry.may === true || entry.occurs === undefined))
+      if (live && entry.code === failed && counts(entry, inputs, options)) report.fired.add(r)
     })
   }
 }
@@ -473,7 +483,7 @@ const check = async (
 const replacer = (_key: string, value: unknown) =>
   typeof value === 'number' && !Number.isFinite(value) ? String(value) : value
 
-describe('the core failure rules', () => {
+describe('the core analyses', () => {
   test.each(coreOperators.map((definition) => [definition.name, definition] as const))(
     '%s',
     async (_name, definition) => {
@@ -482,6 +492,7 @@ describe('the core failure rules', () => {
         unadmitted: [],
         uncertain: [],
         misread: [],
+        entries: [],
         fired: new Set(),
         misrun: [],
         runs: 0,
@@ -495,14 +506,15 @@ describe('the core failure rules', () => {
       expect(report.misrun).toEqual([])
       expect(report.runs).toBeGreaterThan(0)
       if (definition.resolution.perElement.length > 0) expect(report.elementRuns).toBeGreaterThan(0)
-      const rules = CORE_RULES[definition.name] ?? []
-      const dead = rules.filter((_rule, r) => !report.fired.has(r))
+      const dead = report.entries
+        .filter((_entry, r) => !report.fired.has(r))
+        .map(({ code, parameter }) => ({ code, parameter }))
       expect(dead).toEqual([])
     }
   )
 
-  test('every rule names an operator the core has', () => {
+  test('every hook names an operator the core has', () => {
     const names = new Set(coreOperators.map((definition) => definition.name))
-    expect(Object.keys(CORE_RULES).filter((name) => !names.has(name))).toEqual([])
+    expect(Object.keys(CORE_HOOKS).filter((name) => !names.has(name))).toEqual([])
   })
 })

@@ -52,6 +52,15 @@ A refactor with no change in findings: the corpus must give exactly what it give
 - **The rule checker:** re-pointed at the table's hooks. Its three checks keep their meaning: every engine result in the gamut the hook gives; every engine failure predicted by an entry, and no entry that never occurs; an entry's answer over a range consistent with its answer for a value in it. Break a core hook on purpose to show each check fires.
 - **Close-out:** corpus exact, the checker green, the `./authoring` size (functions in place of data may cost; measure, trim, and propose a budget only if needed). Before and after are identical by design; the examples are `divide`'s and `plus`'s table entries beside their old rules.
 
+Departures, for the spec at close-out:
+
+- **`plus`'s gamut keeps the sum beside the named type.** The spec's example returns `helpers.type(named)` alone where `expect` is given, but the named type is the finite numbers, and an infinite operand carries through `plus` (`[2, Infinity]` gives `Infinity`; so does a null replaced by an infinite `nullValueDefault`). The rule checker refused it; the hook is `union(sumOf(values), typeNamed(expect))`, as the old declaration was.
+- **`plus`'s type-check entries carry an empty guard**, `helpers.not(helpers.isEmpty(values))`, beside the spec's `not(isType(elementOf(values), kind))`: without it an array of the wrong kind that may be empty answers `yes`, and `plus([], expect: 'number')` is `0`, so that would be a wrong `always`.
+- **A core entry with a `gamut` alone writes `failures: []`**, as a host must: the table's "none" under `failures` in the spec is that list, not an omission, which would make the operator external. Every core operator has an analysis; the walk's "is core" is membership of that table.
+- **Messages are the author's**, so the generated phrasing went with the literal: `'exponent' is 100 or more` where the rule printed `'exponent' is not below 100`; `'to' is number and 'value' is an array or object` where it printed the JSON of the test. The corpus compares codes, places and certainty, never messages.
+- **Core reaches into known.ts for its arithmetic** (`sumOf`, `productOf`, `differenceOf`, `absOf`, `extremeOf`) and for `firstNonNull`'s walk over its candidates, which moved there from outputs.ts: the bag has no helper for them by the pruning rule, and a host that needs one writes it, as the spec's `quotientOf` shows.
+- **The error-codes inventory asks the hooks with nothing known**: an entry's code does not depend on the inputs, so test/error-codes.test.ts calls each core `failures` hook with every parameter unknown and a bag that answers `maybe` to everything.
+
 Pause for Carl's check.
 
 ## Step 3 — Precision

@@ -1,7 +1,7 @@
 /**
- * What a host operator's analysis hooks are given for one node, and their
- * answers checked on the way back ("The helpers" in
- * docs-dev/v3-specs/v3-operator-coverage.md). A gamut is the walk's own
+ * What an operator's analysis hooks are given for one node, core's and a
+ * host's alike, and their answers checked on the way back ("The helpers"
+ * in docs-dev/v3-specs/v3-operator-coverage.md). A gamut is the walk's own
  * list under a type-only brand, so nothing is wrapped or converted: the
  * hooks receive the lists the walk holds, and what they return is checked
  * to be one before the walk reads it.
@@ -11,7 +11,7 @@ import { validateHelpers } from '../compile/helpers'
 import { FigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
 import { isPlainObject } from '../utils'
-import type { FailureEntry, GamutHelpers, OperatorAnalysis } from '../authoringTypes'
+import type { FailureEntry, OperatorAnalysis } from '../authoringTypes'
 import type { OperatorNode } from '../compile/artifact'
 import type { ExpectedType } from '../typeCheck'
 import type { Inputs } from './inputs'
@@ -34,15 +34,39 @@ import {
   unionOf,
   valuesOf,
 } from './known'
-import type { Answer, Known } from './known'
+import type { Answer, Known, Span } from './known'
 
-/** A host operator's analysis, with what its hooks are given for a node. */
+/** The bag, over the walk's own lists: what `GamutHelpers` is at runtime. */
+export interface Helpers {
+  is(gamut: Known, value: unknown): Answer
+  isType(gamut: Known, type: ExpectedType): Answer
+  isBelow(gamut: Known, n: number): Answer
+  isEmpty(gamut: Known): Answer
+  refused(parameter: string): Answer
+  isSupplied(parameter: string): Answer
+  all(...answers: Answer[]): Answer
+  any(...answers: Answer[]): Answer
+  not(answer: Answer): Answer
+  span(gamut: Known): Span | undefined
+  exactValues(gamut: Known): unknown[] | undefined
+  elementOf(gamut: Known): Known
+  valueOf(gamut: Known): Known
+  lengthOf(gamut: Known): Known
+  type(type: ExpectedType): Known
+  exactly(value: unknown): Known
+  range(range: { min?: number; max?: number; integer?: boolean }): Known
+  union(...gamuts: Known[]): Known
+  arrayOf(elements: Known, lengths?: { length?: number; minLength?: number }): Known
+  nothing(): Known
+}
+
+/** An operator's analysis, with what its hooks are given for a node. */
 export interface Hooked {
   analysis: OperatorAnalysis
   node: OperatorNode
   /** What each declared parameter receives */
   params: Record<string, Known>
-  helpers: GamutHelpers
+  helpers: Helpers
 }
 
 /** `no` if any is, `yes` if all are. */
@@ -110,19 +134,19 @@ export const hooked = (
     if (!Object.hasOwn(params, name)) throw new Error(`'${name}' is not a declared parameter`)
     return name
   }
-  const helpers = {
-    is: (gamut: Known, value: unknown) => {
+  const helpers: Helpers = {
+    is: (gamut, value) => {
       if (value !== null && !['string', 'number', 'boolean'].includes(typeof value))
         throw new Error('is() compares with a string, number, boolean or null')
       return isValue(gamut, value)
     },
-    isType: (gamut: Known, type: ExpectedType) => (gamut.length === 0 ? 'no' : fits(gamut, type)),
+    isType: (gamut, type) => (gamut.length === 0 ? 'no' : fits(gamut, type)),
     isBelow,
     isEmpty,
-    refused: (name: string) => refused(node, declared(name), inputs),
-    isSupplied: (name: string) => presence(inputs, declared(name)),
-    all: (...answers: Answer[]) => all(answers),
-    any: (...answers: Answer[]) => any(answers),
+    refused: (name) => refused(node, declared(name), inputs),
+    isSupplied: (name) => presence(inputs, declared(name)),
+    all: (...answers) => all(answers),
+    any: (...answers) => any(answers),
     not,
     span: spanOf,
     exactValues,
@@ -132,14 +156,14 @@ export const hooked = (
     type: ofType,
     exactly,
     range: ({ min = -Infinity, max = Infinity, integer = false }) => ofSpan({ min, max, integer }),
-    union: (...gamuts: Known[]) => unionOf(gamuts),
-    arrayOf: (of: Known, lengths?: { length?: number; minLength?: number }) => {
+    union: (...gamuts) => unionOf(gamuts),
+    arrayOf: (of, lengths) => {
       const results = walked.get(of)
       return results !== undefined ? tupleOf(results) : arrayOf([of], lengths)
     },
     nothing: () => NOTHING,
   }
-  return { analysis, node, params, helpers: helpers as unknown as GamutHelpers }
+  return { analysis, node, params, helpers }
 }
 
 const failed = (node: OperatorNode, what: string, cause?: unknown): FigTreeError =>
@@ -181,10 +205,10 @@ const isGamut = (value: unknown): value is Known =>
   )
 
 /** What the body returns, by the `gamut` hook; `undefined` without one. */
-export const hostGamut = ({ analysis, node, params, helpers }: Hooked): Known | undefined => {
+export const gamutOf = ({ analysis, node, params, helpers }: Hooked): Known | undefined => {
   const { gamut } = analysis
   if (gamut === undefined) return undefined
-  const result: unknown = call(node, 'gamut', () => gamut(params as never, helpers))
+  const result: unknown = call(node, 'gamut', () => gamut(params as never, helpers as never))
   if (!isGamut(result)) throw failed(node, "returned something other than a gamut from 'gamut'")
   return result
 }
@@ -195,7 +219,7 @@ const ANSWERS = new Set<unknown>(['no', 'maybe', 'yes'])
  * The body's own failures, by the `failures` hook or list; `external`
  * without one.
  */
-export const hostEntries = ({
+export const entriesOf = ({
   analysis,
   node,
   params,
@@ -205,7 +229,7 @@ export const hostEntries = ({
   if (failures === undefined) return 'external'
   const entries: unknown =
     typeof failures === 'function'
-      ? call(node, 'failures', () => failures(params as never, helpers))
+      ? call(node, 'failures', () => failures(params as never, helpers as never))
       : failures
   if (
     !Array.isArray(entries) ||

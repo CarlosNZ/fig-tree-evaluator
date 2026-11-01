@@ -28,8 +28,9 @@ import { exactValues, exactly, fits, ofType, unionOf } from './known'
 import type { Known } from './known'
 import { judge, resolveInputs, vetted } from './inputs'
 import type { Failure } from './findings'
-import { answerRule, rulesOf } from './rules'
 import type { RuleOptions } from './rules'
+import { coreAnalyses } from './core'
+import { entriesOf, hooked } from './helpers'
 import type { NodeResult } from './walk'
 
 /**
@@ -258,17 +259,19 @@ const runOnce = async (
     waitOn(child)
   }
   // The parameter a failure is about: the one a type check names, else the
-  // one a rule with its code names, where that rule holds here
-  const rules = rulesOf(definition)
+  // one the first entry with its code names, where that entry can occur here
+  const parameterNamed = (code: FigTreeErrorCode): string | undefined => {
+    const analysis = coreAnalyses().get(definition)
+    if (analysis === undefined) return undefined
+    const entries = entriesOf(hooked(node, analysis, inputs, {}, {}))
+    if (entries === 'external') return undefined
+    return entries.find(
+      (entry) =>
+        entry.code === code && entry.parameter !== undefined && (entry.occurs ?? 'maybe') !== 'no'
+    )?.parameter
+  }
   const own = (code: FigTreeErrorCode, message: string, named?: string): Ending => {
-    const parameter =
-      named ??
-      rules.find(
-        (rule) =>
-          rule.code === code &&
-          rule.parameter !== undefined &&
-          answerRule(node, rule, inputs, options) !== 'no'
-      )?.parameter
+    const parameter = named ?? parameterNamed(code)
     return {
       failure: {
         path: node.path,

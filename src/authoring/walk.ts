@@ -30,8 +30,9 @@ import type { PathSegment } from '../primitives/path'
 import { isDemand, liftCatcher, liftFailure } from './findings'
 import type { Caught, Failure, Pending } from './findings'
 import { argumentInput, checkElementResult, resolveInputs } from './inputs'
-import { analysisOf, ownFailures } from './rules'
+import { ownFailures } from './rules'
 import { atBoundary, operatorOutput } from './outputs'
+import { analysisOf, isCore } from './core'
 import { hooked } from './helpers'
 import { runNode } from './run'
 import type { Child, Ran } from './run'
@@ -399,10 +400,12 @@ export class Analysis {
         elements[name] = apart.result.output
       }
     }
-    // A host operator is never run, so its analysis's hooks answer for it
+    // What the operator's analysis says of this node, a host's or the core's
     const analysis = analysisOf(definition, this.analyses)
-    const host =
-      typeof analysis === 'object' ? hooked(node, analysis, inputs, elements, items) : analysis
+    const hooks =
+      analysis === 'external' ? analysis : hooked(node, analysis, inputs, elements, items)
+    // Only a core body is run: it depends on nothing but its parameters
+    const core = isCore(definition)
 
     // An eager child that always fails means the body never runs: its own
     // checks are moot, and only a race's elements, started beside the eager
@@ -419,9 +422,9 @@ export class Analysis {
           passed: new Set(),
           fails: true,
         }
-      : analysis !== 'core'
-        ? undefined
-        : await runNode(node, outputs, children, this.options)
+      : core
+        ? await runNode(node, outputs, children, this.options)
+        : undefined
     for (const name of Object.keys(items))
       certainForEvery(
         children.filter((child) => child.param === name && (ran?.reached.has(child) ?? true))
@@ -430,7 +433,7 @@ export class Analysis {
     if (ran === undefined) {
       append(own, inputs.failures)
       // A null that must propagate means the body never runs
-      if (inputs.propagates !== 'yes') append(own, ownFailures(node, inputs, this.options, host))
+      if (inputs.propagates !== 'yes') append(own, ownFailures(node, inputs, this.options, hooks))
     } else append(own, ran.failures)
     for (const child of children) {
       if (ran !== undefined && !ran.passed.has(child)) continue
@@ -452,10 +455,8 @@ export class Analysis {
         ? operatorOutput(
             node,
             inputs,
-            elements,
             this.options.strictNumbers,
-            items,
-            typeof host === 'object' ? host : undefined
+            hooks === 'external' ? undefined : hooks
           )
         : atBoundary(node, ran.output, this.options.strictNumbers, false)
     // One `non-finite-result` finding a node, whether a rule or the result
@@ -481,7 +482,7 @@ export class Analysis {
     // An operator of the host's, or one doing I/O, can wait on anything,
     // whether or not it is declared: a declaration says what a body fails
     // on and returns, not how long it takes
-    if (analysis !== 'core') attempt.waits = true
+    if (!core) attempt.waits = true
     return this.withFallback(node, attempt, inner)
   }
 
