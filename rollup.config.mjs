@@ -55,6 +55,8 @@ const PURE_CALLEES = [
   'coreDefinitions.map',
   'new Set',
   'Object.freeze',
+  // ./authoring's run: a promise that never settles, its executor empty
+  'new Promise',
 ]
 
 /**

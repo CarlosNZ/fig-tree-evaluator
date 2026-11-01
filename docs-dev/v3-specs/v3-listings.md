@@ -123,8 +123,6 @@ interface OperatorDefinition<P extends ParameterDeclarations = ParameterDeclarat
   cache?: true
   /** Static checks over literal parameter values, run at compile. */
   validate?: OperatorValidate
-  /** What `./authoring`'s static analysis may assume of the operator. */
-  analysis?: OperatorAnalysis
   /** The body, its `params` typed from the declarations above. */
   evaluate: (params: ResolvedParams<P>, context: OperatorContext) => unknown
   /** Declared result type — drives the static feeding-position check. */

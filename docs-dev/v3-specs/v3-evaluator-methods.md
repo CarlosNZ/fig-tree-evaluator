@@ -174,7 +174,7 @@ The two-level path story (call-site `path` + `fragmentPath`) is forced by fragme
 Two types name codes, both exported from the root:
 
 - **`FigTreeErrorCode`**: any code a `FigTreeError` or an `Issue` carries.
-- **`FallbackErrorCode`**: a code a fallback can receive. It types `OperatorFailure.code` and the `FailureRule.code` an operator's `analysis` declares ([v3-fallback-coverage.md](v3-fallback-coverage.md)), since what a body throws is by definition what a fallback catches.
+- **`FallbackErrorCode`**: a code a fallback can receive. It types `OperatorFailure.code` and the `code` of a `FailureEntry` an operator's analysis declares ([v3-operator-coverage.md](v3-operator-coverage.md)), since what a body throws is by definition what a fallback catches.
 
 Both are open, `known codes | (string & {})`: a host operator throws codes of its own, and they reach a fallback unchanged. The `string & {}` member accepts any string without absorbing the known codes, so editors still offer those; it narrows nothing. `ErrorCodes` is the only list of codes that exists at runtime.
 

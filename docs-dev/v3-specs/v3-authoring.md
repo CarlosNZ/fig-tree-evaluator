@@ -11,21 +11,26 @@ Its first analysis is `fallbackCoverage`. The engine's existing warnings also ha
 ## `fallbackCoverage`
 
 ```ts
-import { fallbackCoverage } from 'fig-tree-evaluator/authoring'
+import { declareAnalysis, fallbackCoverage } from 'fig-tree-evaluator/authoring'
 
 await fallbackCoverage(fig, expression) // → { uncovered, covered }
 await fallbackCoverage(fig, expression, { strictNumbers: true })
+
+// A host operator's analysis, passed on every call
+const medianAnalysis = declareAnalysis(median, { failures: (params, helpers) => [...] })
+await fallbackCoverage(fig, expression, { operators: [medianAnalysis] })
 ```
 
 The question it answers: **which failures can reject an evaluation, and which fallback catches each?** That is what a host relying on fallbacks for resilience needs to know (there is no report mode, [#208](https://github.com/CarlosNZ/fig-tree-evaluator/issues/208)): one uncaught failure anywhere rejects the whole `evaluate()`.
 
 - **`uncovered`** lists the failures nothing catches, each where it starts, so each can reject `evaluate()`. CI checks that it is empty.
 - **`covered`** lists the failures a fallback catches, each with the fallback that does, for tools that show where fallbacks do their work.
-- **Options** are the instance's: it answers as the instance would evaluate the expression, under its `timeout` and `strictDataPaths`. Its one option of its own is `strictNumbers`.
+- **Options** are the instance's: it answers as the instance would evaluate the expression, under its `timeout` and `strictDataPaths`. Its own are `strictNumbers` and `operators`.
+- **A host operator is external** unless its analysis is passed in `operators`: it may fail whatever its inputs. `declareAnalysis` pairs the built definition with two hooks over gamuts, what its body returns and how it fails, as core's analyses are written ([v3-operator-coverage.md](v3-operator-coverage.md), [#290](https://github.com/CarlosNZ/fig-tree-evaluator/issues/290)). Nothing goes on the definition, so an operator's analysis costs nothing to an app that never imports `./authoring`, and a library exports its operators' analyses from its own `/authoring` subpath.
 - **An invalid expression reports its static errors.** It never runs: `evaluate()` refuses it before anything starts. So every static error is `uncovered`, with certainty `always`, nothing is `covered`, and nothing is walked ("Static errors" in [v3-fallback-coverage.md](v3-fallback-coverage.md), [#232](https://github.com/CarlosNZ/fig-tree-evaluator/issues/232)).
 - The expression compiles through `fig.compile()`, so it shares the compile cache with `evaluate()`. Unlike `validate()`, which stays out of the cache, it is called once per committed edit rather than per keystroke, and a cache miss only ever costs a recompile.
 
-How it works is specified in [v3-fallback-coverage.md](v3-fallback-coverage.md), built in [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217): which nodes can throw and why, the failure rules and output declarations operators carry, the nodes it runs, value ranges, per-element walks and timeouts. It replaced the version first specified here, which took every operator node to be able to throw and listed only top-level values.
+How it works is specified in [v3-fallback-coverage.md](v3-fallback-coverage.md), built in [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217): which nodes can throw and why, the analyses operators declare (specified in [v3-operator-coverage.md](v3-operator-coverage.md)), the nodes it runs, value ranges, per-element walks and timeouts. It replaced the version first specified here, which took every operator node to be able to throw and listed only top-level values.
 
 ## Why not `validate()`
 

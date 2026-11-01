@@ -128,22 +128,26 @@ const SAFE: NodeResult = { verdict: 'no', escapes: [], output: NOTHING }
 const NONE: Analysed = { result: SAFE, covered: [] }
 /** What `$index` can be */
 const INDEX: Known = [{ type: 'integer', min: 0 }]
-const NULL = exactly(null)
+const NULL: Known = [{ exact: null }]
 /** What a bare `$error` is: a plain object, its keys not all known */
 const OBJECT: Known = [{ type: 'object' }]
 /**
  * What `$error` is drilled into: `FallbackError`'s guaranteed shape, with
- * an optional field null, as a read of it gives where it is absent
+ * an optional field null, as a read of it gives where it is absent. Built
+ * on first use: a top-level call would keep the walk in the bundle of an
+ * import that never walks, such as `declareAnalysis` alone
  */
-const FALLBACK_ERROR: Known = objectOf(
-  Object.fromEntries(
-    Object.entries(FALLBACK_ERROR_FIELDS).map(([key, type]) => [key, ofType(type)])
-  )
-)
+let fallbackError: Known | undefined
+const fallbackErrorShape = (): Known =>
+  (fallbackError ??= objectOf(
+    Object.fromEntries(
+      Object.entries(FALLBACK_ERROR_FIELDS).map(([key, type]) => [key, ofType(type)])
+    )
+  ))
 /** What a read of `$error` holds: a miss is null, never a failure */
 const errorRead = (segments: PathSegment[]): Known => {
   if (segments.length === 0) return OBJECT
-  const { value, found } = drill(FALLBACK_ERROR, segments)
+  const { value, found } = drill(fallbackErrorShape(), segments)
   return found === 'yes' ? value : union(value, NULL)
 }
 
