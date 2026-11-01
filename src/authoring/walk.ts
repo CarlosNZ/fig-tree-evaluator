@@ -24,14 +24,18 @@ import type {
   StaticFallback,
 } from '../compile/artifact'
 import type { FragmentEntry, FragmentParameter } from '../fragments'
+import type { OperatorAnalysis } from '../authoringTypes'
+import type { ValidatedOperatorDefinition } from '../operatorDefinition'
 import type { PathSegment } from '../primitives/path'
 import { isDemand, liftCatcher, liftFailure } from './findings'
 import type { Caught, Failure, Pending } from './findings'
 import { argumentInput, checkElementResult, resolveInputs } from './inputs'
-import { mayWait, ownFailures, rulesOf } from './rules'
+import { ownFailures } from './rules'
 import { atBoundary, operatorOutput } from './outputs'
+import { analysisOf, isCore } from './core'
+import { hooked } from './helpers'
 import { runNode } from './run'
-import type { Child, Ran, Stalled } from './run'
+import type { Child, Ran } from './run'
 import type { RuleOptions } from './rules'
 import {
   ANY,
@@ -124,22 +128,26 @@ const SAFE: NodeResult = { verdict: 'no', escapes: [], output: NOTHING }
 const NONE: Analysed = { result: SAFE, covered: [] }
 /** What `$index` can be */
 const INDEX: Known = [{ type: 'integer', min: 0 }]
-const NULL = exactly(null)
+const NULL: Known = [{ exact: null }]
 /** What a bare `$error` is: a plain object, its keys not all known */
 const OBJECT: Known = [{ type: 'object' }]
 /**
  * What `$error` is drilled into: `FallbackError`'s guaranteed shape, with
- * an optional field null, as a read of it gives where it is absent
+ * an optional field null, as a read of it gives where it is absent. Built
+ * on first use: a top-level call would keep the walk in the bundle of an
+ * import that never walks, such as `declareAnalysis` alone
  */
-const FALLBACK_ERROR: Known = objectOf(
-  Object.fromEntries(
-    Object.entries(FALLBACK_ERROR_FIELDS).map(([key, type]) => [key, ofType(type)])
-  )
-)
+let fallbackError: Known | undefined
+const fallbackErrorShape = (): Known =>
+  (fallbackError ??= objectOf(
+    Object.fromEntries(
+      Object.entries(FALLBACK_ERROR_FIELDS).map(([key, type]) => [key, ofType(type)])
+    )
+  ))
 /** What a read of `$error` holds: a miss is null, never a failure */
 const errorRead = (segments: PathSegment[]): Known => {
   if (segments.length === 0) return OBJECT
-  const { value, found } = drill(FALLBACK_ERROR, segments)
+  const { value, found } = drill(fallbackErrorShape(), segments)
   return found === 'yes' ? value : union(value, NULL)
 }
 
@@ -269,14 +277,16 @@ const skeletonOutput = (node: SkeletonNode, outputs: Known[]): Known => {
 export class Analysis {
   private readonly bodies = new Map<FragmentEntry, Map<string, Analysed>>()
 
-  private readonly stalled: Stalled = new Set()
-
   /** Every node whose evaluation can wait on something outside it. */
   readonly waiting = new Set<CompiledNode>()
 
   private readonly strict: boolean
 
-  constructor(private readonly options: RuleOptions) {
+  constructor(
+    private readonly options: RuleOptions,
+    /** The host operators' analyses, by definition */
+    private readonly analyses: ReadonlyMap<ValidatedOperatorDefinition, OperatorAnalysis>
+  ) {
     this.strict = options.evaluation.strictDataPaths === true
   }
 
@@ -394,6 +404,12 @@ export class Analysis {
         elements[name] = apart.result.output
       }
     }
+    // What the operator's analysis says of this node, a host's or the core's
+    const analysis = analysisOf(definition, this.analyses)
+    const hooks =
+      analysis === 'external' ? analysis : hooked(node, analysis, inputs, elements, items)
+    // Only a core body is run: it depends on nothing but its parameters
+    const core = isCore(definition)
 
     // An eager child that always fails means the body never runs: its own
     // checks are moot, and only a race's elements, started beside the eager
@@ -410,9 +426,9 @@ export class Analysis {
           passed: new Set(),
           fails: true,
         }
-      : rulesOf(definition) === 'external'
-        ? undefined
-        : await runNode(node, outputs, children, this.options, this.stalled)
+      : core
+        ? await runNode(node, outputs, children, this.options)
+        : undefined
     for (const name of Object.keys(items))
       certainForEvery(
         children.filter((child) => child.param === name && (ran?.reached.has(child) ?? true))
@@ -421,7 +437,7 @@ export class Analysis {
     if (ran === undefined) {
       append(own, inputs.failures)
       // A null that must propagate means the body never runs
-      if (inputs.propagates !== 'yes') append(own, ownFailures(node, inputs, this.options))
+      if (inputs.propagates !== 'yes') append(own, ownFailures(node, inputs, this.options, hooks))
     } else append(own, ran.failures)
     for (const child of children) {
       if (ran !== undefined && !ran.passed.has(child)) continue
@@ -440,7 +456,12 @@ export class Analysis {
 
     const { output, boundary } =
       ran === undefined
-        ? operatorOutput(node, inputs, elements, this.options.strictNumbers, items)
+        ? operatorOutput(
+            node,
+            inputs,
+            this.options.strictNumbers,
+            hooks === 'external' ? undefined : hooks
+          )
         : atBoundary(node, ran.output, this.options.strictNumbers, false)
     // One `non-finite-result` finding a node, whether a rule or the result
     // boundary says so
@@ -462,8 +483,10 @@ export class Analysis {
     const attempt = combine(own, parts, output)
     // Every run failed: the node never returns
     if (ran?.fails === true) Object.assign(attempt, { verdict: 'always', output: NOTHING })
-    // An operator of the host's, or one doing I/O, can wait on anything
-    if (mayWait(definition)) attempt.waits = true
+    // An operator of the host's, or one doing I/O, can wait on anything,
+    // whether or not it is declared: a declaration says what a body fails
+    // on and returns, not how long it takes
+    if (!core) attempt.waits = true
     return this.withFallback(node, attempt, inner)
   }
 

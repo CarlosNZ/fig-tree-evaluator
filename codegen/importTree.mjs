@@ -63,10 +63,10 @@ const TREE = [
       row('httpOperators, FetchClient'),
       row('sqlOperators, PostgresConnection'),
       row('toCanonical, toShorthand'),
-      row('fallbackCoverage')
+      row('fallbackCoverage', row('declareAnalysis'))
     )
   ),
-  row('defineOperator'),
+  row('defineOperator', row('declareAnalysis')),
   row('httpOperators, FetchClient', row('sqlOperators, PostgresConnection')),
   row('FigTreeError, isFigTreeError, ErrorCodes'),
   row('httpFailure, sqlFailure'),
@@ -177,8 +177,11 @@ const addedModules = (bytes, parent) => {
     .map(([module, size]) => ({ module, share: size / total }))
 }
 
-/** Bytes as kB: two decimals under 1 kB, one above. */
-const kB = (bytes) => (bytes / 1000).toFixed(bytes < 1000 ? 2 : 1)
+/**
+ * Bytes as kB: two decimals under 1 kB, one above. A difference that rounds
+ * to nothing, a few bytes either way, is shown as 0.
+ */
+const kB = (bytes) => (Math.abs(bytes) < 5 ? 0 : bytes / 1000).toFixed(bytes < 1000 ? 2 : 1)
 
 /** The imports a row names, each tagged with its subpath unless the root. */
 const label = (imports, entries) =>
@@ -238,8 +241,10 @@ const renderTree = async (dir, entries) => {
     ...rows.map((row) =>
       row === null
         ? ''
-        : `${row.tree.padEnd(width)}${column(kB(row.adds))}${column(kB(row.total))}` +
-          `${column(kB(row.alone))}   ${mostly(row.from)}`
+        : (
+            `${row.tree.padEnd(width)}${column(kB(row.adds))}${column(kB(row.total))}` +
+            `${column(kB(row.alone))}   ${mostly(row.from)}`
+          ).trimEnd()
     ),
   ].join('\n')
 }

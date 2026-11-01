@@ -53,6 +53,8 @@ The declarations do not depend on the setting. Each overflow condition is tagged
 
 ## Where the rules live (decided 2026-10-05)
 
+_Superseded by "Analysis hooks replace the `analysis` field" below: nothing goes on the definition._
+
 **Decision.** Split by who writes them: the core operators' rules in a table in `./authoring`, keyed by the core definition; host operators' rules in an optional field on their definition, checked by `defineOperator()`. A host operator without the field is external.
 
 **Why.** Definitions are shared by every instance, so the cost of carrying the rules on them is bundle size, not memory: about 0.6 kB brotli, paid by every consumer of the root whether or not it uses `./authoring`. Keeping that cost away from `evaluate()` is why the subpath exists. A host has nowhere more natural than its own definition, and the bytes are its own. The rule checker and a key test keep the separate core table from drifting.
@@ -94,6 +96,8 @@ The declarations do not depend on the setting. Each overflow condition is tagged
 **Why.** `covered` shows where fallbacks do their work, and a fallback in a branch that never runs does none. Dropping only the uncovered findings would leave a branch never taken listed as protected.
 
 ## A body that does not settle (Carl, 2026-10-06, at step 5)
+
+_Superseded by "Analysis hooks replace the `analysis` field" below: a host body is never run, so the guard went with it._
 
 **Decision.** An async body still waiting 100 ms into a run is given up on: the node is analysed as if not run, by its rules and declared output, and its operator is not run again in that analysis. Declaring `coverage` also says the body settles from its parameters alone.
 
@@ -155,6 +159,12 @@ The declarations do not depend on the setting. Each overflow condition is tagged
 **Decision.** The engine refuses NaN at the number types and at the result of an operator declared to return a number, and treats an infinity as a number, refusing one only where arithmetic makes it from finite operands ("The value domain" in v3-api.md). The walk follows: its one non-finite member becomes two, `nan`, which fits only `any`, and `infinite`, which fits `number`. The result boundary reports only NaN, only on a node declared to return a number. An operator returning a number may return an infinity where it receives one, and NaN where an `any` parameter may have received one. NaN made from infinities stays with the `overflow` rules, which also count outside `strictNumbers` where an operand is an infinity known exactly. A `non-finite-result` rule is never certain where an operand may be an infinity.
 
 **Why.** It is what the engine does: "Strict numbers at the result boundary" above listed `if`, `match`, `get`, `find`, `floor`, `ceiling` and `abs` as failing when handed NaN, and none of them does now. The NaN made from infinities is the arithmetic's alone, `Infinity - Infinity` or `0 * Infinity`, and the arithmetic is exactly what carries `overflow` rules, so no new rule or test was needed. A test for "finite" was the alternative for `divide`'s `{ by: 0 }`, which `Infinity / 0` satisfies without failing; marking the rule uncertain there kept the vocabulary as it is.
+
+## Analysis hooks replace the `analysis` field (Carl, 2026-11-01, at #290)
+
+**Decision.** An operator's analysis is two functions over gamuts, `gamut` and `failures`, paired with the built definition by `declareAnalysis` from `./authoring` and passed to `fallbackCoverage` in its `operators` option ([v3-operator-coverage.md](v3-operator-coverage.md)). Core's are the same calls, in a table in `./authoring`. Nothing goes on the definition: `analysis`, its checker and its four types leave the root. A host body is never run, declared or not. A declaration for an operator the instance lacks, a second for one operator, or one for a core operator is an error. A finding's message is the entry's own. The hooks read and build gamuts through helpers only, `Gamut` being opaque.
+
+**Why.** A field on a definition is carried by every consumer of it, so a library's operator would ship its analysis code to every app using it, where core's would not, and a `defineOperator()` operator would no longer be indistinguishable from a native one. Running the body over samples was rejected as unsound: the producer cannot know its consumers' thresholds, and a witness would run for real. The declarative `failures` vocabulary was hard to read and its model never stated, and a literal syntax for outputs, drafted the same day, needed single-use keywords (`quotient`, `byParam`); a function's interface, gamuts in and a gamut out, is enough to read. Never running a host body follows: with no field there is nothing to say a body is pure, and Conforma's custom functions include six that read the clock. Gamuts stay opaque because a hook switching on member kinds would go quietly wrong when a kind is added, and a gamut that holds too little hides failures downstream.
 
 ## Open
 

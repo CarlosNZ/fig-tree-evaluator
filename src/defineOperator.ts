@@ -42,7 +42,6 @@ import {
 } from './operatorDefinition'
 import { REST_PREFIX, assembleOperator, type Path } from './buildOperator'
 import { isLiteralType } from './typeIntersection'
-import { checkAnalysis } from './analysisCheck'
 
 const EVALUATION_MODES: ReadonlySet<string> = new Set([
   'eager',
@@ -602,11 +601,6 @@ export function defineOperator(
         'timeoutParam',
       ])
   }
-
-  if (def.analysis !== undefined)
-    checkAnalysis(def.analysis, declarations, (code, message, path) =>
-      addIssue(code, message, path)
-    )
 
   if (issues.length > 0) throw issuesError(ErrorCodes.invalidDefinition, issues, operator)
 

@@ -1,8 +1,10 @@
 /**
  * Rule 4 of the coverage walk ("Running a node" in
- * docs-dev/v3-specs/v3-fallback-coverage.md): a pure operator node run
+ * docs-dev/v3-specs/v3-fallback-coverage.md): a core operator node run
  * alone, once per combination of what its inputs are known to be. Its
- * children are never run again: each is summarised by its result.
+ * children are never run again: each is summarised by its result. Only
+ * core bodies are run: they depend on nothing but their parameters, and
+ * settle within microtasks, while nothing tells the walk that of a host's.
  *
  * A run calls the operator's own body, on parameters `resolveInputs`
  * resolves as the engine's layers do, through handles and streams the run
@@ -19,15 +21,16 @@ import { isTruthy } from '../primitives/truthiness'
 import { typeNamesNumber } from '../typeCheck'
 import type { FigTreeErrorCode } from '../errorCodes'
 import type { OperatorNode } from '../compile/artifact'
-import type { ValidatedOperatorDefinition, ValidatedParameter } from '../operatorDefinition'
+import type { ValidatedParameter } from '../operatorDefinition'
 import type { EvaluationOptions } from '../options'
 import type { OperatorContext, Settlement } from '../runtimeInterface'
 import { exactValues, exactly, fits, ofType, unionOf } from './known'
 import type { Known } from './known'
 import { judge, resolveInputs, vetted } from './inputs'
 import type { Failure } from './findings'
-import { answerRule, rulesOf } from './rules'
 import type { RuleOptions } from './rules'
+import { coreAnalyses } from './core'
+import { entriesOf, hooked } from './helpers'
 import type { NodeResult } from './walk'
 
 /**
@@ -66,16 +69,6 @@ export interface Ran {
 
 /** The most runs a node is given: as many values as the walk keeps exactly. */
 const RUN_LIMIT = 16
-
-/**
- * How long an async body is given to settle, in ms. A body still waiting
- * after this waits on something the analysis cannot give it: a host's own
- * state, a signal that never aborts. Core bodies settle within microtasks.
- */
-const SETTLE_LIMIT = 100
-
-/** Definitions whose body did not settle in time, in one analysis. */
-export type Stalled = Set<ValidatedOperatorDefinition>
 
 /** What a child comes to in one run. */
 type Outcome = { value: unknown } | { fails: true } | { unknown: true }
@@ -116,10 +109,8 @@ export const runNode = async (
   node: OperatorNode,
   outputs: Record<string, Known>,
   children: Child[],
-  options: RuleOptions,
-  stalled: Stalled = new Set()
+  options: RuleOptions
 ): Promise<Ran | undefined> => {
-  if (stalled.has(node.entry.definition)) return undefined
   const { parameters } = node.entry.definition
   const handed = new Set(children.map((child) => child.param))
   const values: { name: string; outcomes: Outcome[] }[] = []
@@ -159,7 +150,7 @@ export const runNode = async (
     for (const { name, outcomes } of values)
       exact[name] = (pick(outcomes) as { value: unknown }).value
     const chosen = new Map(asked.map(({ child, outcomes }) => [child, pick(outcomes)]))
-    const ending = await runOnce(node, outputs, exact, chosen, options, reached, awaited, stalled)
+    const ending = await runOnce(node, outputs, exact, chosen, options, reached, awaited)
     if (ending === undefined) return undefined
     endings.push(ending)
   }
@@ -242,8 +233,7 @@ const runOnce = async (
   chosen: Map<Child, Outcome>,
   options: RuleOptions,
   reached: Set<Child>,
-  awaited: Set<Child>,
-  stalled: Stalled
+  awaited: Set<Child>
 ): Promise<Ending | undefined> => {
   /** A child whose value or failure the run waits on. */
   const waitOn = (child: Child) => {
@@ -269,19 +259,19 @@ const runOnce = async (
     waitOn(child)
   }
   // The parameter a failure is about: the one a type check names, else the
-  // one a rule with its code names, where that rule holds here
-  const rules = rulesOf(definition)
+  // one the first entry with its code names, where that entry can occur here
+  const parameterNamed = (code: FigTreeErrorCode): string | undefined => {
+    const analysis = coreAnalyses().get(definition)
+    if (analysis === undefined) return undefined
+    const entries = entriesOf(hooked(node, analysis, inputs, {}, {}))
+    if (entries === 'external') return undefined
+    return entries.find(
+      (entry) =>
+        entry.code === code && entry.parameter !== undefined && (entry.occurs ?? 'maybe') !== 'no'
+    )?.parameter
+  }
   const own = (code: FigTreeErrorCode, message: string, named?: string): Ending => {
-    const parameter =
-      named ??
-      (rules === 'external'
-        ? undefined
-        : rules.find(
-            (rule) =>
-              rule.code === code &&
-              rule.parameter !== undefined &&
-              answerRule(node, rule, inputs, options) !== 'no'
-          )?.parameter)
+    const parameter = named ?? parameterNamed(code)
     return {
       failure: {
         path: node.path,
@@ -512,10 +502,6 @@ const runOnce = async (
     if (passed !== undefined) return { passed }
     if (waited) return undefined
     awaiting = true
-    const timer = setTimeout(() => {
-      stalled.add(definition)
-      stop()
-    }, SETTLE_LIMIT)
     const settled = await Promise.race([
       Promise.resolve(result).then(
         (value) => ({ value }),
@@ -523,7 +509,6 @@ const runOnce = async (
       ),
       stopped,
     ])
-    clearTimeout(timer)
     if (settled === STOPPED) return undefined
     if ('error' in settled) return thrown(settled.error)
     result = settled.value

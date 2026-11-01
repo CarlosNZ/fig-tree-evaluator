@@ -16,7 +16,10 @@ import { staticGate } from '../validation'
 import type { FallbackCoverage, FallbackCoverageOptions } from '../authoringTypes'
 import { coveredFinding, isDemand, report, staticFinding, uncoveredFinding } from './findings'
 import type { Caught, Failure } from './findings'
+import { analysesFor } from './declare'
 import { Analysis } from './walk'
+
+export { declareAnalysis } from './declare'
 
 /**
  * Where each node of an expression can fail, and which fallback, if any,
@@ -32,6 +35,10 @@ import { Analysis } from './walk'
  * and shielding is all or nothing (see "Timeouts" in the spec). The
  * expression compiles through `compile()`, so it shares the compile cache
  * with `evaluate()`.
+ *
+ * A host operator is analysed by the analysis passed for it in
+ * `operators`, from `declareAnalysis`; one without is external, and may
+ * fail whatever its inputs. Core's analyses are built in.
  *
  * An expression with a static error never runs: `evaluate()` refuses it
  * before anything starts, so no fallback can catch one. Its report is
@@ -53,14 +60,15 @@ export const fallbackCoverage = async (
       path: [],
     })
   // A handle from this copy is always readable
-  const { artifact, options: effective } = viewHandle(fig.compile(expression))!
+  const { artifact, options: effective, registry } = viewHandle(fig.compile(expression))!
+  const analyses = analysesFor(options?.operators, registry)
 
   // The static gate, as `evaluate()` applies it
   const errors = staticGate(artifact, effective).filter((issue) => issue.severity === 'error')
   if (errors.length > 0) return { uncovered: errors.map(staticFinding), covered: [] }
 
   const evaluation = effective as unknown as Record<string, unknown>
-  const analysis = new Analysis({ strictNumbers, evaluation })
+  const analysis = new Analysis({ strictNumbers, evaluation }, analyses)
 
   const caught: Caught[] = []
   const { escapes, waits } = await analysis.root(artifact.root, caught)

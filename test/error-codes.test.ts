@@ -38,7 +38,7 @@ import type {
   TraceNode,
 } from '../src'
 import type { FallbackErrorCode, FigTreeErrorCode, KnownFallbackErrorCode } from '../src/errorCodes'
-import { CORE_RULES } from '../src/authoring/rules'
+import { coreAnalyses } from '../src/authoring/core'
 import { sections } from './coverage-cases'
 import { sleepOp } from './fixtures/evalOperators'
 
@@ -161,10 +161,18 @@ describe('and is what `$error.code` reads there', () => {
 })
 
 describe('every code the package throws at a fallback is listed', () => {
-  test('the core operators’ failure rules', () => {
-    const unlisted = Object.entries(CORE_RULES).flatMap(([operator, rules]) =>
-      rules.filter(({ code }) => !LISTED.has(code)).map(({ code }) => `${operator}: ${code}`)
-    )
+  test('the core operators’ failure entries', () => {
+    // An entry's code does not depend on the inputs, so each `failures` hook
+    // is asked with every parameter unknown and every question unanswered
+    const unknown = new Proxy({}, { get: () => () => 'maybe' })
+    const nothing = new Proxy({}, { get: () => [] })
+    const unlisted = [...coreAnalyses().values()].flatMap(({ operator, failures }) => {
+      const entries =
+        typeof failures === 'function' ? failures(nothing as never, unknown as never) : failures
+      return (entries ?? [])
+        .filter(({ code }) => !LISTED.has(code))
+        .map(({ code }) => `${operator.name}: ${code}`)
+    })
     expect(unlisted).toEqual([])
   })
 

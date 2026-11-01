@@ -665,7 +665,12 @@ export class CompiledExpression<Trace extends boolean = false> {
       if (typeof value !== 'object' || value === null || !(#entry in value)) return undefined
       const options =
         call === undefined ? value.#evaluation : withCallOptions(value.#evaluation, call)
-      return { expression: value.#expression, artifact: value.#artifact(), options }
+      return {
+        expression: value.#expression,
+        artifact: value.#artifact(),
+        options,
+        registry: value.#registry,
+      }
     }
   }
 
@@ -780,6 +785,8 @@ export interface HandleView {
   expression: unknown
   artifact: CompileArtifact
   options: EvaluationOptions
+  /** The instance's operators, which `./authoring` matches analyses to */
+  registry: OperatorRegistry
 }
 
 /**

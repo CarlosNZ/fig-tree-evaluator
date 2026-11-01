@@ -37,7 +37,7 @@ import type {
   SqlConnection,
   TraceNode,
 } from '../src'
-import { fallbackCoverage } from '../src/authoring'
+import { declareAnalysis, fallbackCoverage } from '../src/authoring'
 import { fragments, sections } from './coverage-cases'
 import type { CoverageCase, Finding, NodePath } from './coverage-cases'
 
@@ -89,7 +89,6 @@ const picky = defineOperator({
   parameters: { value: { type: 'string' } },
   positionalParams: ['value'],
   returns: 'string',
-  analysis: { failures: [{ code: 'operator-failure', parameter: 'value', when: { value: '' } }] },
   evaluate: ({ value }) => {
     if (value === '') throw new OperatorFailure('nothing to pick')
     return value
@@ -102,12 +101,26 @@ const nap = defineOperator({
   parameters: { value: { type: 'number' } },
   positionalParams: ['value'],
   returns: 'number',
-  analysis: {},
   evaluate: async ({ value }) => {
     await new Promise((resolve) => setTimeout(resolve, 30))
     return value
   },
 })
+
+/** The host operators' analyses: `twice` and `shaky` have none. */
+const hostAnalyses = [
+  declareAnalysis(picky, {
+    failures: ({ value }, helpers) => [
+      {
+        code: 'operator-failure',
+        parameter: 'value',
+        occurs: helpers.is(value, ''),
+        message: "'value' is empty",
+      },
+    ],
+  }),
+  declareAnalysis(nap, { failures: [] }),
+]
 
 const instanceOptions: Record<NonNullable<CoverageCase['instance']> | 'default', FigTreeOptions> = {
   default: {},
@@ -534,7 +547,10 @@ for (const [section, cases] of Object.entries(sections))
       const seen = await outcomes(item)
       expect(unpredicted(item, seen)).toEqual([])
 
-      const analysis = await fallbackCoverage(instanceOf(item, true), item.expression, item.options)
+      const analysis = await fallbackCoverage(instanceOf(item, true), item.expression, {
+        ...item.options,
+        ...(item.instance === 'host' ? { operators: hostAnalyses } : {}),
+      })
       expect(unsound(analysis, seen)).toEqual([])
       expect(uncertain(analysis, seen)).toEqual([])
       expect(inexact(item, analysis)).toEqual([])
