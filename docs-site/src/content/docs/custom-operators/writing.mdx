@@ -136,12 +136,11 @@ Here is the full list of fields an operator definition can have. Four are requir
 - **Static checks:**
   - **`returns`**: the type of value it returns, so FigTree can tell, before anything runs, if its output could never be valid input for its parent node ([Declaring what it returns](/custom-operators/validate/#declaring-what-it-returns)).
   - **`validate`**: a function for checks of your own, beyond the type checks FigTree already makes, on the parameter values written into an expression, such as `regex` checking that its pattern compiles. Like the type checks, it runs before anything is evaluated ([The `validate` hook](/custom-operators/validate/#the-validate-hook)).
-  - **`analysis`**: when the operator can fail, for `fallbackCoverage()`, which checks that an expression's fallbacks cover every failure ([Custom operators](/tooling/authoring/#custom-operators)).
 - **Your own:**
   - **`metadata`**: anything your own tools need, such as the author's name or additional rules about where it can be used. FigTree never reads it, and `getOperators()` returns it as written.
 
-<Callout kind="note" title="No description">
-  A definition has no description. An operator's description, display name and colours go into a separate **catalog listing**, to avoid adding cruft to the runtime bundle ([Presenting your operator](/custom-operators/presenting/)).
+<Callout kind="note" title="No description or analysis">
+  A definition has no description. An operator's description, display name and colours go into a separate **catalog listing**, to avoid adding cruft to the runtime bundle ([Presenting your operator](/custom-operators/presenting/)). For the same reason, its **analysis** goes separately too: how it can fail, which `fallbackCoverage()` reads to check that an expression's fallbacks cover every failure. It's declared with `declareAnalysis()` ([Custom operators](/tooling/authoring/#custom-operators)).
 </Callout>
 
 ### Positional parameters

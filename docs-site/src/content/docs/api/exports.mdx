@@ -686,7 +686,6 @@ Every public type is exported from `fig-tree-evaluator`, including those for the
 | [`OperatorValidate`](/custom-operators/validate/#the-validate-hook)   | The `validate` hook                                                |
 | [`ValidateFinding`](/custom-operators/validate/#findings)             | What the hook reports                                              |
 | [`ValidateHelpers`](/custom-operators/validate/#helpers)              | The helpers the hook is given                                      |
-| [`OperatorAnalysis`](/tooling/authoring/#custom-operators), `FailureRule`, `FailureTest`, `DeclaredOutput` | What `fallbackCoverage()` can assume about an operator |
 
 ### Types and constraints
 
@@ -751,6 +750,7 @@ Every public type is exported from `fig-tree-evaluator`, including those for the
 | [`ObjectClass`](/tooling/format/#reading-primitives), `PositionalShape`, `PositionalLayout`, `ReferenceRecognition`, `ReferenceScope`, `ReferenceNamespace` | What the reading primitives take and return |
 | [`FallbackCoverage`](/tooling/authoring/#reading-the-report), `CoverageFinding`, `CoveredFinding` | What `fallbackCoverage()` returns |
 | [`FallbackCoverageOptions`](/tooling/authoring/#fallbackcoverage)             | What `fallbackCoverage()` takes                             |
+| [`OperatorAnalysis`](/tooling/authoring/#custom-operators), `FailureEntry`, `Gamut`, `GamutHelpers`, `Answer` | What `declareAnalysis()` returns, and what its hooks take and return |
 | [`MigrationResult`](/migrating/#the-converters-report), `FragmentMigrationResult`, `MigrationIssue` | What the converter returns     |
 | [`V2Options`](/migrating/#converting-expressions)                      | The v2 options the converter reads                          |
 
@@ -848,7 +848,13 @@ Converting expressions between shorthand and canonical form, and reading them as
 ### `fig-tree-evaluator/authoring`
 
 ```ts
-import type { FallbackCoverage, FallbackCoverageOptions, FigTree } from 'fig-tree-evaluator'
+import type {
+  FallbackCoverage,
+  FallbackCoverageOptions,
+  FigTree,
+  OperatorAnalysis,
+  ValidatedOperatorDefinition,
+} from 'fig-tree-evaluator'
 declare namespace Authoring {
 // ---cut---
 function fallbackCoverage(
@@ -856,11 +862,16 @@ function fallbackCoverage(
   expression: unknown,
   options?: FallbackCoverageOptions
 ): Promise<FallbackCoverage>
+
+function declareAnalysis(
+  operator: ValidatedOperatorDefinition,
+  hooks: Pick<OperatorAnalysis, 'gamut' | 'failures'>
+): OperatorAnalysis
 // ---cut-after---
 }
 ```
 
-Static analyses for authoring tools. `fallbackCoverage()` reports where each node of an expression can fail, and which fallback, if any, catches it, under the instance's own options.
+Static analyses for authoring tools. `fallbackCoverage()` reports where each node of an expression can fail, and which fallback, if any, catches it, under the instance's own options. `declareAnalysis()` tells it how one of your own operators can fail, and what it returns, for its `operators` option.
 
 **See also:** [`/authoring`](/tooling/authoring/), [Covering the whole expression](/guides/fallbacks/)
 

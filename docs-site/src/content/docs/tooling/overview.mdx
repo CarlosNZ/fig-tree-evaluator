@@ -62,7 +62,7 @@ report.uncovered.map(({ code, parameter }) => `${code} at ${parameter}`)
 // => ['type-check at value', 'type-check at by', 'non-finite-result at by']
 ```
 
-The [`/authoring`](/tooling/authoring/) page covers reading the report.
+It knows how FigTree's own operators can fail. For your own, `declareAnalysis()` tells it. The [`/authoring`](/tooling/authoring/) page covers both, and reading the report.
 
 The fourth subpath, `fig-tree-evaluator/migrate`, converts v2 expressions to v3, and is covered in [Migrating from v2](/migrating/).
 

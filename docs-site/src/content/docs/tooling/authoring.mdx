@@ -102,8 +102,12 @@ interface CoveredFinding extends CoverageFinding {
 - **If the expression has a [static error](/guides/validation/#static-errors),** the report shows _only_ those, since the expression is rejected before it even runs.
 - **If the instance has a global `timeout`** and the expression has something that can wait, only a plain-value fallback at the top of the expression can fully cover it ([Timeout shielding](/guides/fallbacks/#timeout-shielding)).
 
-<Callout kind="note" title="Just one option">
-  `fallbackCoverage()` takes one option of its own, `strictNumbers`. By default, it assumes numbers in your data are finite and that arithmetic doesn't overflow. With `fallbackCoverage(fig, expression, { strictNumbers: true })`, `{ $plus: ['$data.price', 1] }` may also fail with `non-finite-result`, on an extreme number.
+<Callout kind="note" title="Its own options">
+
+`fallbackCoverage()` takes two options of its own. The first, `strictNumbers`, is about numbers. By default, it assumes numbers in your data are finite and that arithmetic doesn't overflow. With `fallbackCoverage(fig, expression, { strictNumbers: true })`, `{ $plus: ['$data.price', 1] }` may also fail with `non-finite-result`, on an extreme number.
+
+The second, `operators`, is for your own operators: it takes their analyses, from `declareAnalysis()`, which tell it how each one can fail ([Custom operators](#custom-operators)).
+
 </Callout>
 
 ## Custom operators
