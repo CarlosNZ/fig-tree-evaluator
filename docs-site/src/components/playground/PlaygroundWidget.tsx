@@ -1,10 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import JSON5 from 'json5'
 import { deepEqual, isFigTreeError } from 'fig-tree-evaluator'
-import { fallbackCoverage } from 'fig-tree-evaluator/authoring'
 import { FigTreeEditor, type Evaluation, type SetExpressionOptions } from 'fig-tree-editor-react'
 import 'fig-tree-editor-react/style.css'
-import { exampleFigTree } from '../../lib/figTree'
+import { exampleCoverage, exampleFigTree } from '../../lib/figTree'
 import { parseJson5, toJson5 } from '../../lib/json5'
 import { inlineMarkdown } from '../../lib/inlineMarkdown'
 import { readPlaygroundSeed } from '../../lib/playgroundLink'
@@ -317,7 +316,7 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
     setCoverageStale(true)
     const timer = setTimeout(async () => {
       try {
-        settle({ status: 'done', report: toJson5(await fallbackCoverage(figTree, expression)) })
+        settle({ status: 'done', report: toJson5(await exampleCoverage(figTree, expression)) })
       } catch (error) {
         settle({ status: 'blocked', reason: String(error) })
       }

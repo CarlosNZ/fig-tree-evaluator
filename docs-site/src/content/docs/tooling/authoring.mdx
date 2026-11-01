@@ -158,7 +158,10 @@ With that, the analysis treats it like any core operator:
 Here's the field's shape:
 
 ```ts
-import type { DeclaredOutput, ExpectedType, FallbackErrorCode } from 'fig-tree-evaluator'
+import type { ExpectedType, FallbackErrorCode } from 'fig-tree-evaluator'
+// TO-DO: a stand-in, as the root has no DeclaredOutput. Goes when this
+// block is rewritten for declareAnalysis (#290)
+type DeclaredOutput = unknown
 // ---cut---
 interface OperatorAnalysis {
   // The ways evaluate can fail. Leave it out if it never fails

@@ -5,11 +5,13 @@ import {
   httpOperators,
   sqlFailure,
   sqlOperators,
+  type OperatorAnalysis,
   type SqlConnection,
 } from 'fig-tree-evaluator'
+import { fallbackCoverage } from 'fig-tree-evaluator/authoring'
 import { siteFetch } from './http'
 import { fragments } from './fragments'
-import { customOperators } from './operators'
+import { customAnalyses, customOperators } from './operators'
 
 /**
  * The site's database, Northwind in SQLite (./sqlite.ts). It's imported on
@@ -69,6 +71,9 @@ export interface ExampleSetup {
  */
 const instances = new Map<string, FigTree>()
 
+/** The analyses of each instance's custom operators, where it has any. */
+const analyses = new WeakMap<FigTree, OperatorAnalysis[]>()
+
 /** The instance an example evaluates with. */
 export const exampleFigTree = (setup: ExampleSetup = {}): FigTree => {
   const key = [setup.fragments, setup.customOperators, setup.noCache].map(Boolean).join()
@@ -79,7 +84,16 @@ export const exampleFigTree = (setup: ExampleSetup = {}): FigTree => {
       instance = instance.with({ operators: [...siteOperators, ...customOperators] })
     if (setup.fragments) instance = instance.with({ fragments })
     if (setup.noCache) instance = instance.with(noCache)
+    if (setup.customOperators) analyses.set(instance, customAnalyses)
     instances.set(key, instance)
   }
   return instance
 }
+
+/**
+ * An expression's fallbackCoverage() report, with the analyses of the
+ * instance's custom operators: fallbackCoverage() refuses one for an
+ * operator the instance doesn't register.
+ */
+export const exampleCoverage = (instance: FigTree, expression: unknown) =>
+  fallbackCoverage(instance, expression, { operators: analyses.get(instance) })

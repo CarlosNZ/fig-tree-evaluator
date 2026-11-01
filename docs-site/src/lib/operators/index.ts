@@ -1,8 +1,8 @@
-import type { ValidatedOperatorDefinition } from 'fig-tree-evaluator'
+import type { OperatorAnalysis, ValidatedOperatorDefinition } from 'fig-tree-evaluator'
 import { distance } from './distance'
 import { formatNumber } from './formatNumber'
 import { hash } from './hash'
-import { median } from './median'
+import { median, medianAnalysis } from './median'
 import { sortBy } from './sortBy'
 
 /**
@@ -22,3 +22,9 @@ export const customOperators: ValidatedOperatorDefinition[] = [
   sortBy,
   median,
 ]
+
+/**
+ * The analyses fallbackCoverage() reads for those operators. One left out is
+ * external to it: it may fail whatever its inputs.
+ */
+export const customAnalyses: OperatorAnalysis[] = [medianAnalysis]

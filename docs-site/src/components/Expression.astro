@@ -23,8 +23,7 @@
 import { Code } from '@astrojs/starlight/components'
 import JSON5 from 'json5'
 import { isFigTreeError } from 'fig-tree-evaluator'
-import { fallbackCoverage } from 'fig-tree-evaluator/authoring'
-import { exampleFigTree } from '../lib/figTree'
+import { exampleCoverage, exampleFigTree } from '../lib/figTree'
 import { trackMissing } from '../lib/httpReplay'
 import { dedent } from '../lib/dedent'
 import { toJson5 } from '../lib/json5'
@@ -128,7 +127,7 @@ if (outcome.ok && throws)
 if (!outcome.ok && !throws)
   throw new Error(`${where}\n\nThis example threw ${outcome.code}: ${outcome.message}`)
 
-const report = coverage ? toJson5(await fallbackCoverage(figTree, expression)) : undefined
+const report = coverage ? toJson5(await exampleCoverage(figTree, expression)) : undefined
 
 const href = editor ? playgroundHref({
       expression: code,
