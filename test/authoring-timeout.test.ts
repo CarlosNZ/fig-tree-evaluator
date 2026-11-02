@@ -31,7 +31,7 @@ const underTimeout = async (
   expression: unknown,
   options?: FigTreeOptions,
   operators?: OperatorAnalysis[]
-) => timeouts((await fallbackCoverage(timed(options), expression, { operators })).uncovered)
+) => timeouts((await fallbackCoverage(timed(options), expression, operators)).uncovered)
 
 test('worked example 3: one dynamic fallback leaves its hole uncovered', async () => {
   const banner = {

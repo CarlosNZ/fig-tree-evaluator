@@ -547,10 +547,12 @@ for (const [section, cases] of Object.entries(sections))
       const seen = await outcomes(item)
       expect(unpredicted(item, seen)).toEqual([])
 
-      const analysis = await fallbackCoverage(instanceOf(item, true), item.expression, {
-        ...item.options,
-        ...(item.instance === 'host' ? { operators: hostAnalyses } : {}),
-      })
+      const analysis = await fallbackCoverage(
+        instanceOf(item, true),
+        item.expression,
+        item.instance === 'host' ? hostAnalyses : undefined,
+        item.options
+      )
       expect(unsound(analysis, seen)).toEqual([])
       expect(uncertain(analysis, seen)).toEqual([])
       expect(inexact(item, analysis)).toEqual([])

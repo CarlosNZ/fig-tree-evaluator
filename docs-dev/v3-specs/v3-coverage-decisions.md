@@ -166,6 +166,12 @@ _Superseded by "Analysis hooks replace the `analysis` field" below: a host body 
 
 **Why.** A field on a definition is carried by every consumer of it, so a library's operator would ship its analysis code to every app using it, where core's would not, and a `defineOperator()` operator would no longer be indistinguishable from a native one. Running the body over samples was rejected as unsound: the producer cannot know its consumers' thresholds, and a witness would run for real. The declarative `failures` vocabulary was hard to read and its model never stated, and a literal syntax for outputs, drafted the same day, needed single-use keywords (`quotient`, `byParam`); a function's interface, gamuts in and a gamut out, is enough to read. Never running a host body follows: with no field there is nothing to say a body is pure, and Conforma's custom functions include six that read the clock. Gamuts stay opaque because a hook switching on member kinds would go quietly wrong when a kind is added, and a gamut that holds too little hides failures downstream.
 
+## Analyses are their own parameter, and an unregistered operator's is ignored (Carl, 2026-11-02, at #290)
+
+**Decision.** `fallbackCoverage(fig, expression, analyses?, options?)`: the analyses leave the `operators` option for a third parameter, flattened one level as the constructor's `operators` are, and `options` keeps `strictNumbers` alone. An analysis of an operator the instance does not register is ignored, and the same analysis twice is one. Two different analyses of one operator, or an entry that is not an analysis, are still `invalid-options`. A core operator's analysis is refused by `declareAnalysis`, with `invalid-definition`, rather than by the call. This reverses the previous decision's error for an operator the instance lacks.
+
+**Why.** Leaving an analysis out only makes its operator external, which adds findings and never hides a failure, so ignoring one is safe, and it lets a library's list be passed whole. After `operatorSet({ replace })` the replacement is a different definition, so its predecessor's analysis has nothing to match, rightly. `getCatalog()` already ignores a listing whose name is not registered. Two different analyses of one operator stay an error, since one would silently win. A core operator's analysis is a mistake about the operator, not the call, so the declaration is where it is caught.
+
 ## Open
 
 All carried to the issues above.

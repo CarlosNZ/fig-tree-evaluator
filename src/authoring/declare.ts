@@ -1,7 +1,8 @@
 /**
- * `declareAnalysis`, the one door to an operator's analysis ("Reaching the
- * analysis" in docs-dev/v3-specs/v3-operator-coverage.md), and the match
- * of a `fallbackCoverage` call's declarations to its instance's operators.
+ * `declareAnalysis`, a host's one door to an operator's analysis
+ * ("Reaching the analysis" in docs-dev/v3-specs/v3-operator-coverage.md),
+ * and the match of a `fallbackCoverage` call's analyses to its instance's
+ * operators.
  * Nothing goes on the definition: a field there would ship analysis code
  * to every consumer of the operator.
  */
@@ -14,7 +15,7 @@ import type { BuiltOperator, OperatorAnalysis } from '../authoringTypes'
 import type { OperatorRegistry } from '../registry'
 import type { ValidatedOperatorDefinition } from '../operatorDefinition'
 
-/** Every analysis `declareAnalysis` has made. */
+/** Every analysis made here, core's included. */
 const declared = new WeakSet<OperatorAnalysis>()
 
 const HOOKS = new Set(['gamut', 'failures'])
@@ -26,7 +27,8 @@ const refuse = (message: string): FigTreeError =>
  * An operator's analysis for `fallbackCoverage`: what a node of it returns
  * and how its body fails, given what its parameters receive. The hooks are
  * checked for their kind only: a literal is nowhere to validate, and
- * calling a hook on made-up inputs would prove nothing.
+ * calling a hook on made-up inputs would prove nothing. A core operator's
+ * analysis is built in, so it takes none.
  */
 export const declareAnalysis = (
   operator: BuiltOperator,
@@ -34,6 +36,19 @@ export const declareAnalysis = (
 ): OperatorAnalysis => {
   if (!isValidatedOperator(operator))
     throw refuse('declareAnalysis() takes an operator built by defineOperator()')
+  if (coreOperators.includes(operator))
+    throw refuse(`'${operator.name}' is a core operator, whose analysis is built in`)
+  return analysisFrom(operator, hooks)
+}
+
+/**
+ * An analysis of a built operator, core or not: `declareAnalysis` past its
+ * refusal of a core operator, which is how ./core.ts declares core's.
+ */
+export const analysisFrom = (
+  operator: ValidatedOperatorDefinition,
+  hooks: Pick<OperatorAnalysis, 'gamut' | 'failures'>
+): OperatorAnalysis => {
   const name = operator.name
   if (!isPlainObject(hooks)) throw refuse(`the analysis of '${name}' must be a plain object`)
   for (const key of Object.keys(hooks))
@@ -57,34 +72,40 @@ export const declareAnalysis = (
 }
 
 /**
- * A call's declarations, by the definition each declares. Each must be one
- * of the instance's own operators, by identity, and declared once: a
- * declaration nothing reads, or a second that one of the two would
- * silently override, is a mistake. Core's analyses are built in.
+ * A call's analyses, by the definition each declares. Each entry is an
+ * analysis or a list of them, flattened one level, as the constructor's
+ * `operators` are. An analysis of an operator the instance does not
+ * register is ignored: without it that operator would be external, so
+ * leaving one out can only add findings, never hide a failure, and an
+ * operator `operatorSet({ replace })` swaps out is a different definition.
+ * The same analysis twice is one; two different analyses of one operator
+ * are a mistake, since one would silently win.
  */
 export const analysesFor = (
-  operators: unknown,
+  entries: unknown,
   registry: OperatorRegistry
 ): Map<ValidatedOperatorDefinition, OperatorAnalysis> => {
   const analyses = new Map<ValidatedOperatorDefinition, OperatorAnalysis>()
-  if (operators === undefined) return analyses
+  if (entries === undefined) return analyses
   const fail = (message: string) =>
     new FigTreeError({ code: ErrorCodes.invalidOptions, message, path: [] })
-  if (!Array.isArray(operators))
-    throw fail("'operators' must be an array of analyses from declareAnalysis()")
+  const shape = 'an array of analyses from declareAnalysis(), or of lists of them'
+  if (!Array.isArray(entries)) throw fail(`'analyses' must be ${shape}`)
   const registered = new Set([...registry.operators.values()].map((entry) => entry.definition))
-  const core = new Set<unknown>(coreOperators)
-  operators.forEach((analysis: unknown, index) => {
-    const at = `'operators[${index}]'`
+  const add = (analysis: unknown, at: string) => {
     if (!declared.has(analysis as OperatorAnalysis))
       throw fail(`${at} is not an analysis: build it with declareAnalysis()`)
     const operator = (analysis as OperatorAnalysis).operator as ValidatedOperatorDefinition
-    if (core.has(operator))
-      throw fail(`${at} declares '${operator.name}', a core operator, whose analysis is built in`)
-    if (!registered.has(operator))
-      throw fail(`${at} declares '${operator.name}', which this instance does not register`)
-    if (analyses.has(operator)) throw fail(`${at} declares '${operator.name}' a second time`)
+    if (!registered.has(operator)) return
+    const earlier = analyses.get(operator)
+    if (earlier !== undefined && earlier !== analysis)
+      throw fail(`${at} is a second, different analysis of '${operator.name}'`)
     analyses.set(operator, analysis as OperatorAnalysis)
+  }
+  entries.forEach((entry: unknown, index) => {
+    if (Array.isArray(entry))
+      entry.forEach((analysis: unknown, inner) => add(analysis, `'analyses[${index}][${inner}]'`))
+    else add(entry, `'analyses[${index}]'`)
   })
   return analyses
 }
