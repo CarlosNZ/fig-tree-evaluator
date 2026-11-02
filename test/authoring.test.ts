@@ -13,7 +13,14 @@
  * values only, so they are checked here, where `pnpm typecheck` fails if one
  * goes missing.
  */
-import { ErrorCodes, FigTree, OperatorFailure, coreOperators, defineOperator } from '../src'
+import {
+  ErrorCodes,
+  FigTree,
+  OperatorFailure,
+  coreOperators,
+  defineOperator,
+  operatorSet,
+} from '../src'
 import type {
   Answer,
   CoverageFinding,
@@ -70,8 +77,8 @@ test('the subpath exports fallbackCoverage and declareAnalysis, and its types fr
   const occurs: Answer = 'maybe'
   const entry: FailureEntry = { code: 'operator-failure', parameter: 'value', occurs }
   const declared: OperatorAnalysis = declareAnalysis(risky, { gamut, failures: [entry] })
-  const options: FallbackCoverageOptions = { strictNumbers: true, operators: [declared] }
-  const result: FallbackCoverage = await fallbackCoverage(fig, 1, options)
+  const options: FallbackCoverageOptions = { strictNumbers: true }
+  const result: FallbackCoverage = await fallbackCoverage(fig, 1, [declared], options)
   expect(result).toEqual({ uncovered: [], covered: [] })
 })
 
@@ -98,9 +105,11 @@ describe('strictNumbers', () => {
 
   test('counts overflow on numbers the walk cannot pin down, which is off by default', async () => {
     expect((await fallbackCoverage(fig, sum)).uncovered).toEqual([])
-    expect((await fallbackCoverage(fig, sum, { strictNumbers: false })).uncovered).toEqual([])
     expect(
-      (await fallbackCoverage(fig, sum, { strictNumbers: true })).uncovered.map(
+      (await fallbackCoverage(fig, sum, undefined, { strictNumbers: false })).uncovered
+    ).toEqual([])
+    expect(
+      (await fallbackCoverage(fig, sum, undefined, { strictNumbers: true })).uncovered.map(
         (finding) => finding.code
       )
     ).toEqual([ErrorCodes.nonFiniteResult])
@@ -111,7 +120,7 @@ describe('strictNumbers', () => {
     // gives 0, and divide fails
     const count = { $length: { $buildString: ['%1', '$data.x'] } }
     const ratio = { $divide: [1, { $subtract: [count, 1] }] }
-    const { uncovered } = await fallbackCoverage(fig, ratio, { strictNumbers: true })
+    const { uncovered } = await fallbackCoverage(fig, ratio, undefined, { strictNumbers: true })
     expect(
       uncovered.map((finding) => ({ ...where(finding), certainty: finding.certainty }))
     ).toEqual([
@@ -123,7 +132,7 @@ describe('strictNumbers', () => {
 
   test('anything but a boolean is refused', async () => {
     await expect(
-      fallbackCoverage(fig, 1, { strictNumbers: 'yes' as unknown as boolean })
+      fallbackCoverage(fig, 1, undefined, { strictNumbers: 'yes' as unknown as boolean })
     ).rejects.toThrow(expect.objectContaining({ code: ErrorCodes.invalidOptions }))
   })
 })
@@ -606,7 +615,7 @@ describe('type checks between nodes', () => {
 
 describe('what a node returns', () => {
   const findings = async (expression: unknown, options?: FallbackCoverageOptions) =>
-    (await fallbackCoverage(fig, expression, options)).uncovered.map((finding) => ({
+    (await fallbackCoverage(fig, expression, undefined, options)).uncovered.map((finding) => ({
       ...where(finding),
       certainty: finding.certainty,
     }))
@@ -669,12 +678,12 @@ describe('what a node returns', () => {
     const hosts = new FigTree({ operators: [coreOperators, [echo]] })
     const operators = [declareAnalysis(echo, { gamut: ({ value }) => value, failures: [] })]
     const expression = { $upper: { $echo: 'x' } }
-    expect((await fallbackCoverage(hosts, expression, { operators })).uncovered).toEqual([])
+    expect((await fallbackCoverage(hosts, expression, operators)).uncovered).toEqual([])
     // Without one, it returns its `returns`, anything
     const typed = [declareAnalysis(echo, { failures: [] })]
-    expect(
-      (await fallbackCoverage(hosts, expression, { operators: typed })).uncovered.map(where)
-    ).toEqual([{ path: [], code: ErrorCodes.typeCheck, parameter: 'value' }])
+    expect((await fallbackCoverage(hosts, expression, typed)).uncovered.map(where)).toEqual([
+      { path: [], code: ErrorCodes.typeCheck, parameter: 'value' },
+    ])
   })
 
   describe('the result boundary, under strict numbers', () => {
@@ -696,12 +705,10 @@ describe('what a node returns', () => {
     const hosted = new FigTree({ operators: [toNumber, pass] })
     const operators = [toNumber, pass].map((op) => declareAnalysis(op, { failures: [] }))
     const hostFindings = async (expression: unknown, options?: FallbackCoverageOptions) =>
-      (await fallbackCoverage(hosted, expression, { ...options, operators })).uncovered.map(
-        (finding) => ({
-          ...where(finding),
-          certainty: finding.certainty,
-        })
-      )
+      (await fallbackCoverage(hosted, expression, operators, options)).uncovered.map((finding) => ({
+        ...where(finding),
+        certainty: finding.certainty,
+      }))
 
     test('a NaN from the data is refused only where it must be a number', async () => {
       expect(await hostFindings({ $toNumber: '$data.n' }, strict)).toEqual([nonFinite])
@@ -841,7 +848,7 @@ describe('value ranges', () => {
       }),
     ]
     const hostFindings = async (expression: unknown) =>
-      (await fallbackCoverage(hosts, expression, { operators })).uncovered.map((finding) => ({
+      (await fallbackCoverage(hosts, expression, operators)).uncovered.map((finding) => ({
         ...where(finding),
         certainty: finding.certainty,
       }))
@@ -954,7 +961,7 @@ describe("an operator's own failures", () => {
       declareAnalysis(fetching, { gamut: (_, helpers) => helpers.type('string') }),
     ]
     const hostFindings = async (expression: unknown) =>
-      (await fallbackCoverage(hosts, expression, { operators })).uncovered
+      (await fallbackCoverage(hosts, expression, operators)).uncovered
 
     test('a declared one fails only as its entries say', async () => {
       expect(await hostFindings({ $picky: 'x' })).toEqual([])
@@ -994,13 +1001,9 @@ describe("an operator's own failures", () => {
       const flaggedHosts = new FigTree({ operators: [[flagged]] })
       const run = async (entries: FailureEntry[], instance = flaggedHosts) =>
         (
-          await fallbackCoverage(
-            instance,
-            { $flagged: 'x' },
-            {
-              operators: [declareAnalysis(flagged, { failures: entries })],
-            }
-          )
+          await fallbackCoverage(instance, { $flagged: 'x' }, [
+            declareAnalysis(flagged, { failures: entries }),
+          ])
         ).uncovered.map(({ certainty, message }) => ({ certainty, message }))
       const code = 'operator-failure'
       expect(await run([{ code, occurs: 'no' }])).toEqual([])
@@ -1051,28 +1054,77 @@ describe('declareAnalysis', () => {
     expect(Object.isFrozen(declareAnalysis(mine, { failures: [] }))).toBe(true)
   })
 
-  test("refuses an 'operators' option that is not one analysis each of the instance's own", async () => {
-    const coverage = (operators: unknown) =>
-      fallbackCoverage(hosts, 1, { operators: operators as OperatorAnalysis[] })
-    const analysis = declareAnalysis(mine, { failures: [] })
-    await expect(coverage(analysis)).rejects.toThrow(invalidOptions)
-    await expect(coverage([{ operator: mine, failures: [] }])).rejects.toThrow(invalidOptions)
-    await expect(coverage([declareAnalysis(other, { failures: [] })])).rejects.toThrow(
-      invalidOptions
-    )
-    await expect(coverage([analysis, declareAnalysis(mine, { failures: [] })])).rejects.toThrow(
-      invalidOptions
-    )
+  test('refuses a core operator, whose analysis is built in, naming it', () => {
     const divide = coreOperators.find((op) => op.name === 'divide')!
-    await expect(coverage([declareAnalysis(divide, { failures: [] })])).rejects.toThrow(
-      invalidOptions
+    expect(() => declareAnalysis(divide, { failures: [] })).toThrow(
+      expect.objectContaining({
+        code: ErrorCodes.invalidDefinition,
+        message: expect.stringMatching(/'divide' is a core operator/),
+      })
     )
-    await expect(coverage([analysis])).resolves.toEqual({ uncovered: [], covered: [] })
+  })
+
+  describe('the analyses a call passes', () => {
+    const analysis = declareAnalysis(mine, { failures: [] })
+    const coverage = (analyses: unknown, expression: unknown = { $mine: 'x' }, instance = hosts) =>
+      fallbackCoverage(instance, expression, analyses as OperatorAnalysis[])
+    const ownFindings = async (analyses: unknown, instance = hosts) =>
+      (await coverage(analyses, { $mine: 'x' }, instance)).uncovered.map(
+        ({ path, code, certainty }) => ({ path, code, certainty })
+      )
+    const externalFinding = { path: [], code: external, certainty: 'may' }
+
+    test('are flattened one level, as the constructor flattens its operators', async () => {
+      expect(await ownFindings(undefined)).toEqual([externalFinding])
+      expect(await ownFindings([analysis])).toEqual([])
+      expect(await ownFindings([[analysis]])).toEqual([])
+      expect(await ownFindings([[], [declareAnalysis(other, { failures: [] }), analysis]])).toEqual(
+        []
+      )
+      await expect(coverage([[[analysis]]])).rejects.toThrow(invalidOptions)
+    })
+
+    test("ignore an analysis of an operator the instance doesn't register", async () => {
+      expect(await ownFindings([declareAnalysis(other, { failures: [] })])).toEqual([
+        externalFinding,
+      ])
+      // A replacement is a different definition, so the one it replaces
+      // keeps no analysis: its node is external
+      const replaced = new FigTree({
+        operators: operatorSet(coreOperators, [mine], {
+          replace: defineOperator({ ...base, name: 'mine' }),
+        }),
+      })
+      expect(await ownFindings([analysis], replaced)).toEqual([externalFinding])
+    })
+
+    test('take the same analysis twice, from overlapping lists', async () => {
+      expect(await ownFindings([analysis, analysis])).toEqual([])
+      expect(await ownFindings([[analysis], [analysis]])).toEqual([])
+    })
+
+    test('refuse two different analyses of one operator', async () => {
+      const second = declareAnalysis(mine, { failures: [] })
+      await expect(coverage([analysis, second])).rejects.toThrow(invalidOptions)
+      await expect(coverage([[analysis], [second]])).rejects.toThrow(
+        expect.objectContaining({
+          code: ErrorCodes.invalidOptions,
+          message: expect.stringMatching(/'analyses\[1\]\[0\]' .* of 'mine'/),
+        })
+      )
+    })
+
+    test('refuse anything but analyses from declareAnalysis', async () => {
+      await expect(coverage(analysis)).rejects.toThrow(invalidOptions)
+      await expect(coverage([{ operator: mine, failures: [] }])).rejects.toThrow(invalidOptions)
+      await expect(coverage([[analysis, { operator: mine }]])).rejects.toThrow(invalidOptions)
+      await expect(coverage([null])).rejects.toThrow(invalidOptions)
+    })
   })
 
   test("a hook's mistake fails the analysis, naming the operator", async () => {
     const coverage = (hooks: Pick<OperatorAnalysis, 'gamut' | 'failures'>) =>
-      fallbackCoverage(hosts, { $mine: '$data.s' }, { operators: [declareAnalysis(mine, hooks)] })
+      fallbackCoverage(hosts, { $mine: '$data.s' }, [declareAnalysis(mine, hooks)])
     const naming = (message: RegExp) =>
       expect.objectContaining({
         code: ErrorCodes.invalidDefinition,
@@ -1247,7 +1299,7 @@ describe('running a node', () => {
       }),
     ]
     const hostFindings = async (expression: unknown) =>
-      (await fallbackCoverage(hosts, expression, { operators })).uncovered.map((finding) => ({
+      (await fallbackCoverage(hosts, expression, operators)).uncovered.map((finding) => ({
         ...where(finding),
         certainty: finding.certainty,
       }))
@@ -1390,15 +1442,7 @@ describe('per-element walks', () => {
     })
     const doubled = { $sixth: { input: [1, 2], each: { $multiply: ['$element', 2] } } }
     expect(
-      (
-        await fallbackCoverage(
-          hosts,
-          { $divide: [1, { $find: [doubled, true] }] },
-          {
-            operators: [all],
-          }
-        )
-      ).uncovered
+      (await fallbackCoverage(hosts, { $divide: [1, { $find: [doubled, true] }] }, [all])).uncovered
     ).toEqual([])
     // The engine binds no element, so it returns null and nothing fails; a
     // hook giving the one element's value would say the root always does
@@ -1406,7 +1450,7 @@ describe('per-element walks', () => {
     const { uncovered } = await fallbackCoverage(
       hosts,
       { $divide: [1, { $subtract: [{ $sixth: { input: [2], each: '$element' } }, 2] }] },
-      { operators: [one] }
+      [one]
     )
     expect(uncovered.map(({ path, certainty }) => ({ path, certainty }))).toEqual([
       { path: [], certainty: 'may' },

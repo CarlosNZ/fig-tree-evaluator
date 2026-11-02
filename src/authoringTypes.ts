@@ -69,12 +69,6 @@ export interface FallbackCoverageOptions {
    * or infinite. False by default.
    */
   strictNumbers?: boolean
-  /**
-   * The analyses of the instance's own operators, each from
-   * `declareAnalysis`. An operator without one is external: it may fail
-   * whatever its inputs
-   */
-  operators?: readonly OperatorAnalysis[]
 }
 
 /**

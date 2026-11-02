@@ -1,20 +1,20 @@
 /**
  * The core operators' analyses ("The core operators" in
- * docs-dev/v3-specs/v3-operator-coverage.md): one `declareAnalysis` per
- * core operator, keyed by the built definition, so a host operator reusing
- * a core name never inherits one, and the root never carries them. They
- * are written as a host's are, with the same helpers, and the walk reads
- * them through the same call. Where the bag has nothing for a step, the
- * arithmetic over ranges and `firstNonNull`'s walk over its candidates, the
- * hook calls ./known.ts directly: an operator's step is that operator's
- * code. An operator listed with no hooks never fails of itself and returns
- * its `returns`.
+ * docs-dev/v3-specs/v3-operator-coverage.md): one per core operator,
+ * through `declareAnalysis`'s own checks, keyed by the built definition, so
+ * a host operator reusing a core name never inherits one, and the root
+ * never carries them. They are written as a host's are, with the same
+ * helpers, and the walk reads them through the same call. Where the bag has
+ * nothing for a step, the arithmetic over ranges and `firstNonNull`'s walk
+ * over its candidates, the hook calls ./known.ts directly: an operator's
+ * step is that operator's code. An operator listed with no hooks never
+ * fails of itself and returns its `returns`.
  */
 import { coreOperators } from '../operators'
 import type { FailureEntry, OperatorAnalysis } from '../authoringTypes'
 import type { ValidatedOperatorDefinition } from '../operatorDefinition'
 import type { ExpectedType } from '../typeCheck'
-import { declareAnalysis } from './declare'
+import { analysisFrom } from './declare'
 import type { Helpers } from './helpers'
 import {
   absOf,
@@ -372,7 +372,7 @@ export const coreAnalyses = (): ReadonlyMap<ValidatedOperatorDefinition, Operato
   (core ??= new Map(
     coreOperators.map((built) => [
       built,
-      declareAnalysis(built, (CORE_HOOKS[built.name] ?? NONE) as never),
+      analysisFrom(built, (CORE_HOOKS[built.name] ?? NONE) as never),
     ])
   ))
 

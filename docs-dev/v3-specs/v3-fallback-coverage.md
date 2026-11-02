@@ -11,7 +11,7 @@ This version works out which nodes can actually throw, and why. It walks the exp
 ## What it returns
 
 ```ts
-await fallbackCoverage(fig, expression, options?) // → { uncovered, covered }
+await fallbackCoverage(fig, expression, analyses?, options?) // → { uncovered, covered }
 
 interface FallbackCoverage {
   /** Failures nothing catches: each can reject evaluate(). Empty when none can */
@@ -61,12 +61,12 @@ The errors come in the order `evaluate()` reads them: the instance's `maxDepth` 
 
 For example, `{ a: { $plus: [{ operator: 'gone' }, 1], fallback: 0 }, b: { $divide: ['$data.n', '$data.d'] } }` gives one finding, `unknown-operator` at `['a', '$plus', 0]`, uncovered although `a` has a fallback. `b`'s divide findings appear once `gone` is fixed.
 
-### Options
+### Analyses and options
 
-- **`strictNumbers`**: `false` by default. See "Numbers".
-- **`operators`**: the analyses of the instance's own operators, each from `declareAnalysis`. See "Operator analyses".
+- **`analyses`**: the analyses of the instance's own operators, each from `declareAnalysis`, as an analysis or a list of them per entry, flattened one level. See "Operator analyses".
+- **`options.strictNumbers`**: `false` by default. See "Numbers". A strict call with no analyses passes `undefined` before it.
 
-Those are the analysis's only options. It answers as the instance would evaluate the expression, so the evaluation options it reads, `timeout` and `strictDataPaths`, are the instance's own. A host that passes a timeout to `evaluate()` per call analyses with an instance that carries it. An I/O operator's own `timeout` parameter is something else: it makes that request fail with `request-timeout`, which its finding stands for.
+`strictNumbers` is the analysis's only option. It answers as the instance would evaluate the expression, so the evaluation options it reads, `timeout` and `strictDataPaths`, are the instance's own. A host that passes a timeout to `evaluate()` per call analyses with an instance that carries it. An I/O operator's own `timeout` parameter is something else: it makes that request fail with `request-timeout`, which its finding stands for.
 
 ## The walk
 
@@ -168,7 +168,7 @@ What the runs give the walk:
 
 ## Operator analyses
 
-What an operator's body fails on, and what it returns where its inputs narrow its `returns`, is its analysis: two hooks over gamuts, `gamut` and `failures`, declared through `declareAnalysis` from `./authoring`. [v3-operator-coverage.md](v3-operator-coverage.md) specifies them, the helpers they are written with and every core operator's. Core's are a table in src/authoring/core.ts, keyed by the built definition, so a host operator reusing a core name never inherits one, and the root never carries them; a host's are passed to each call in `operators`. Rule 5 reads `failures`, rule 7 `gamut`, both only for a node the walk does not run.
+What an operator's body fails on, and what it returns where its inputs narrow its `returns`, is its analysis: two hooks over gamuts, `gamut` and `failures`, declared through `declareAnalysis` from `./authoring`. [v3-operator-coverage.md](v3-operator-coverage.md) specifies them, the helpers they are written with and every core operator's. Core's are a table in src/authoring/core.ts, keyed by the built definition, so a host operator reusing a core name never inherits one, and the root never carries them; a host's are passed to each call in `analyses`. Rule 5 reads `failures`, rule 7 `gamut`, both only for a node the walk does not run.
 
 Some core entries are judgments. `power`'s for a negative base with a fractional exponent is `may` although that is always NaN: an infinite operand also answers yes, and `(-2)^-Infinity` is 0. `round`'s, found by the rule checker, is `may` like `power`'s exponent entry: `10^decimals` is infinite from 309, and below 300 it takes an extreme value to overflow. `match` and `get` declare only the unknown case: with a known value, or a known path and `from`, rule 4 runs them instead.
 
