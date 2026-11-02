@@ -72,104 +72,138 @@ export interface FallbackCoverageOptions {
 }
 
 /**
- * What static analysis may assume of an operator, for `./authoring`
- * ("Where the rules live" in docs-dev/v3-specs/v3-fallback-coverage.md):
- * the `analysis` field of a definition. Declaring it says the rules are
- * complete, and that the operator is pure: the analysis runs its body where
- * its inputs are known, so the body must settle from its parameters alone.
- * Without it, a host operator is external: it may fail whatever its inputs.
+ * The set of values a node can return, as the analysis knows it ("Gamuts"
+ * in docs-dev/v3-specs/v3-operator-coverage.md). Opaque: a hook reads and
+ * builds one through its `helpers`, never by its members, which are free to
+ * change. The brand is a string key, not a unique symbol: each entry's
+ * declarations carry their own copy of the type, and two copies of a
+ * symbol-keyed brand would be two types.
+ */
+export interface Gamut {
+  readonly '~gamut': true
+}
+
+/**
+ * A definition built by `defineOperator()`, as far as its type can say.
+ * The definition's own type reaches types branded by a unique symbol, and
+ * each entry's declarations carry their own copy of those, so the root's
+ * definitions would not fit this entry's copy. `declareAnalysis` checks
+ * that it was built at runtime instead.
+ */
+export interface BuiltOperator {
+  readonly name: string
+}
+
+/**
+ * The answer to a yes-or-no question asked of a gamut: `yes` where every
+ * value in it satisfies the question, `no` where none does, `maybe` where
+ * some do.
+ */
+export type Answer = 'no' | 'maybe' | 'yes'
+
+/**
+ * The second argument of both analysis hooks ("The helpers" in
+ * docs-dev/v3-specs/v3-operator-coverage.md). A helper about a value takes
+ * its gamut; one about a parameter takes the parameter's name.
+ */
+export interface GamutHelpers {
+  /** Is the value this one */
+  is(gamut: Gamut, value: string | number | boolean | null): Answer
+  /** Is the value of this type */
+  isType(gamut: Gamut, type: ExpectedType): Answer
+  /** Is the value a number less than `n` */
+  isBelow(gamut: Gamut, n: number): Answer
+  /** Is the value an empty array, string or object */
+  isEmpty(gamut: Gamut): Answer
+  /**
+   * Would the operator's own `validate` hook refuse what this parameter
+   * receives: `maybe` while its value is not known
+   */
+  refused(parameter: string): Answer
+  /**
+   * Did the parameter receive anything, given or by default: `maybe` where
+   * its null means omitted and a null may arrive
+   */
+  isSupplied(parameter: string): Answer
+  /** `no` if any is, `yes` if all are */
+  all(...answers: Answer[]): Answer
+  /** `yes` if any is, `no` if all are */
+  any(...answers: Answer[]): Answer
+  /** `yes` and `no` swapped */
+  not(answer: Answer): Answer
+  /**
+   * Its numbers as one range, an open end an infinity; `undefined` where it
+   * holds no number
+   */
+  span(gamut: Gamut): { min: number; max: number; integer: boolean } | undefined
+  /** Its values, where it is one of a few known exactly */
+  exactValues(gamut: Gamut): unknown[] | undefined
+  /** One element of an array */
+  elementOf(gamut: Gamut): Gamut
+  /** One value of an object */
+  valueOf(gamut: Gamut): Gamut
+  /** The length of a string or array: an integer from 0 */
+  lengthOf(gamut: Gamut): Gamut
+  /** Every value of a type */
+  type(type: ExpectedType): Gamut
+  /** That one value */
+  exactly(value: unknown): Gamut
+  /** The numbers in a range, inclusive, either end open */
+  range(range: { min?: number; max?: number; integer?: boolean }): Gamut
+  /** Anything in any of them */
+  union(...gamuts: Gamut[]): Gamut
+  /**
+   * An array whose every element is in `elements`. Given a `perElement`
+   * parameter walked once per element of a known input, those elements'
+   * results in order
+   */
+  arrayOf(elements: Gamut, lengths?: { length?: number; minLength?: number }): Gamut
+  /** The empty gamut: nothing at all */
+  nothing(): Gamut
+}
+
+/**
+ * One way an operator's body fails of itself ("The `failures` hook" in
+ * docs-dev/v3-specs/v3-operator-coverage.md).
+ */
+export interface FailureEntry {
+  /** The code the error would carry */
+  code: FallbackErrorCode
+  /** The parameter the failure is about, which the finding names */
+  parameter?: string
+  /**
+   * Whether it happens: the finding's certainty. Omitted: `maybe`, it can
+   * happen
+   */
+  occurs?: Answer
+  /** Makes the failure possible, not certain: caps `occurs` at `maybe` */
+  may?: true
+  /**
+   * Only extreme numbers cause it: counted under `strictNumbers` only, and
+   * never certain
+   */
+  overflow?: true
+  /** Instance options the failure needs, such as `{ strictDataPaths: true }` */
+  options?: Record<string, unknown>
+  /** A short reason for the finding's message, such as "'by' is 0" */
+  message?: string
+}
+
+/**
+ * An operator's analysis, from `declareAnalysis` ("Reaching the analysis"
+ * in docs-dev/v3-specs/v3-operator-coverage.md): what a node of it returns
+ * and how its body fails, given what its parameters receive.
  */
 export interface OperatorAnalysis {
+  readonly operator: BuiltOperator
+  /** What the body returns. Omitted: the declared `returns` */
+  readonly gamut?: (params: Record<string, Gamut>, helpers: GamutHelpers) => Gamut
   /**
-   * The ways its body can fail beside the engine's own checks on its
-   * parameters. Absent or empty: it never fails of itself
+   * The ways the body fails of itself; a list for one that holds whatever
+   * the inputs. Omitted: the operator is external, and may fail whatever
+   * its inputs
    */
-  failures?: FailureRule[]
-  /** It may fail whatever its inputs: a request, or code nothing describes */
-  external?: true
-  /** What a node returns, where its inputs narrow its `returns` */
-  output?: DeclaredOutput
+  readonly failures?:
+    | readonly FailureEntry[]
+    | ((params: Record<string, Gamut>, helpers: GamutHelpers) => FailureEntry[])
 }
-
-/**
- * One way an operator's body can fail: the code its error carries, and the
- * conditions on what its parameters receive under which it does.
- */
-export interface FailureRule {
-  code: FallbackErrorCode
-  /** The parameter the failure is about, which its finding names */
-  parameter?: string
-  /** Tests on parameters, by name; every one must hold. Absent: always holds */
-  when?: Record<string, FailureTest>
-  /** Options the rule needs, such as { strictDataPaths: true } */
-  options?: Record<string, unknown>
-  /** Holding makes the failure possible, not certain */
-  may?: true
-  /** A failure only extreme numbers reach: counted under strictNumbers only */
-  overflow?: true
-}
-
-/** A test on what one parameter receives. */
-export type FailureTest =
-  /** Equals this value */
-  | string
-  | number
-  | boolean
-  | null
-  /** Has this type */
-  | { type: ExpectedType }
-  /** A number less than this */
-  | { below: number }
-  /** An empty array, string or object */
-  | { empty: true }
-  /** The parameter has a value, supplied or defaulted, or has none */
-  | { supplied: boolean }
-  /** The operator's `validate` hook refuses it */
-  | { invalid: true }
-  /** Some element of an array, or value of an object, passes */
-  | { some: FailureTest }
-  | { not: FailureTest }
-
-/**
- * What an operator node returns, in terms of what its parameters receive
- * ("Output declarations" in docs-dev/v3-specs/v3-fallback-coverage.md).
- */
-export type DeclaredOutput =
-  /** A fixed type */
-  | ExpectedType
-  /** A number between `min` and `max`, inclusive, where they are given */
-  | { type: 'number' | 'integer'; min?: number; max?: number }
-  /** A string or array at least `minLength` long (a string in code points) */
-  | { type: 'string' | 'array'; minLength?: number }
-  /** What that parameter receives: each element or entry of a lazy container */
-  | { param: string }
-  /** An element of an array parameter */
-  | { elementOf: string }
-  /** The types of an array parameter's elements, as a sum of them is */
-  | { kindOf: string }
-  | { arrayOf: DeclaredOutput; minLength?: number }
-  | { oneOf: DeclaredOutput[] }
-  /** The type a literal parameter names */
-  | { typeNamedBy: string }
-  /**
-   * Chosen by a literal parameter: the case it names, else `otherwise`; all
-   * of them where it is not known
-   */
-  | { byParam: string; cases: Record<string, DeclaredOutput>; otherwise?: DeclaredOutput }
-  /** The first of an array parameter's elements that is not null */
-  | { firstNonNull: string }
-  /**
-   * The sum of an array parameter's elements, from 0 and in order: a range
-   * for numbers, the kind of anything else
-   */
-  | { sum: string }
-  /** The product of an array parameter's numbers, from 1 and in order */
-  | { product: string }
-  /** One number parameter less another */
-  | { difference: [string, string] }
-  /** A number parameter's absolute value */
-  | { abs: string }
-  /** The least of an array parameter's elements: numbers by value */
-  | { min: string }
-  /** The greatest of an array parameter's elements: numbers by value */
-  | { max: string }

@@ -4,7 +4,7 @@ Every import the package offers, grouped by the bundle it comes from, with what 
 
 **Keep it current.** Update this page whenever an export is added, removed or moved, an entry point is added, or a change moves one of the sizes noticeably. Entries marked PLANNED are specified but not built yet. The tree in "What shares what" is generated: `pnpm size:imports --write` re-measures it and rewrites it in place. The figures in the import list are written by hand, and `pnpm size:imports` prints the tree's figures to check them against.
 
-**How the sizes are measured.** After `pnpm build`, each import is bundled alone from the built files (`import { X } from '<repo>/build/index.js'; console.log(X)`), using esbuild with `bundle`, `minify` and `format: 'esm'`. The figure is the brotli size of that output. That is roughly what a consumer's bundler ships for that import alone. esbuild is used rather than rollup because, like webpack, it relies on `/*#__PURE__*/` annotations, whereas rollup's own purity analysis flatters the result. `pnpm size:imports` measures the same way. Re-measured October 2026, at the bundle review that moved the package operators' descriptions into `./editor-hints`: every figure on this page. The `./catalog` block was re-measured with #243, which renamed that subpath and added `getCatalog`.
+**How the sizes are measured.** After `pnpm build`, each import is bundled alone from the built files (`import { X } from '<repo>/build/index.js'; console.log(X)`), using esbuild with `bundle`, `minify` and `format: 'esm'`. The figure is the brotli size of that output. That is roughly what a consumer's bundler ships for that import alone. esbuild is used rather than rollup because, like webpack, it relies on `/*#__PURE__*/` annotations, whereas rollup's own purity analysis flatters the result. `pnpm size:imports` measures the same way. Re-measured October 2026, at the bundle review that moved the package operators' descriptions into `./editor-hints`: every figure on this page. The `./catalog` block was re-measured with #243, which renamed that subpath and added `getCatalog`, and `defineOperator` and the `./authoring` block with #290, which moved operators' analyses there.
 
 <!-- prettier-ignore -->
 ```ts
@@ -27,7 +27,7 @@ import { coreOperators } from 'fig-tree-evaluator'
 
 // ── Add-ons on top of the engine ─────────────────────────────────────────
 import { defineOperator } from 'fig-tree-evaluator'
-// +3.2 kB: the definition checks, for hosts registering custom operators
+// +2.3 kB: the definition checks, for hosts registering custom operators
 import { inspect } from 'fig-tree-evaluator'
 // +1.0 kB: the compiled-expression inspector
 import { operatorSet } from 'fig-tree-evaluator'
@@ -38,7 +38,7 @@ import { httpOperators, sqlOperators } from 'fig-tree-evaluator'
 import { FetchClient, AxiosClient, PostgresConnection, SQLiteConnection } from 'fig-tree-evaluator'
 // +0.15 to 0.4 kB each: thin adapters; axios / pg / sqlite are the host's
 // Without the engine, as a tool that only reads definitions would import
-// them: coreOperators 8.1 kB, defineOperator 6.9 kB, httpOperators 5.2 kB,
+// them: coreOperators 8.1 kB, defineOperator 5.9 kB, httpOperators 5.2 kB,
 // sqlOperators 3.0 kB. inspect alone is 3.3 kB, but it reads a handle, and
 // only FigTree makes one.
 
@@ -96,7 +96,7 @@ import type {
   CanonicalOptions, NameOptions, Registry, ShorthandOptions, Spelling,
   ObjectClass, PositionalLayout, PositionalShape, ReferenceRecognition, ReferenceNamespace,
   FallbackCoverage, FallbackCoverageOptions, CoverageFinding, CoveredFinding,
-  OperatorAnalysis, FailureRule, FailureTest, DeclaredOutput,
+  OperatorAnalysis, Gamut, Answer, GamutHelpers, FailureEntry,
 } from 'fig-tree-evaluator'
 
 // ═══ 'fig-tree-evaluator/migrate' → build/migrate/index.js: 19.6 kB ══════
@@ -151,18 +151,23 @@ import { typesIntersect } from 'fig-tree-evaluator/format' // 0.30 kB
 // ReferenceRecognition, ReferenceNamespace, ReferenceScope, for the
 // primitives.
 
-// ═══ 'fig-tree-evaluator/authoring' → build/authoring/index.js: 40.0 kB ══
+// ═══ 'fig-tree-evaluator/authoring' → build/authoring/index.js: 42.4 kB ══
 // Analyses the compiled tree, so it shares the engine with the root: the
 // build emits it once, in build/chunks/engine.js, which the root imports
 // too (figures below include it). A caller passes it a FigTree, so the
-// engine is in the bundle already, and beside FigTree it costs 11.6 kB:
-// the analysis itself.
-import { fallbackCoverage } from 'fig-tree-evaluator/authoring' // 40.8 kB alone; +11.6 kB beside FigTree
+// engine is in the bundle already, and beside FigTree it costs 12.5 kB:
+// the analysis itself, every core operator's analysis included.
+import { fallbackCoverage } from 'fig-tree-evaluator/authoring' // 43.0 kB alone; +12.5 kB beside FigTree
+// fallbackCoverage(fig, expression, analyses?, options?)
+// An operator's analysis, passed to fallbackCoverage in `analyses`. It
+// refuses a core operator, so it holds the core definitions: beside
+// fallbackCoverage and FigTree, which registers them by default, it adds
+// 0.04 kB, and beside defineOperator alone, 5.7 kB
+import { declareAnalysis } from 'fig-tree-evaluator/authoring' // 8.4 kB alone
 // Its types come from the root, listed there under "The subpaths' shapes":
 // FallbackCoverage, FallbackCoverageOptions, CoverageFinding and
-// CoveredFinding for what it takes and returns; OperatorAnalysis,
-// FailureRule, FailureTest and DeclaredOutput for a definition's
-// `analysis` field.
+// CoveredFinding for what it takes and returns; OperatorAnalysis, Gamut,
+// Answer, GamutHelpers and FailureEntry for an operator's analysis.
 ```
 
 Two shared chunks, under `build/chunks/`, each named by what it holds: `engine.js`, the engine the root shares with `./authoring`, and `shared.js`, the modules listed in `./format`'s block, which all three share. Each module is emitted once, so there is one `FigTreeError` class for every entry. `./migrate` and `./catalog` import only types from the root, so their bundles are fully separate. An entry's size budget (`codegen/entries.mjs`) counts its own file compressed together with the chunks it imports.
@@ -180,7 +185,7 @@ A set of imports from different branches costs roughly the union of their paths:
 
 <!-- IMPORT_TREE:START -->
 
-Generated by `pnpm size:imports --write` at 85b8629. Sizes in kB, brotli.
+Generated by `pnpm size:imports --write` at 66cb8da, with uncommitted changes to src/. Sizes in kB, brotli.
 
 ```text
                                                                             adds  total  alone   mostly from
@@ -188,16 +193,18 @@ coreOperators                                                                8.1
 └─ FigTree                                                                  22.5   30.6   30.6   compile/compile 23%, compile/staticChecks 10%, fragments 7%
    ├─ inspect                                                                1.0   31.6    3.4   inspect/nodes 40%, inspect/index 35%, inspect/values 25%
    ├─ operatorSet                                                            1.3   31.9    3.2   operatorSet 98%
-   ├─ defineOperator                                                         3.2   33.8    6.9   defineOperator 77%, analysisCheck 23%
-   ├─ httpOperators, FetchClient                                             1.6   32.2    5.2   operators/io 38%, operators/ioHelpers 31%, clients/http 16%
-   ├─ sqlOperators, PostgresConnection                                      0.79   31.4    3.6   clients/failures 30%, operators/io 26%, operators/ioHelpers 22%
+   ├─ defineOperator                                                         2.3   32.9    5.9   defineOperator 99%
+   ├─ httpOperators, FetchClient                                             1.7   32.2    5.2   operators/io 38%, operators/ioHelpers 31%, clients/http 16%
+   ├─ sqlOperators, PostgresConnection                                      0.81   31.4    3.6   clients/failures 30%, operators/io 26%, operators/ioHelpers 22%
    ├─ toCanonical, toShorthand (./format)                                    2.5   33.1    5.5   format/read 43%, format/shorthand 17%, format/walk 16%
-   └─ fallbackCoverage (./authoring)                                        11.7   42.3   42.3   authoring/walk 25%, authoring/known 24%, authoring/run 15%
+   └─ fallbackCoverage (./authoring)                                        12.5   43.1   43.0   authoring/known 24%, authoring/walk 23%, authoring/run 14%
+      └─ declareAnalysis (./authoring)                                      0.04   43.1    8.4   authoring/declare 100%
 
-defineOperator                                                               6.9    6.9    6.9   defineOperator 43%, typeCheck 14%, analysisCheck 13%
+defineOperator                                                               5.9    5.9    5.9   defineOperator 49%, typeCheck 16%, buildOperator 14%
+└─ declareAnalysis (./authoring)                                             5.7   11.7    8.4   operators/string 21%, operators/math 14%, operators/array 8%
 
-httpOperators, FetchClient                                                   5.2    5.2    5.2   buildOperator 21%, operators/io 14%, operators/ioHelpers 11%
-└─ sqlOperators, PostgresConnection                                         0.53    5.8    3.6   operators/io 33%, clients/sql 28%, operators/ioHelpers 25%
+httpOperators, FetchClient                                                   5.2    5.2    5.2   buildOperator 21%, operators/io 14%, operators/ioHelpers 12%
+└─ sqlOperators, PostgresConnection                                         0.52    5.7    3.6   operators/io 33%, clients/sql 28%, operators/ioHelpers 25%
 
 FigTreeError, isFigTreeError, ErrorCodes                                    0.97   0.97   0.97   errorCodes 61%, FigTreeError 39%
 
@@ -206,7 +213,7 @@ httpFailure, sqlFailure                                                     0.92
 isTruthy, compareValues, renderText, deepEqual, resolvePath                  1.3    1.3    1.3   primitives/path 51%, primitives/deepEqual 33%, primitives/ordering 10%
 
 toCanonical (./format)                                                       4.6    4.6    4.6   format/read 32%, format/walk 12%, errorCodes 11%
-└─ toShorthand (./format)                                                   0.93    5.5    5.2   format/shorthand 62%, format/references 27%, compile/references 9%
+└─ toShorthand (./format)                                                   0.92    5.5    5.1   format/shorthand 62%, format/references 27%, compile/references 9%
 
 recognizeReference (./format)                                                1.5    1.5    1.5   errorCodes 40%, compile/references 36%, primitives/path 24%
 

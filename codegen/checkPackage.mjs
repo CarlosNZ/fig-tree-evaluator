@@ -243,6 +243,20 @@ try {
     specifiers.map((spec, i) => `import * as entry${i} from '${spec}'`).join('\n') +
       `\nexport const entries = [${specifiers.map((_, i) => `entry${i}`).join(', ')}]\n`
   )
+  // Each entry's declarations carry their own copy of the root types they
+  // use, so what the root types must fit a subpath's signatures: a brand
+  // keyed by a unique symbol would make the two copies two types
+  writeFileSync(
+    join(dir, 'across.ts'),
+    [
+      `import { defineOperator } from '${specifier('.')}'`,
+      `import type { Gamut, GamutHelpers } from '${specifier('.')}'`,
+      `import { declareAnalysis } from '${specifier('./authoring')}'`,
+      `const op = defineOperator({ name: 'op', category: 'other', parameters: { value: {} }, evaluate: () => 1 })`,
+      `const pass = (value: Gamut, helpers: GamutHelpers): Gamut => helpers.union(value)`,
+      `export const analysis = declareAnalysis(op, { gamut: ({ value }, helpers) => pass(value, helpers) })`,
+    ].join('\n') + '\n'
+  )
   const resolutions = [
     { module: 'nodenext', moduleResolution: 'nodenext', via: 'the exports map' },
     { module: 'esnext', moduleResolution: 'node', via: 'typesVersions, under resolution "node"' },
@@ -260,11 +274,13 @@ try {
           noEmit: true,
           skipLibCheck: false,
         },
-        files: ['types.ts'],
+        files: ['types.ts', 'across.ts'],
       })
     )
     run(join(ROOT, 'node_modules', '.bin', 'tsc'), ['-p', 'tsconfig.json'], dir)
-    pass(`typechecks through ${via}, declarations included (DOM, no @types/node)`)
+    pass(
+      `typechecks through ${via}, declarations included (DOM, no @types/node), root types fitting the subpaths'`
+    )
   }
 } catch (error) {
   fail(error.message)

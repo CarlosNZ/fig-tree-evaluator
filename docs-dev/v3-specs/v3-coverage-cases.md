@@ -1,6 +1,6 @@
 # FigTree v3 — Fallback coverage cases
 
-_Generated from test/coverage-cases.ts by `pnpm coverageCases`: edit the cases there, not this page. 183 cases for the precise `fallbackCoverage` of [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217), checked against the engine by test/coverage-cases.test.ts. The decisions behind them are in [v3-coverage-decisions.md](v3-coverage-decisions.md)._
+_Generated from test/coverage-cases.ts by `pnpm coverageCases`: edit the cases there, not this page. 189 cases for the precise `fallbackCoverage` of [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217), checked against the engine by test/coverage-cases.test.ts. The decisions behind them are in [v3-coverage-decisions.md](v3-coverage-decisions.md)._
 
 Each case is an expression and what the analysis should report for it:
 
@@ -706,6 +706,64 @@ Where a case uses an instance other than `new FigTree()`:
 ```
 
 - ✓ **length** at `$divide[1].$max[0]` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ list: 1 }`
+
+**the greater of anything and 1 is never 0**
+
+```json5
+{ $divide: [10, { $max: ['$data.x', 1] }] }
+```
+
+- ✗ **divide** at the root — may fail: `type-check` on `by` (no data makes it happen)
+- ✗ **max** at `$divide[1]` — may fail: `type-check` on `values`. E.g. data `{ x: 'a' }`
+
+> A false positive the design accepts: max's homogeneous constraint does not drop the string case.
+
+**the lesser of anything and -1 is never 0**
+
+```json5
+{ $divide: [10, { $min: ['$data.x', -1] }] }
+```
+
+- ✗ **divide** at the root — may fail: `type-check` on `by` (no data makes it happen)
+- ✗ **min** at `$divide[1]` — may fail: `type-check` on `values`. E.g. data `{ x: 'a' }`
+
+> A false positive the design accepts: min's homogeneous constraint does not drop the string case.
+
+**a quotient of a positive range is never 0**
+
+```json5
+{ $divide: [10, { $divide: [{ $plus: [{ $length: '$data.list', fallback: 0 }, 2] }, 2] }] }
+```
+
+- ✓ **length** at `$divide[1].$divide[0].$plus[0]` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ list: 1 }`
+
+**a divisor that may be an infinity makes a quotient that may be 0**
+
+```json5
+{ $divide: [1, { $divide: [1, { $if: ['$data.c', 2, Infinity] }] }] }
+```
+
+- ✗ **divide** at the root — may fail: `non-finite-result` on `by`. E.g. data `{ c: false }`
+- ✗ **divide** at the root — may fail: `non-finite-result` (no data makes it happen)
+- ✗ **divide** at `$divide[1]` — may fail: `non-finite-result` (no data makes it happen)
+
+> False positives the design accepts: the overflow entries count, an operand being an infinity.
+
+**the length of a split on a delimiter is never 0**
+
+```json5
+{ $divide: [10, { $length: { $split: [{ $lower: '$data.s', fallback: '' }, ','] } }] }
+```
+
+- ✓ **lower** at `$divide[1].$length.$split[0]` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ s: 1 }`
+
+**a known length is exact**
+
+```json5
+{ $divide: [10, { $length: 'abc' }] }
+```
+
+- Nothing can throw.
 
 **a length less 1 may be 0**
 

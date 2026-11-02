@@ -14,8 +14,8 @@
  * asserted in test/authoring.test.ts.
  */
 import { FigTree, coreOperators, defineOperator } from '../src'
-import type { CoverageFinding, FigTreeOptions } from '../src'
-import { fallbackCoverage } from '../src/authoring'
+import type { CoverageFinding, FigTreeOptions, OperatorAnalysis } from '../src'
+import { declareAnalysis, fallbackCoverage } from '../src/authoring'
 import { compileOps } from './fixtures/compileRegistry'
 
 const standIns: FigTreeOptions = { operators: [compileOps()] }
@@ -27,8 +27,11 @@ const timed = (options: FigTreeOptions = standIns) => new FigTree({ ...options, 
 const timeouts = (findings: CoverageFinding[]) =>
   findings.filter((finding) => finding.code === 'timeout').map((finding) => finding.path)
 
-const underTimeout = async (expression: unknown, options?: FigTreeOptions) =>
-  timeouts((await fallbackCoverage(timed(options), expression)).uncovered)
+const underTimeout = async (
+  expression: unknown,
+  options?: FigTreeOptions,
+  operators?: OperatorAnalysis[]
+) => timeouts((await fallbackCoverage(timed(options), expression, operators)).uncovered)
 
 test('worked example 3: one dynamic fallback leaves its hole uncovered', async () => {
   const banner = {
@@ -150,7 +153,6 @@ describe('only an evaluation that can wait can be cut off', () => {
     parameters: { value: { type: 'number' } },
     positionalParams: ['value'],
     returns: 'number',
-    analysis: {},
     evaluate: async ({ value }) => {
       await new Promise((resolve) => setTimeout(resolve, 1))
       return value
@@ -174,6 +176,8 @@ describe('only an evaluation that can wait can be cut off', () => {
   test('a host operator can wait, declared or not, and so can every value beside it', async () => {
     expect(await cutOff({ a: fetched, b: { $upper: 'x' } })).toEqual([['a'], ['b']])
     expect(await cutOff({ a: { $nap: 1 } })).toEqual([['a']])
+    const declared = [declareAnalysis(nap, { failures: [] })]
+    expect(await underTimeout({ a: { $nap: 1 } }, waiting, declared)).toEqual([['a']])
   })
 
   test('waiting is read through vars, fallbacks, fragment bodies and arguments', async () => {

@@ -28,7 +28,6 @@ const custom = defineOperator({
   cache: true,
   timeoutParam: 'ms',
   returns: 'string',
-  analysis: { failures: [] },
   evaluate: ({ value }) => String(value),
 })
 
@@ -120,10 +119,6 @@ describe('what the snapshot withholds', () => {
     expect('evaluate' in info).toBe(false)
     expect('validate' in info).toBe(false)
     expect('deliversLazily' in info).toBe(false)
-  })
-
-  test("analysis does not travel — it is ./authoring's, read from the registry", () => {
-    expect('analysis' in info).toBe(false)
   })
 
   test('the brand does not travel — a snapshot must not pass the guard', () => {

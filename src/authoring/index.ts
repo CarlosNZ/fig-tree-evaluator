@@ -13,10 +13,13 @@ import { FigTree, viewHandle } from '../FigTree'
 import { FigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
 import { staticGate } from '../validation'
-import type { FallbackCoverage, FallbackCoverageOptions } from '../authoringTypes'
+import type { FallbackCoverage, FallbackCoverageOptions, OperatorAnalysis } from '../authoringTypes'
 import { coveredFinding, isDemand, report, staticFinding, uncoveredFinding } from './findings'
 import type { Caught, Failure } from './findings'
+import { analysesFor } from './declare'
 import { Analysis } from './walk'
+
+export { declareAnalysis } from './declare'
 
 /**
  * Where each node of an expression can fail, and which fallback, if any,
@@ -33,6 +36,13 @@ import { Analysis } from './walk'
  * expression compiles through `compile()`, so it shares the compile cache
  * with `evaluate()`.
  *
+ * A host operator is analysed by its analysis in `analyses`, from
+ * `declareAnalysis`: each entry is an analysis or a list of them,
+ * flattened one level, as the constructor's `operators` are, and an
+ * analysis of an operator the instance does not register is ignored. One
+ * without is external, and may fail whatever its inputs. Core's analyses
+ * are built in. A strict call with no analyses passes `undefined`.
+ *
  * An expression with a static error never runs: `evaluate()` refuses it
  * before anything starts, so no fallback can catch one. Its report is
  * every static error, uncovered, in the order `evaluate()` reads them to
@@ -42,6 +52,7 @@ import { Analysis } from './walk'
 export const fallbackCoverage = async (
   fig: unknown,
   expression: unknown,
+  analyses?: readonly (OperatorAnalysis | readonly OperatorAnalysis[])[],
   options?: FallbackCoverageOptions
 ): Promise<FallbackCoverage> => {
   if (!(fig instanceof FigTree)) throw new TypeError('fallbackCoverage() takes a FigTree instance')
@@ -53,14 +64,15 @@ export const fallbackCoverage = async (
       path: [],
     })
   // A handle from this copy is always readable
-  const { artifact, options: effective } = viewHandle(fig.compile(expression))!
+  const { artifact, options: effective, registry } = viewHandle(fig.compile(expression))!
+  const declared = analysesFor(analyses, registry)
 
   // The static gate, as `evaluate()` applies it
   const errors = staticGate(artifact, effective).filter((issue) => issue.severity === 'error')
   if (errors.length > 0) return { uncovered: errors.map(staticFinding), covered: [] }
 
   const evaluation = effective as unknown as Record<string, unknown>
-  const analysis = new Analysis({ strictNumbers, evaluation })
+  const analysis = new Analysis({ strictNumbers, evaluation }, declared)
 
   const caught: Caught[] = []
   const { escapes, waits } = await analysis.root(artifact.root, caught)
