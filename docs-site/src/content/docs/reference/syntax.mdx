@@ -1,0 +1,38 @@
+---
+title: Syntax at a glance
+description: The whole expression language on one page, and one complete config that uses it
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+{/* NOTE: a cheat sheet for a reader who already knows the concepts: every entry is a line or a table row, linking to the page that explains it. Its starting point is "The grammar in one screen" and "Run a whole config, safely" in the "FigTree v3 by Example" artifact (docs-artifacts/figtree-v3-by-example.html), whose lists predate parts of the code, so every entry is checked against it. The page may become a top-level reference chapter of its own, and the whole-config walkthrough may split off into a guide. */}
+
+## References
+
+Each reference name and its short form, what it reads, and the rule for when a `$` string is a reference rather than text.
+
+## Nodes
+
+What makes an object a node: an operator key, a fragment key or a single shorthand key, and what makes it plain data instead, including `literal`.
+
+## Reserved keys
+
+The keys that mean something on any node, such as `fallback`, `vars` and `noCache`, each in one line.
+
+## Shorthand
+
+The shapes a shorthand payload can take (named, positional, a single argument, a fragment's arguments) and the symbolic aliases.
+
+## Null or failure
+
+A table of what to reach for: a bare reference, `firstNonNull`, `get` with a default, `fallback`, operator defaults, `validate()`, and what each one responds to.
+
+## A whole config
+
+One complete config followed from authoring to a hostile run: checked before any data exists, run against data that breaks one field, then given a fallback per field so it survives that field and a timeout, with `fallbackCoverage` confirming it.

@@ -100,6 +100,7 @@ export default defineConfig({
         { label: 'Guides', items: [{ autogenerate: { directory: 'guides' } }] },
         { label: 'API reference', items: [{ autogenerate: { directory: 'api' } }] },
         { label: 'Operator reference', link: '/reference/operators/' },
+        { label: 'Syntax at a glance', link: '/reference/syntax/' },
         {
           label: 'Custom operators',
           collapsed: true,
