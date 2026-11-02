@@ -9,6 +9,7 @@ sidebar:
 import Callout from '../../../components/Callout.astro'
 import Expression from '../../../components/Expression.astro'
 import OperatorSource from '../../../components/OperatorSource.astro'
+import SourceLink from '../../../components/SourceLink.astro'
 
 Failures in expressions need [fallbacks](/guides/fallbacks/) to prevent `evaluate()` from throwing. But a fallback on one node might still allow an uncaught failure on a sibling branch to propagate to the root, and 💥! A plain-value fallback at the root is the sure-fire way to prevent this, but it's a blunt instrument, and you'll usually want fallbacks nearer each failure as well ([Covering the whole expression](/guides/fallbacks/#covering-the-whole-expression)). So it's worth knowing not just _whether_ a failure can reach the root, but _where_ each one can happen, and which fallback will catch it.
 
@@ -99,46 +100,91 @@ interface CoveredFinding extends CoverageFinding {
 
 - **Most findings are `may`.** The analysis knows nothing about your data, so an operator reading `$data` may receive the wrong type, or a 0 to divide by: whether it fails depends on what it gets. A finding is `always` only when the node fails every time it's reached, such as `{ $divide: [10, 0] }`.
 - **It only reports what can actually fail.** A guarded divide like `{ $divide: ['$data.total', { $plus: [{ $abs: '$data.n' }, 1] }] }` has no divide-by-zero finding, since what it divides by is always at least 1, and a branch an `if` can never take reports nothing.
+- **It assumes numbers are ordinary:** finite in your data, and never large enough to overflow. To drop that assumption, pass `{ strictNumbers: true }` as the last argument, as in `fallbackCoverage(fig, expression, undefined, { strictNumbers: true })`, where `undefined` stands in for your own operators' analyses ([Custom operators](#custom-operators)). Then `{ $plus: ['$data.price', 1] }` may also fail with `non-finite-result`.
 - **If the expression has a [static error](/guides/validation/#static-errors),** the report shows _only_ those, since the expression is rejected before it even runs.
 - **If the instance has a global `timeout`** and the expression has something that can wait, only a plain-value fallback at the top of the expression can fully cover it ([Timeout shielding](/guides/fallbacks/#timeout-shielding)).
 
-<Callout kind="note" title="Its own options">
-
-`fallbackCoverage()` takes two options of its own. The first, `strictNumbers`, is about numbers. By default, it assumes numbers in your data are finite and that arithmetic doesn't overflow. With `fallbackCoverage(fig, expression, { strictNumbers: true })`, `{ $plus: ['$data.price', 1] }` may also fail with `non-finite-result`, on an extreme number.
-
-The second, `operators`, is for your own operators: it takes their analyses, from `declareAnalysis()`, which tell it how each one can fail ([Custom operators](#custom-operators)).
-
-</Callout>
-
 ## Custom operators
 
-{/* TO-DO: revisit this whole section in light of #290, which reconsiders the `analysis` field's shape (shrink it to failures + output and stop running host bodies, or reduce it to a flag). The section as written describes the shrunk shape already; the type block and the caution callout are what would change */}
+FigTree knows how its own operators can fail, but not yours. Unless you tell it, it assumes a custom operator _could_ fail on _any_ input, so every node that uses it is reported with an `operator-failure` finding, which only a fallback can cover. To get findings as precise as the core operators', declare an **analysis** for each of your operators with `declareAnalysis()`, and pass the list to `fallbackCoverage()` as its third argument:
 
-FigTree knows how its own operators can fail, but not yours. Unless you tell it, it assumes a custom operator could fail on any input, so every node that uses it is reported here with an `operator-failure` finding, which only a fallback can cover.
+```ts title="coverage.ts"
+import type { ValidatedOperatorDefinition } from 'fig-tree-evaluator'
+declare const expression: unknown
+declare const median: ValidatedOperatorDefinition
+declare const daysInMonth: ValidatedOperatorDefinition
+// ---cut---
+import { declareAnalysis, fallbackCoverage } from 'fig-tree-evaluator/authoring'
+
+const medianAnalysis = declareAnalysis(median, {
+  // How it can fail, and what it returns (see below)
+})
+const daysInMonthAnalysis = declareAnalysis(daysInMonth, {
+  // ...
+})
+
+const report = await fallbackCoverage(fig, expression, [medianAnalysis, daysInMonthAnalysis])
+```
+
+<Callout kind="tip" title="An analysis is optional">
+  An analysis only narrows down what `fallbackCoverage()` would report anyway, so leaving one out breaks nothing. Without it, `fallbackCoverage()` is just a little more cautious, reporting that your operator might fail where it actually can't, so an expression author may add a fallback that isn't strictly needed. That's harmless, and much better than the alternative: _no_ fallback on a node that _could_ fail. So don't let this section put you off writing your own operator. Its analysis can come later, or not at all.
+</Callout>
 
 ### Where findings come from
 
-The analysis never sees your data. It works from the expression and the operators' definitions, and for each node it works out what each parameter could receive: a fixed value where the expression gives one, like `4` or `{ $plus: [1, 2] }`, and otherwise whatever it could be — anything at all for `$data.input`, or a number for a `multiply` node[^returns].
+The analysis never sees your data. It works from the expression and the operators' definitions, and for each node it works out what each parameter could receive: a fixed value where the expression gives one, like `4` or `{ $plus: [1, 2] }`, and otherwise whatever it could be — anything at all for `$data.input`, or a number for a `multiply` node. That set of values is the parameter's **gamut**.
 
-Some failures it can then read straight off the definition. `upper`'s finding in the Order summary is one: its parameter takes a string, and `$data.customer` could be anything. These are the [checks the engine makes](/custom-operators/writing/#what-the-engine-does-for-you) on every operator's parameters, so yours get them too.
+In the Order summary, `$data.customer` could be anything, so the engine's [checks](/custom-operators/writing/#what-the-engine-does-for-you) narrow it to the type `upper`'s parameter expects, a string: if it isn't one, that's a `type-check` failure, which is the finding you see. Every operator's parameters get these checks, yours included.
 
-The rest are failures only `evaluate` knows about, like `divide` getting a 0 to divide by. FigTree can't see inside `evaluate`, so for each of its own operators it keeps a list of **failure rules**, each an error code and the condition on the parameters that causes it. `divide`'s is `{ code: 'non-finite-result', parameter: 'by', when: { by: 0 } }`, and the analysis tests that condition against what `by` could receive. In the Order summary it's `'$data.count'`, which could be 0, so the node may fail. Given `4` it can't, so there's no finding, and `{ $divide: [10, 0] }` always fails.
+The rest are failures only each operator's `evaluate` knows about, like `divide` trying to divide by 0. FigTree can't see inside `evaluate`, so each operator's analysis lists them, as a function of its parameters' gamuts. The core operators' analyses are written just as you'll write yours. Here's `divide`'s:
 
-[^returns]: A `multiply` that fails passes nothing on, and is reported as its own finding. So the node receiving its result only ever has a number to consider.
+```ts
+import type { OperatorAnalysis } from 'fig-tree-evaluator'
+// ---cut---
+// The core divide's failures hook, cut down to its one failure
+const failures: OperatorAnalysis['failures'] = ({ by }, helpers) => [
+  { code: 'non-finite-result', parameter: 'by', occurs: helpers.is(by, 0) },
+]
+```
 
-### Rules for your operator
+`helpers.is(by, 0)` asks whether `by` is 0, and the answer decides the finding:
 
-`analysis.failures` is that list, for your operator. This `median` operator fails on an empty list, and its one rule says so:
+- **`'yes'`**: `by` is always 0, so the node always fails, as `{ $divide: [10, 0] }` does. The finding is `always`.
+- **`'maybe'`**: `by` could be 0, as `'$data.count'` could in the Order summary. The finding is `may`.
+- **`'no'`**: `by` can't be 0, as when it's `4`, or `{ $plus: [{ $length: '$data.items' }, 1] }`, which is always at least 1. There's no finding.
+
+### Declaring how it fails
+
+Your own operator's analysis is structured the same way. This `median` operator fails on an empty list, and its analysis says so:
 
 <OperatorSource name="median" />
 
-With that, the analysis treats it like any core operator:
+Register the operator on your instance, and pass its analysis:
+
+```ts title="coverage.ts"
+// @filename: operators/median.ts
+import type { OperatorAnalysis, ValidatedOperatorDefinition } from 'fig-tree-evaluator'
+export declare const median: ValidatedOperatorDefinition
+export declare const medianAnalysis: OperatorAnalysis
+// @filename: coverage.ts
+declare const expression: unknown
+// ---cut---
+import { FigTree, coreOperators } from 'fig-tree-evaluator'
+import { fallbackCoverage } from 'fig-tree-evaluator/authoring'
+import { median, medianAnalysis } from './operators/median'
+
+const fig = new FigTree({ operators: [coreOperators, median] })
+
+const report = await fallbackCoverage(fig, expression, [medianAnalysis])
+```
+
+With that, the analysis treats `median` like any core operator:
 
 <Expression
   coverage
   throws
   customOperators
-  title="A rule at work"
+  title="Medians"
   code={`
     {
       sample: { $median: [7, 2, 9] },
@@ -152,62 +198,136 @@ With that, the analysis treats it like any core operator:
 />
 
 - **`sample`** has no finding, since three values can't be an empty list.
-- **`scores`** has two: the type check its parameter gets anyway, and the rule's, since `$data.scores` could be empty.
+- **`scores`** has two: the type check its parameter gets anyway, and the declared one, since `$data.scores` could be empty.
 - **`nothing`** always fails.
 
-<Callout kind="caution" title="Only for an operator whose result depends on its parameters">
-  The analysis may call `evaluate` with values fixed in the expression, so an operator whose result depends on anything else, such as one that sends a request or reads the current time, should leave `analysis` out.
+When you write the `failures` hook:
+
+- **Declare only what `evaluate` itself fails on:** an `OperatorFailure` it throws, a result that isn't a finite number, or an empty list it can't aggregate. The type checks on its parameters are already read from the definition, so an entry for one would report the same failure twice.
+- **`failures: []`** says `evaluate` never fails of itself. Leaving `failures` out says the opposite: the operator may fail on anything, as if it had no analysis.
+- **`message`** is a short reason, which ends the finding's message: `median – operator-failure when 'values' is empty`.
+
+### Declaring what it returns
+
+Whether a node can fail often depends on what _another_ node returns, such as a `divide` node whose `by` is your operator's result. Undeclared, your operator could return anything its `returns` allows, so to the analysis, an operator returning an `integer` could return 0. A `gamut` hook narrows that down.
+
+This `daysInMonth` operator always returns 28 to 31, and its `gamut` says so. It also fails on a month outside 1 to 12, which its parameter's type doesn't rule out:
+
+<OperatorSource name="daysInMonth" />
+
+Here, it divides a month's total into a daily average:
+
+<Expression
+  coverage
+  customOperators
+  title="Daily average"
+  code={`
+    {
+      $divide: [
+        '$data.monthTotal',
+        { $daysInMonth: ['$data.year', '$data.month'] },
+      ],
+    }
+  `}
+  data={`
+    { monthTotal: 840, year: 2026, month: 2 }
+  `}
+/>
+
+As we've seen earlier, `divide` normally has a divide-by-zero finding. Here, however, it doesn't, since its `by` can only be between 28 and 31, due to `daysInMonth`'s `gamut` declaration. `daysInMonth`'s own finding, on `month`, is `may`, since `$data.month` could be anything, but it requires an integer from 1 to 12.
+
+Leave the hook out where `returns` already says all there is to say, such as for an operator that can return any string.
+
+<Callout kind="caution" title="A gamut must hold every value the operator can return">
+  A gamut that holds values the operator never returns costs only precision, with findings for failures that can't happen. But one that leaves out a value it _can_ return hides real failures, such as a division by zero further up the expression, and FigTree doesn't check it.
 </Callout>
 
-Here's the field's shape:
+### The helpers
+
+`helpers`, the second argument of both hooks, holds the functions for working with gamuts: asking about them, reading from them, and building them.
+
+Each helper that asks something answers `'yes'`, `'maybe'` or `'no'`, of everything the value could be:
+
+| Helper                                              | Asks                                                                                                               | Used by                                                                                                                     |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `is(gamut, value)`                                  | Is it this value?                                                                                                  | <SourceLink file="src/authoring/core.ts" find="h.is(by, 0)">`divide`</SourceLink>                                           |
+| `isType(gamut, type)`                               | Is it of this type, such as `'string'` or `['array', 'object']`?                                                   | <SourceLink file="src/authoring/core.ts" find="h.isType(value, ['array', 'object'])">`convert`</SourceLink>                 |
+| `isBelow(gamut, n)`                                 | Is it a number less than `n`?                                                                                      | <SourceLink file="src/authoring/core.ts" find="h.isBelow(exponent, 100)">`power`</SourceLink>                               |
+| `isEmpty(gamut)`                                    | Is it an empty array, string or object?                                                                            | <SourceLink file="src/authoring/core.ts" find="h.isEmpty(values)" after="  min: {">`min`</SourceLink>                       |
+| `isSupplied(parameter)`                             | Did the parameter receive a value, given or default?                                                               | <SourceLink file="src/authoring/core.ts" find="h.isSupplied('default')" after="  match: {">`match`</SourceLink>             |
+| `refused(parameter)`                                | Would the operator's own [`validate` hook](/custom-operators/validate/#the-validate-hook) refuse what it receives? | <SourceLink file="src/authoring/core.ts" find="h.refused('pattern')">`regex`</SourceLink>                                   |
+| `all(...answers)`, `any(...answers)`, `not(answer)` | Combines answers: `all` is `'no'` if any is, `any` is `'yes'` if any is, and `not` swaps `'yes'` and `'no'`        | <SourceLink file="src/authoring/core.ts" find="h.all(h.isEmpty(values), h.not(h.isSupplied('expect')))">`plus`</SourceLink> |
+
+These read from a gamut:
+
+| Helper               | Gives                                                                                                                   | Used by                                                                                                         |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `span(gamut)`        | Its numbers as one range, `{ min, max, integer }`, an open end as an infinity, or `undefined` where it holds no numbers | <SourceLink file="src/authoring/core.ts" find="h.span(by)">`divide`</SourceLink>                                |
+| `exactValues(gamut)` | Its values, where it's one of a few known exactly, or `undefined`. For branching on a parameter that picks a mode       | <SourceLink file="src/authoring/core.ts" find="h.exactValues(expect) === undefined">`plus`</SourceLink>         |
+| `elementOf(gamut)`   | One element of an array                                                                                                 | <SourceLink file="src/authoring/core.ts" find="h.union(h.elementOf(input), noMatchDefault)">`find`</SourceLink> |
+| `valueOf(gamut)`     | One value of an object                                                                                                  | <SourceLink file="src/authoring/core.ts" find="h.valueOf(branches)">`match`</SourceLink>                        |
+| `lengthOf(gamut)`    | The length of a string or array                                                                                         | <SourceLink file="src/authoring/core.ts" find="h.lengthOf(value)">`length`</SourceLink>                         |
+
+And these build one:
+
+| Helper                                       | Builds                                                       | Used by                                                                                                       |
+| -------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `type(type)`                                 | Every value of a type, such as `type('string')`              | <SourceLink file="src/authoring/core.ts" find="const strings = h.type('string')">`split`</SourceLink>         |
+| `exactly(value)`                             | That one value                                               | —                                                                                                             |
+| `range({ min?, max?, integer? })`            | The numbers in a range, inclusive, with either end left open | <SourceLink file="src/authoring/core.ts" find="h.range({ min: Math.min(...corners)">`divide`</SourceLink>     |
+| `union(...gamuts)`                           | Anything in any of them                                      | <SourceLink file="src/authoring/core.ts" find="h.union(then, otherwise)">`if`</SourceLink>                    |
+| `arrayOf(elements, { length?, minLength? })` | An array whose every element is in `elements`                | <SourceLink file="src/authoring/core.ts" find="h.arrayOf(h.elementOf(input))">`filter`</SourceLink>           |
+| `nothing()`                                  | No value at all, as from an operator that never returns      | <SourceLink file="src/authoring/core.ts" find="if (a === undefined) return h.nothing()">`divide`</SourceLink> |
+
+### The declaration in full
 
 ```ts
-import type { ExpectedType, FallbackErrorCode } from 'fig-tree-evaluator'
-// TO-DO: a stand-in, as the root has no DeclaredOutput. Goes when this
-// block is rewritten for declareAnalysis (#290)
-type DeclaredOutput = unknown
+import type {
+  Answer,
+  FallbackErrorCode,
+  Gamut,
+  GamutHelpers,
+  OperatorAnalysis,
+  ValidatedOperatorDefinition,
+} from 'fig-tree-evaluator'
+declare namespace Authoring {
 // ---cut---
-interface OperatorAnalysis {
-  // The ways evaluate can fail. Leave it out if it never fails
-  failures?: FailureRule[]
-  // The same as leaving analysis out: it may fail whatever its inputs
-  external?: true
-  // What a node returns, where its inputs narrow its returns
-  output?: DeclaredOutput
-}
+function declareAnalysis(
+  operator: ValidatedOperatorDefinition,
+  hooks: {
+    // What a node returns. Leave it out where returns says it all
+    gamut?: (params: Record<string, Gamut>, helpers: GamutHelpers) => Gamut
+    // How evaluate fails. Leave it out, and it may fail on anything
+    failures?:
+      | FailureEntry[]
+      | ((params: Record<string, Gamut>, helpers: GamutHelpers) => FailureEntry[])
+  }
+): OperatorAnalysis
 
-interface FailureRule {
+interface FailureEntry {
   // The code its error carries
   code: FallbackErrorCode
   // The parameter it's about, which its finding names
   parameter?: string
-  // Tests on what parameters receive, by name. The rule holds when
-  // every test passes, and always holds without any
-  when?: Record<string, FailureTest>
-  // Options the failure needs, such as { strictDataPaths: true }
-  options?: Record<string, unknown>
-  // The tests passing makes the failure possible, not certain
+  // Whether it happens. Left out, it's 'maybe'
+  occurs?: Answer
+  // It's possible, not certain: caps occurs at 'maybe'
   may?: true
   // Only extreme numbers cause it, so it counts under strictNumbers only
   overflow?: true
+  // Options it needs, such as { strictDataPaths: true }
+  options?: Record<string, unknown>
+  // A short reason, for the finding's message
+  message?: string
 }
-
-type FailureTest =
-  | string // equals this value
-  | number
-  | boolean
-  | null
-  | { type: ExpectedType } // has this type
-  | { below: number } // a number less than this
-  | { empty: true } // an empty array, string or object
-  | { supplied: boolean } // has a value, given or default
-  | { invalid: true } // the operator's validate hook refuses it
-  | { some: FailureTest } // any element or value passes
-  | { not: FailureTest }
+// ---cut-after---
+}
 ```
 
-A test reads what the parameter receives after its default is applied, and `{ invalid: true }` reuses the operator's [`validate` hook](/custom-operators/validate/#the-validate-hook), on a value the hook couldn't see because it was computed.
+<Callout kind="caution" title="Declare it for the operator you register">
+  An analysis is matched to its operator by identity, so declare it for the same definition object you register. One built separately, such as from a second call to a factory like `sqlOperator(connection)`, is a different operator, and its analysis is ignored.
+</Callout>
 
-`output` tells the analysis more about what a node returns than `returns` does. For an operator that returns a count of at least 1, `output: { type: 'integer', min: 1 }` means dividing by its result can't divide by 0. Its other forms are in the `DeclaredOutput` type.
-
-[`defineOperator()`](/custom-operators/writing/#defineoperator) checks `analysis` like the rest of the definition, such as that every parameter a rule names is declared.
+<Callout kind="tip" title="Analyses in a library">
+  In a library, export your operators from your package's root, and their analyses from an `/authoring` subpath of its own, as FigTree does, so an app that never checks coverage never loads them.
+</Callout>
