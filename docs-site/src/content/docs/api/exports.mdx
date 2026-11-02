@@ -749,7 +749,7 @@ Every public type is exported from `fig-tree-evaluator`, including those for the
 | [`Spelling`](/tooling/format/#tocanonical-and-toshorthand), `NameOptions`, `CanonicalOptions`, `ShorthandOptions` | The conversions' options |
 | [`ObjectClass`](/tooling/format/#reading-primitives), `PositionalShape`, `PositionalLayout`, `ReferenceRecognition`, `ReferenceScope`, `ReferenceNamespace` | What the reading primitives take and return |
 | [`FallbackCoverage`](/tooling/authoring/#reading-the-report), `CoverageFinding`, `CoveredFinding` | What `fallbackCoverage()` returns |
-| [`FallbackCoverageOptions`](/tooling/authoring/#fallbackcoverage)             | What `fallbackCoverage()` takes                             |
+| [`FallbackCoverageOptions`](/tooling/authoring/#reading-the-report)           | The options `fallbackCoverage()` takes                      |
 | [`OperatorAnalysis`](/tooling/authoring/#custom-operators), `FailureEntry`, `Gamut`, `GamutHelpers`, `Answer` | What `declareAnalysis()` returns, and what its hooks take and return |
 | [`MigrationResult`](/migrating/#the-converters-report), `FragmentMigrationResult`, `MigrationIssue` | What the converter returns     |
 | [`V2Options`](/migrating/#converting-expressions)                      | The v2 options the converter reads                          |
@@ -860,6 +860,7 @@ declare namespace Authoring {
 function fallbackCoverage(
   fig: FigTree,
   expression: unknown,
+  analyses?: (OperatorAnalysis | OperatorAnalysis[])[],
   options?: FallbackCoverageOptions
 ): Promise<FallbackCoverage>
 
@@ -871,7 +872,7 @@ function declareAnalysis(
 }
 ```
 
-Static analyses for authoring tools. `fallbackCoverage()` reports where each node of an expression can fail, and which fallback, if any, catches it, under the instance's own options. `declareAnalysis()` tells it how one of your own operators can fail, and what it returns, for its `operators` option.
+Static analyses for authoring tools. `fallbackCoverage()` reports where each node of an expression can fail, and which fallback, if any, catches it, under the instance's own options. `declareAnalysis()` tells it how one of your own operators can fail, and what it returns, for the list of analyses in its third argument.
 
 **See also:** [`/authoring`](/tooling/authoring/), [Covering the whole expression](/guides/fallbacks/)
 

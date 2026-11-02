@@ -1,4 +1,5 @@
 import type { OperatorAnalysis, ValidatedOperatorDefinition } from 'fig-tree-evaluator'
+import { daysInMonth, daysInMonthAnalysis } from './daysInMonth'
 import { distance } from './distance'
 import { formatNumber } from './formatNumber'
 import { hash } from './hash'
@@ -7,9 +8,9 @@ import { sortBy } from './sortBy'
 
 /**
  * The custom operators the Custom operators pages' examples use, and
- * /authoring's `median`, one file each. Each file is exactly what its
- * page shows (OperatorSource.astro), so the definition on the page is always
- * the one that ran.
+ * /authoring's `median` and `daysInMonth`, one file each. Each file is
+ * exactly what its page shows (OperatorSource.astro), so the definition on
+ * the page is always the one that ran.
  *
  * Only examples that ask for them see these (`customOperators` on
  * <Expression> and <Playground>): everywhere else, the site's editors and
@@ -21,10 +22,11 @@ export const customOperators: ValidatedOperatorDefinition[] = [
   distance,
   sortBy,
   median,
+  daysInMonth,
 ]
 
 /**
  * The analyses fallbackCoverage() reads for those operators. One left out is
  * external to it: it may fail whatever its inputs.
  */
-export const customAnalyses: OperatorAnalysis[] = [medianAnalysis]
+export const customAnalyses: OperatorAnalysis[] = [medianAnalysis, daysInMonthAnalysis]
