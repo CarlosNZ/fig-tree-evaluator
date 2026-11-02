@@ -6,6 +6,7 @@ sidebar:
 ---
 
 import { Aside } from '@astrojs/starlight/components'
+import Compiled from '../../../components/Compiled.astro'
 
 <Aside type="caution" title="Placeholder">
   This page is a skeleton. Each heading notes what it will cover.
@@ -21,6 +22,8 @@ Recognising what each part of an expression is, using only the expression and th
 
 {/* NOTE (from Shorthand and canonical forms): that page's footnote links here for "this is close to how FigTree represents an expression internally". Say that compiling produces one tree whichever form the expression was written in: one object per node, its parameters by name (grouped together, not beside the operator as in canonical form), plus what the engine needs to run it. References, constants and plain objects holding nodes are compiled pieces too (src/compile/artifact.ts: OperatorNode, FragmentCallNode, ReferenceNode, ConstantNode, SkeletonNode). Describe the model, not the types: the page names no files. */}
 
+{/* NOTE (from Why FigTree is shaped this way): timeout shielding is decided at compile time. Half an object is worse than none, so by default a timeout throws; but compiling knows each top-level node and whether its fallback is a plain value, with nothing to evaluate, and if every one has such a fallback, a timeout returns a complete result instead, with each node's real value where it finished and its fallback where it didn't. <Compiled> prints this as "Shielded from a timeout". Link to Timeout shielding (/guides/fallbacks/#timeout-shielding) for the how-to. */}
+
 ## Check
 
 Static checks over the compiled expression: types of literal parameters, references to undeclared names, operators' own `validate` hooks.
@@ -29,10 +32,33 @@ Static checks over the compiled expression: types of literal parameters, referen
 
 Filling in the expression's dynamic positions from the data and the call's options. Its cost follows the number of dynamic positions, not the size of the document.
 
+{/* NOTE (from Why FigTree is shaped this way): how a result is built. Compiling records each hole's path from the root, so evaluating goes straight to it without walking the fixed structure around it. The result can't be the expression itself, since the hole holds this evaluation's value and the expression must stay unchanged for the next one, so each evaluation makes a fresh object or array for every container on the path from the top down to each hole (once per container, however many holes it holds), with the computed value at the bottom. Everything beside those paths is the expression's own fixed structure, shared, not duplicated. That's why results are read-only. Source: splice() in src/compile/artifact.ts. The design page deliberately stops at "goes straight there"; the walkthrough here can show it. */}
+
 ## What is reused
 
 The first two stages run once per expression and are cached; evaluation runs every time. How this explains `validate()` needing no data, and `compile()` being worth using.
 
+{/* NOTE (from Why FigTree is shaped this way): the compile cache's two layers, the same object (a pointer lookup) and then the same content (one serialize and hash, after which the new object is remembered by identity too). A value with nothing to evaluate skips compiling: a quick read-only scan, needing no operator list, stops at the first thing that would need evaluating, and the value is returned as it is. That verdict is remembered by identity only, never by content, so a host that rebuilds its values each time (a React component recreating a config per render) pays for the scan on every evaluation, which is still far cheaper than compiling. A single string or number is never remembered, and is trivial to scan. Source: src/compile/compileCache.ts, src/compile/probe.ts. */}
+
 ## One expression, end to end
 
 A small expression followed through all three stages.
+
+{/* NOTE: shown from the real compiler's output, produced at build time like the site's evaluated examples, so it can't go stale. "One expression, end to end" in the First Principles artifact is the model for the walkthrough. The compile half is <Compiled> (below, a first look); the evaluation half is numbered steps beside an <Expression> whose editor shows the trace, with the branch not taken dimmed. */}
+
+<Compiled
+  source
+  paths
+  code={`
+    {
+      label: 'Shipping',
+      message: {
+        $if: {
+          condition: { '$>': [{ $plus: ['$data.order.total', '$data.order.shipping'] }, 100] },
+          then: 'Free shipping',
+          else: { $buildString: ['Standard: %1', '$data.order.total'] },
+        },
+      },
+    }
+  `}
+/>
