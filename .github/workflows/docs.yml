@@ -44,6 +44,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: fig-tree-evaluator
+      # <SourceLink> reads the branches it links to from their remote-tracking
+      # refs (docs-site/src/lib/sourceLink.ts), which the checkout leaves out
+      - name: Fetch the branches source links point to
+        working-directory: fig-tree-evaluator
+        run: >-
+          git fetch --no-tags --depth=1 origin
+          +refs/heads/main:refs/remotes/origin/main
+          +refs/heads/v3.0-dev:refs/remotes/origin/v3.0-dev
       - uses: actions/checkout@v4
         with:
           repository: CarlosNZ/fig-tree-editor-react

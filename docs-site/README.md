@@ -79,6 +79,7 @@ docs-site/
       ImportCosts.astro       a table of what imports cost a consumer, measured from build/ at build time
       OperatorSource.astro    a custom operator's definition, shown from its file in lib/operators/
       Screenshot.astro        a screenshot of the site's UI, with a light and an optional dark version
+      SourceLink.astro        a link to a line of the library's source on GitHub, found by a snippet of it
       TreeItem.astro          one entry in that tree, with its children
       OperatorReference.astro reference entries: the operators page, or a chosen few
       OperatorEntry.astro     one operator's entry
@@ -164,6 +165,16 @@ A plain string adds; `replace` replaces, and `against` records the text it repla
 - An error the snippet means to show is declared with `// @errors: <code>`, and rendered.
 - `//    ^?` under an identifier shows its type inline.
 - A fragment that can't compile, such as a before-and-after diff, is marked `nocheck` (` ```ts nocheck `). Nothing checks it, so keep these few.
+
+**Links to the library's source** go through `<SourceLink>`, which finds the line by a snippet of its text rather than a line number:
+
+```mdx
+<SourceLink file="src/authoring/core.ts" find="h.refused('pattern')">
+  `regex`
+</SourceLink>
+```
+
+The build looks for the snippet on `origin/main`, then `origin/v3.0-dev` (`src/lib/sourceLink.ts`), and links to the line on the first branch it's on, so a link moves from v3.0-dev to main on the first build after a merge. The snippet must be on one line only; where a call is made alike in several places, `after` names a line before the one wanted, and the link goes to the first line holding `find` after it. A snippet that's on neither branch fails the build: code not yet merged into v3.0-dev has no line to link to. The dev server warns instead, and links to the file. The branches are read as last fetched, so run `git fetch` before building if they've moved.
 
 ## Repo integration
 
