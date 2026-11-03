@@ -95,8 +95,9 @@ interface TraceNode {
   path: (string | number)[]
   // Inside a fragment's body: the fragment, whose body the path starts from
   source?: { fragment: string }
-  // 'skeleton' is a plain object or array with nodes inside it
-  kind: 'operator' | 'fragment' | 'reference' | 'literal' | 'skeleton'
+  // 'constant' has nothing to evaluate in it; 'skeleton' is a plain
+  // object or array with nodes inside it
+  kind: 'operator' | 'fragment' | 'reference' | 'constant' | 'skeleton'
   // The operator's name, never an alias
   operator?: string
   // A reference, as it was written
