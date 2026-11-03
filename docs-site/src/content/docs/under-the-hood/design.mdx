@@ -150,7 +150,7 @@ Compiling, though, has already resolved every operator, parameter and reference 
 | A value of the wrong type, written into the expression | A value of the wrong type, read from the data |
 | A variable that's read but never defined         | A missing value, where it isn't allowed         |
 
-[`validate()`](/guides/validation/#validating-before-you-store) reports every mistake it finds, rather than stopping at the first, and never throws however broken the expression is, so a configuration author sees everything that needs fixing at once ([Checking never throws on content](/under-the-hood/guarantees/#checking-never-throws-on-content)).
+[`validate()`](/guides/validation/#validating-before-you-store) reports every mistake it finds, rather than stopping at the first, and never throws however broken the expression is, so a configuration author sees everything that needs fixing at once ([Checking never throws](/under-the-hood/guarantees/#checking-never-throws)).
 
 The two sides are handled differently. A mistake in the expression is a [static error](/guides/validation/#static-errors), which no fallback catches, since the configuration author can fix it now. A problem in the data can't be fixed in advance, so it's handled while the expression runs, with null handling and fallbacks ([Absence isn't failure](#absence-isnt-failure)).
 
@@ -183,6 +183,8 @@ A branch could also send a request nobody needed, or read a field that only exis
 | All at once, settled as soon as one decides it     | `and`, `or`                           |
 | Run once for each element of an array              | `map`, `filter`                       |
 | A fixed value, never computed                      | The iterators' `as`                   |
+
+{/* NOTE (from Compile, check, evaluate): the page doesn't cover variables or fragments as mechanisms of their own; consider a short problem/idea section for each. Variables: the same value or request written several times in one expression; each is lazy and computed at most once, shared by concurrent reads (the result cache can't do this within one evaluation, since identical requests sent at once are each sent). Fragments: the same logic copied across many expressions; the body is compiled and checked once at registration, it's sealed from the caller's vars and iterator bindings, and it can't call itself (part of what keeps evaluation bounded). Only the why belongs here; the mechanics are on Compile, check, evaluate and Guarantees. */}
 
 [Variables](/concepts/variables/#evaluated-once-when-needed) follow the same idea: each is worked out the first time something reads it, and not at all if nothing does ([A variable is computed at most once](/under-the-hood/guarantees/#a-variable-is-computed-at-most-once)).
 

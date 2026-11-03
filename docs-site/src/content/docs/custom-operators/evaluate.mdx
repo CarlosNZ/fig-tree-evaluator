@@ -28,7 +28,7 @@ In TypeScript, their types come from the declarations too ([Typed `params`](/cus
 
 A parameter that isn't evaluated up front ([Lazy parameters](/concepts/evaluation/#lazy-parameters)) doesn't arrive as a plain value, but as a **handle**, with its own `evaluate()` method (or an equivalent, in the other evaluation modes), which `evaluate` calls if and when it needs the value ([Lazy and per-element parameters](/custom-operators/lazy-parameters/)).
 
-<Callout kind="caution" title="Don't change what you're given">
+<Callout kind="danger" title="Don't change what you're given">
   When a parameter's value comes from `$data`, `evaluate` receives the actual object your app passed in as `data`, not a copy. Changing it in place changes your app's data too: `values.sort()`, for example, would reorder your app's own array. Build a new value instead, such as `[...values].sort()`.
 </Callout>
 

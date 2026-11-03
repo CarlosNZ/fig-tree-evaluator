@@ -5,46 +5,90 @@ sidebar:
   order: 2
 ---
 
-import { Aside } from '@astrojs/starlight/components'
 import Compiled from '../../../components/Compiled.astro'
+import Expression from '../../../components/Expression.astro'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+[Why FigTree is shaped this way](/under-the-hood/design/) introduced several of FigTree's mechanisms one at a time, each to fix a limitation of a very simple evaluator. This page shows how they fit together: the three stages every expression goes through, what each one is allowed to know, and what it hands to the next. We'll then follow one example expression through all three, with FigTree's real output at each stage.
 
 ## Three stages
 
-Compile, check and evaluate, and the strict division of what each is allowed to know.
+| Stage        | Knows                                                                    | Never knows                       | Produces                                                  |
+| ------------ | ------------------------------------------------------------------------ | --------------------------------- | --------------------------------------------------------- |
+| **Compile**  | The expression, and the instance's operators, fragments and `operatorDefaults` | The data, and the other options   | The compiled expression, and any issues found on the way  |
+| **Check**    | The compiled expression, and the operators' definitions                  | The data, and the options         | More issues, if any                                       |
+| **Evaluate** | The compiled expression, the data, and the call's options                | —                                 | The result                                                |
+
+Compiling and checking run once for an expression, and what they produce is kept. Evaluating runs every time, and only reads what the first two produced: it never adds to it, so one compiled expression can serve any number of evaluations, including several at once. Since the first two always run together, the rest of the docs, and `fig.compile()` itself, call the pair "compiling", and a _compiled expression_ is the output of both. This page keeps them apart, to show what each one is allowed to know.
+
+An instance's main methods each run some or all of these stages. [`fig.validate()`](/guides/validation/) compiles and checks, and reports what it found. [`fig.evaluate()`](/api/figtree/#evaluate) does all three, refusing to evaluate an expression the first two found an error in. [`fig.compile()`](/guides/caching/#compiling-once) compiles and checks, and hands back a compiled expression to evaluate later.
 
 ## Compile
 
-Recognising what each part of an expression is, using only the expression and the registered operators and fragments, never the data. The kinds of piece it recognises.
+Compiling walks the expression once and decides what each part of it is. Whichever [form](/concepts/forms/) the expression was written in — shorthand, canonical or a mix of the two — it produces the same tree, made of these pieces:
 
-{/* NOTE (from Shorthand and canonical forms): that page's footnote links here for "this is close to how FigTree represents an expression internally". Say that compiling produces one tree whichever form the expression was written in: one object per node, its parameters by name (grouped together, not beside the operator as in canonical form), plus what the engine needs to run it. References, constants and plain objects holding nodes are compiled pieces too (src/compile/artifact.ts: OperatorNode, FragmentCallNode, ReferenceNode, ConstantNode, SkeletonNode). Describe the model, not the types: the page names no files. */}
+- **Constant:** a value with nothing inside it that can be evaluated, at any depth. Evaluating returns it as it is.
+- **Reference:** a string that reads a value, such as `'$data.order.total'`. It's stored in two parts: the data source (such as the call's data, or a variable), and the path split into its parts. `'$data.order.total'` and `'$d.order.total'` compile to the same thing: the passed-in data, and `['order', 'total']`.
+- **Operator node:** the operator, by its canonical name, with each parameter under the name the operator declares. Its `fallback` and `vars`, if it has them, are compiled pieces too.
+- **Fragment call:** the fragment, and the arguments it's given. The fragment's body is compiled and checked once, when the fragment is registered, so a call points to that compiled body and doesn't compile it again.
+- **Skeleton:** a plain object or array with something to evaluate somewhere inside it, such as `{ label: 'Shipping', message: { $if: … } }`. It's stored with each piece to evaluate cut out, leaving a hole and the path to that hole. Here, `message` is a hole and `label` is fixed, the same on every evaluation. Each evaluation fills the holes with its own results.
+- **A list or a map of pieces:** the value of a parameter whose elements or entries the operator deals with separately, such as `firstNonNull`'s values or `match`'s branches, kept as separate pieces so the operator can ask for each one on its own.
+- **Invalid:** a placeholder for a part that couldn't be compiled, such as a node naming an operator that doesn't exist. The problem is recorded as an issue, and the placeholder keeps the tree whole, so compiling can carry on and find the rest ([Checking never throws](/under-the-hood/guarantees/#checking-never-throws)).
 
-{/* NOTE (from Why FigTree is shaped this way): timeout shielding is decided at compile time. Half an object is worse than none, so by default a timeout throws; but compiling knows each top-level node and whether its fallback is a plain value, with nothing to evaluate, and if every one has such a fallback, a timeout returns a complete result instead, with each node's real value where it finished and its fallback where it didn't. <Compiled> prints this as "Shielded from a timeout". Link to Timeout shielding (/guides/fallbacks/#timeout-shielding) for the how-to. */}
+Compiling also works out facts about the expression as a whole, which other methods and tools can use rather than doing their own walk: the data paths it reads, the operators and fragments it uses, and its depth and [node count](/guides/setup/#limits).
+
+One of those facts is whether the expression is **shielded from a timeout**: whether every piece at its top (the root node, or each hole in a root skeleton) has a plain-value fallback, so a timeout can return a result instead of throwing ([Timeout shielding](/guides/fallbacks/#timeout-shielding)). A shielded expression is always [fully covered](/guides/fallbacks/#covering-the-whole-expression), but shielding is a fact of the expression's shape, so compiling settles it before anything runs. Full coverage is a deeper analysis, which [`fallbackCoverage()`](/tooling/authoring/) does when asked.
 
 ## Check
 
-Static checks over the compiled expression: types of literal parameters, references to undeclared names, operators' own `validate` hooks.
+Checking is a second pass over the _compiled_ tree. It reads each operator's definition, and compares it with what the configuration author wrote on the node:
+
+- each fixed parameter value against the type the operator declares it should be, and each operator's _result_ against what the parameter it feeds in the node above expects
+- the parameters an operator or fragment requires, and the ones it doesn't have
+- every reference against the names in scope: a variable that's never defined, `$element` outside an iterator, `$error` outside a fallback
+- circular dependencies between variables
+- the operator's own [`validate` hook](/custom-operators/validate/), given only the parameters whose values are fixed, so it reports what those alone can show; a rule that needs a value computed at runtime is the operator's `evaluate` to check
+
+The issues it finds are added to the ones found during compile, in the order they appear in the expression. All of them are settled by the expression and the instance's setup alone, never by the data or the call's options, so they're found once and cached with the compiled expression.
+
+Two more checks depend on options, which can change from call to call, so they're left out of this stage and run on each call instead, despite the relevant knowledge being collected during compiling: whether the expression is deeper than `maxDepth` or has more pieces than `maxNodes`, and, in `fig.validate()` only, whether the paths it reads exist in [sample data](/guides/validation/#checking-against-sample-data).
+
+Checking only sees fixed values in the expression. A value that arrives as a result of a runtime evaluation is checked when it arrives ([Strict where it can be](/under-the-hood/design/#strict-where-it-can-be-and-forgiving-where-it-has-to-be)).
 
 ## Evaluate
 
-Filling in the expression's dynamic positions from the data and the call's options. Its cost follows the number of dynamic positions, not the size of the document.
+Evaluating starts at the root of the compiled tree, and does what each piece calls for:
 
-{/* NOTE (from Why FigTree is shaped this way): how a result is built. Compiling records each hole's path from the root, so evaluating goes straight to it without walking the fixed structure around it. The result can't be the expression itself, since the hole holds this evaluation's value and the expression must stay unchanged for the next one, so each evaluation makes a fresh object or array for every container on the path from the top down to each hole (once per container, however many holes it holds), with the computed value at the bottom. Everything beside those paths is the expression's own fixed structure, shared, not duplicated. That's why results are read-only. Source: splice() in src/compile/artifact.ts. The design page deliberately stops at "goes straight there"; the walkthrough here can show it. */}
+- A **constant** is returned as it is.
+- A **reference** is read, from the data or wherever else it points.
+- A **skeleton** evaluates all of its holes at once, then builds its result from its fixed shape and their values.
+- An **operator node** gets its parameters ready as its declaration says, each delivered as a value, or as something to run only if it's needed ([Not every argument is computed](/under-the-hood/design/#not-every-argument-is-computed)). Each value is checked against its parameter's type and null behaviour as it arrives, and then the operator runs. If anything in it fails, its fallback, if it has one, is evaluated and returned instead.
+
+A result is built with as little copying as possible: the fixed parts of a skeleton, and a value a reference reads from the data, are returned as the objects they already are, not copies. So a result can share structure with the expression and the data, which is why it's read-only ([What FigTree asks of the host](/under-the-hood/guarantees/#what-figtree-asks-of-the-host)).
+
+The `timeout` clock starts at this stage, once checking has passed, and covers everything evaluated, fallbacks included. When it runs out, or the call's `signal` is aborted, nothing new starts, and requests still in flight are cancelled.
 
 ## What is reused
 
-The first two stages run once per expression and are cached; evaluation runs every time. How this explains `validate()` needing no data, and `compile()` being worth using.
+FigTree keeps what compiling and checking produce in the **compile cache**, which finds an expression in two ways:
 
-{/* NOTE (from Why FigTree is shaped this way): the compile cache's two layers, the same object (a pointer lookup) and then the same content (one serialize and hash, after which the new object is remembered by identity too). A value with nothing to evaluate skips compiling: a quick read-only scan, needing no operator list, stops at the first thing that would need evaluating, and the value is returned as it is. That verdict is remembered by identity only, never by content, so a host that rebuilds its values each time (a React component recreating a config per render) pays for the scan on every evaluation, which is still far cheaper than compiling. A single string or number is never remembered, and is trivial to scan. Source: src/compile/compileCache.ts, src/compile/probe.ts. */}
+- **The same object:** a lookup by the object itself, which costs next to nothing.
+- **The same content:** an object that is an exact copy of one it compiled before, such as a config read from the database again for each request, or rebuilt each time a component renders. Finding it costs one pass over the expression to make a key, which is still much quicker than compiling it. It holds the 200 most recently compiled expressions.
+
+A value with nothing to evaluate in it [skips compiling](/under-the-hood/design/#only-what-can-change-is-computed). The scan that decides this doesn't need to know any operators, and stops at the first thing that would need evaluating. Its verdict is remembered by the object only, never by content, so a host that rebuilds its values for every evaluation pays for the scan each time. A string or number on its own is never remembered, but it's trivial to scan.
+
+Changing the instance's operators, fragments or `operatorDefaults` gives it a new, empty compile cache ([What compiling is allowed to know](/under-the-hood/design/#what-compiling-is-allowed-to-know)).
+
+The methods use it differently:
+
+- **`fig.evaluate()`** looks the expression up, and compiles it only if it isn't there.
+- **`fig.compile()`** shares the cache with `fig.evaluate()`, although the compiled expression it returns keeps the operators and options the instance had when it was compiled.
+- **`fig.validate()`** compiles fresh every time, and neither reads nor fills the cache.
+
+The **result cache** is separate: it holds what slow operators, such as HTTP requests, _returned_ ([Not repeating slow work](/under-the-hood/design/#not-repeating-slow-work)). It's shared by every expression on the instance, and by every compiled expression made from it.
 
 ## One expression, end to end
 
-A small expression followed through all three stages.
-
-{/* NOTE: shown from the real compiler's output, produced at build time like the site's evaluated examples, so it can't go stale. "One expression, end to end" in the First Principles artifact is the model for the walkthrough. The compile half is <Compiled> (below, a first look); the evaluation half is numbered steps beside an <Expression> whose editor shows the trace, with the branch not taken dimmed. */}
+Here's a small configuration object with an evaluable expression three nodes deep inside it. Below it is a printout of its compiled form, built from the report [`inspect()`](/guides/tracing/#inspecting-a-compiled-expression) gives for it. Each line is one compiled piece, indented under the piece it belongs to, with its place in the expression as written on the right:
 
 <Compiled
   source
@@ -62,3 +106,43 @@ A small expression followed through all three stages.
     }
   `}
 />
+
+A few things to notice in it:
+
+- The whole thing is a skeleton with one hole, `message`. The `label` is part of its fixed shape, so it's never evaluated.
+- `$>` appears as `greaterThan` (its canonical name), and the array it was given is its `values` parameter. The array is a skeleton of its own, with a hole for `plus` and the fixed `100` beside it.
+- `then` is a constant: there's nothing to evaluate in `'Free shipping'`.
+- The two reads of `order.total` are separate pieces, but the data paths are listed once in "Reads from the data".
+- It isn't shielded from a timeout, since `message` has no fallback.
+
+Checking then finds nothing to report. Had the configuration author written `thn` for `then`, this is where it would show up, with the path of the mistake, before any data exists.
+
+Now it's evaluated, with [tracing](/guides/tracing/) on, against an order of 80 with 15 shipping:
+
+<Expression
+  trace
+  code={`
+    {
+      label: 'Shipping',
+      message: {
+        $if: {
+          condition: { '$>': [{ $plus: ['$data.order.total', '$data.order.shipping'] }, 100] },
+          then: 'Free shipping',
+          else: { $buildString: ['Standard: %1', '$data.order.total'] },
+        },
+      },
+    }
+  `}
+  data={`
+    { order: { total: 80, shipping: 15 } }
+  `}
+/>
+
+Step by step:
+
+1. The root's one hole is `message`, so the `if` is evaluated: its `condition` first, with `then` and `else` held back until one is needed.
+2. The condition's `plus` reads 80 and 15 from the data at the same time, and adds them to 95. That fills `greaterThan`'s hole, `[95, 100]`, so it returns `false`.
+3. `if` asks for its `else`; `then` never runs, which the trace shows as skipped.
+4. `buildString` reads 80 and returns `'Standard: 80'`, which fills the root's hole, in a new object: `{ label: 'Shipping', message: 'Standard: 80' }`.
+
+Each node is started from the top down, but its value bubbles back up only once the pieces it asked for have theirs (and they have theirs, and so on).
