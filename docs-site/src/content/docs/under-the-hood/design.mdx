@@ -184,11 +184,25 @@ A branch could also send a request nobody needed, or read a field that only exis
 | Run once for each element of an array              | `map`, `filter`                       |
 | A fixed value, never computed                      | The iterators' `as`                   |
 
-{/* NOTE (from Compile, check, evaluate): the page doesn't cover variables or fragments as mechanisms of their own; consider a short problem/idea section for each. Variables: the same value or request written several times in one expression; each is lazy and computed at most once, shared by concurrent reads (the result cache can't do this within one evaluation, since identical requests sent at once are each sent). Fragments: the same logic copied across many expressions; the body is compiled and checked once at registration, it's sealed from the caller's vars and iterator bindings, and it can't call itself (part of what keeps evaluation bounded). Only the why belongs here; the mechanics are on Compile, check, evaluate and Guarantees. */}
-
-[Variables](/concepts/variables/#evaluated-once-when-needed) follow the same idea: each is worked out the first time something reads it, and not at all if nothing does ([A variable is computed at most once](/under-the-hood/guarantees/#a-variable-is-computed-at-most-once)).
-
 A rarely taken branch is rarely tested, though. Compiling still checks it, but a problem only the data can reveal, such as a value of the wrong type, shows up only when that branch first runs.
+
+## Saying it once
+
+The simple evaluator has no way to say something once and use it twice. A rule that checks a customer's city and then addresses them by name needs the same customer record in both places, so it has to write the request out twice, and sends it twice. And logic that many expressions need, such as a price with tax, is copied into each one, so every copy has to be found and changed when the logic does.
+
+FigTree solves these two problems in two different ways.
+
+### Variables: a value worked out once
+
+A [variable](/concepts/variables/) names a value once, in a `vars` block, and anything inside the object that declares it can read it by name. It follows the same idea as the parameters above: it's worked out the first time something asks for it, and not at all if nothing does. And it's worked out _at most_ once, so a read that arrives while it's still being worked out waits for that same evaluation, rather than starting another ([A variable is computed at most once](/under-the-hood/guarantees/#a-variable-is-computed-at-most-once)).[^result-cache]
+
+[^result-cache]: This is different to the result cache ([Not repeating slow work](#not-repeating-slow-work)), which can only reuse a result _once a request has completed_, so two identical requests sent at the same moment are both sent.
+
+### Fragments: system-wide logic written once
+
+While a variable avoids duplication _within_ a single expression, a [fragment](/guides/fragments/) is a repeated block stored against the whole instance, with parameters of its own, available for any expression to call. Its body is compiled and checked once, when it's registered.
+
+That works because a body is sealed off from the expression that calls it: it can read the evaluation's data and its own parameters, but not the caller's variables or the element of an iterator it's called from.
 
 ## Telling a reference from text
 
