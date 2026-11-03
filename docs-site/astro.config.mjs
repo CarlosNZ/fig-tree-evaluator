@@ -96,6 +96,7 @@ export default defineConfig({
       // prototype page is deliberately absent: it is reachable only by its
       // URL, /prototype/.
       sidebar: [
+        { label: 'Getting started', link: '/getting-started/' },
         { label: 'Concepts', items: [{ autogenerate: { directory: 'concepts' } }] },
         { label: 'Guides', items: [{ autogenerate: { directory: 'guides' } }] },
         { label: 'API reference', items: [{ autogenerate: { directory: 'api' } }] },
