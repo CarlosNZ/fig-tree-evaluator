@@ -6,7 +6,8 @@
  * level by level, so a short branch sits beside a deep one rather than past
  * its whole width, and each parent is centred over its children. Connectors
  * are drawn as one SVG, and the data box goes into the first empty corner, or
- * the figure's bottom-left, unless the page placed it.
+ * the figure's bottom-left, unless the page placed it, or asked for it below
+ * the tree.
  */
 
 /** One entry: its label-and-box unit, and the entries below it. */
@@ -162,7 +163,13 @@ const layOut = (tree: HTMLElement) => {
   // The data box: into the first corner of the tree nothing occupies, or else
   // at the figure's bottom-left, with the tree kept clear of it
   const data = canvas.querySelector<HTMLElement>('.fds-tree-data')
-  if (data && !data.classList.contains('fds-tree-data--placed')) {
+  if (data?.classList.contains('fds-tree-data--below')) {
+    // Under the whole tree, so the figure is never wider than the tree
+    const top = height + DATA_TREE_SPACING * rem()
+    canvasHeight = top + data.getBoundingClientRect().height
+    data.style.left = `${DATA_HORIZONTAL_INSET * rem()}px`
+    data.style.top = `${top}px`
+  } else if (data && !data.classList.contains('fds-tree-data--placed')) {
     const box = data.getBoundingClientRect()
     const clearance = DATA_CLEARANCE * rem()
     const insetX = DATA_HORIZONTAL_INSET * rem()

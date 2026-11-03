@@ -19,8 +19,10 @@
  * An example with data shows it in the diagram, so the values its references
  * read come from somewhere. The layout puts it in the first corner the tree
  * leaves empty, or else at the figure's bottom-left, beside the tree;
- * `dataPosition` places it instead, as CSS offsets from the figure's edges.
- * It scrolls with the diagram, so it keeps its place on a narrow screen.
+ * `dataPosition` places it instead: `'below'` puts it under the whole tree,
+ * for a wide tree with no room beside it, and an object places it with CSS
+ * offsets from the figure's edges. It scrolls with the diagram, so it keeps
+ * its place on a narrow screen.
  *
  * "Open in editor" opens the expression in a full-size editor over the page
  * (ExpressionEditor.tsx), with `caption` at its foot if given, so a page
@@ -43,7 +45,7 @@ interface Props {
   /** What the diagram shows, for screen readers. */
   label: string
   /** Offsets from the figure's edges, as numbers (px) or CSS lengths. */
-  dataPosition?: Partial<Record<'top' | 'right' | 'bottom' | 'left', number | string>>
+  dataPosition?: 'below' | Partial<Record<'top' | 'right' | 'bottom' | 'left', number | string>>
   /** What to do or notice in the editor, at the foot of its overlay. */
   caption?: string
 }
@@ -90,8 +92,10 @@ const walk = async (value: unknown, name?: string): Promise<Item> => {
 
 const root = await walk(expression)
 
+const below = dataPosition === 'below'
 const placement =
   dataPosition &&
+  !below &&
   Object.entries(dataPosition)
     .map(([side, offset]) => `${side}: ${typeof offset === 'number' ? `${offset}px` : offset}`)
     .join('; ')
@@ -104,7 +108,10 @@ const placement =
         {
           data !== undefined && (
             <div
-              class:list={['fds-tree-data', { 'fds-tree-data--placed': placement }]}
+              class:list={[
+                'fds-tree-data',
+                { 'fds-tree-data--placed': placement, 'fds-tree-data--below': below },
+              ]}
               style={placement}
             >
               <span class="fds-tree-data-label">Data</span>
