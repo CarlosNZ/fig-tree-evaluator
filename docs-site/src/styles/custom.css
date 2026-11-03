@@ -206,6 +206,25 @@
   margin-inline-start: var(--ecIndent, 0ch);
 }
 
+/* ── Blockquotes ────────────────────────────────────────────────────────── */
+
+/*
+ * A blockquote states a rule exactly (a guarantee, the truthiness rule), so
+ * it stands a little apart from the prose around it: set in from the
+ * margin, with the accent down its side, a faint tint of it behind, and the
+ * text at full strength. The tint is mixed over the page, so it follows the
+ * mode. Set in and at body size so it reads as a quotation, not a callout.
+ */
+.sl-markdown-content blockquote:not(:where(.not-content *)) {
+  margin-inline-start: 1.5rem;
+  border-inline-start: 3px solid var(--sl-color-accent);
+  border-start-end-radius: 0.375rem;
+  border-end-end-radius: 0.375rem;
+  background-color: color-mix(in srgb, var(--sl-color-accent) 9%, transparent);
+  padding: 0.75rem 1rem;
+  color: var(--sl-color-white);
+}
+
 /* ── Callouts (Callout.astro) ───────────────────────────────────────────── */
 
 /* A code block in a callout lets the callout's colour through */
