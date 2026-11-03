@@ -1,38 +1,255 @@
 ---
 title: Syntax at a glance
-description: The whole expression language on one page, and one complete config that uses it
+description: The whole expression language on one page
 sidebar:
   order: 2
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import Expression from '../../../components/Expression.astro'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
-
-{/* NOTE: a cheat sheet for a reader who already knows the concepts: every entry is a line or a table row, linking to the page that explains it. Its starting point is "The grammar in one screen" and "Run a whole config, safely" in the "FigTree v3 by Example" artifact (docs-artifacts/figtree-v3-by-example.html), whose lists predate parts of the code, so every entry is checked against it. The page may become a top-level reference chapter of its own, and the whole-config walkthrough may split off into a guide. */}
+Everything an expression can contain, on one page.
 
 ## References
 
-Each reference name and its short form, what it reads, and the rule for when a `$` string is a reference rather than text.
+A reference is a string that reads a value instead of being text:
+
+| Reference  | Short form | Reads                                                 | Explained in                                                   |
+| ---------- | ---------- | ----------------------------------------------------- | -------------------------------------------------------------- |
+| `$data`    | `$d`       | the evaluation's data                                 | [Data](/concepts/data/)                                        |
+| `$vars`    | `$v`       | a variable declared on this object or one around it   | [Variables](/concepts/variables/)                              |
+| `$element` | `$e`       | the current element, inside an iterator's `each`      | [Iteration](/concepts/iteration/#element-and-index)            |
+| `$index`   | `$i`       | the current element's position, from 0                | [Iteration](/concepts/iteration/#element-and-index)            |
+| `$params`  | `$p`       | a fragment's arguments, inside its body               | [Fragments](/guides/fragments/#declaring-parameters)           |
+| `$error`   | `$err`     | the failure a fallback caught, inside that `fallback` | [Fallbacks](/guides/fallbacks/#reading-the-failure-with-error) |
+
+- **Paths** read into the value as in JavaScript: `'$data.items[0].price'`, `'$data.flags["checkout.v2"]'`, and `[*]` for every element, as in `'$data.items[*].sku'` ([Path syntax](/concepts/data/#path-syntax)). `$index` is just a number, so it takes no path.
+- **Naming an iterator's element:** with `as: 'order'`, `$order` and `$orderIndex` work inside that iterator ([Naming them with `as`](/concepts/iteration/#naming-them-with-as)).
+- **Where a reference can go:** a whole string, or a `{{…}}` token in a `buildString` template, as in `'Hello, {{$data.name}}'`. Inside any other string, as in `'Total: $data.total'`, it's just text.
 
 ## Nodes
 
-What makes an object a node: an operator key, a fragment key or a single shorthand key, and what makes it plain data instead, including `literal`.
+<div class="fds-code-examples">
+
+| Kind          | Recognised by                                                         | Example                                                                            |
+| ------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Operator node | a `$` key naming an operator, or an `operator` key                    | `{ $plus: [1, 2] }` `{ operator: 'plus', values: [1, 2] }`                         |
+| Fragment call | a `$` key naming a fragment, or a `fragment` key                      | `{ $greet: { name: 'Ada' } }` `{ fragment: 'greet', parameters: { name: 'Ada' } }` |
+| `literal`     | a `$literal` key: its value is returned as written, never evaluated   | `{ $literal: { $match: { status: 'active' } } }`                                   |
+| Plain value   | anything else: the nodes inside it are evaluated, the rest kept as is | `{ label: 'Total', value: { $plus: [1, 2] } }`                                     |
+
+</div>
+
+- **One node per object:** a node has exactly one `$` key (or one `operator` or `fragment` key), plus [reserved keys](#reserved-keys). In the canonical form, an operator's parameters go beside `operator`, and a fragment's arguments go in `parameters` ([Shorthand and canonical forms](/concepts/forms/)).
+- **Every `$` key is checked.** One that names no operator or fragment is an error, so data with `$` keys of its own (such as a MongoDB query) goes inside `literal` ([Operators](/concepts/expressions/#operators)). So does data with an `operator` or `fragment` key.
+- **Names are exact:** `$if` works, `$If` doesn't.
 
 ## Reserved keys
 
-The keys that mean something on any node, such as `fallback`, `vars` and `noCache`, each in one line.
+These keys mean the same thing on any node, and none can be an operator's or fragment's parameter:
+
+| Key          | What it does                                                            | Explained in                                                                                  |
+| ------------ | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `operator`   | names the operator, in the canonical form                               | [The canonical form](/concepts/forms/#the-canonical-form)                                     |
+| `fragment`   | names the fragment, in the canonical form                               | [Passing the arguments as one object](/guides/fragments/#passing-the-arguments-as-one-object) |
+| `parameters` | a fragment call's arguments, in the canonical form                      | [Passing the arguments as one object](/guides/fragments/#passing-the-arguments-as-one-object) |
+| `fallback`   | the value to give if the node fails; evaluated only then                | [Fallbacks](/guides/fallbacks/)                                                               |
+| `vars`       | variables, readable anywhere inside the object; any object can have one | [Variables](/concepts/variables/)                                                             |
+| `noCache`    | `true` only: nothing inside the node uses the result cache              | [Turning caching off](/guides/caching/#turning-caching-off)                                   |
+| `//`         | a comment, with any value; allowed in any object, and ignored           | [Comments](/concepts/expressions/#comments)                                                   |
 
 ## Shorthand
 
-The shapes a shorthand payload can take (named, positional, a single argument, a fragment's arguments) and the symbolic aliases.
+The value of the `$` key decides how the parameters are given ([Parameters](/concepts/expressions/#parameters)):
+
+| Written as               | Read as                                                                                   |
+| ------------------------ | ----------------------------------------------------------------------------------------- |
+| `{ $op: { … } }`         | named parameters                                                                          |
+| `{ $op: [ … ] }`         | positional parameters, in the order the [operator reference](/reference/operators/) gives |
+| `{ $op: x }`             | a single value, for the first parameter                                                   |
+| `{ $myFragment: { … } }` | a fragment's arguments, always by name                                                    |
+
+An array is always read as positional parameters. Where an operator's positional form is only a list, such as `plus`'s `[...values]`, the array is that list: `{ $plus: [1, 2, 3] }`.
+
+Symbolic aliases work wherever the name does, in either form:
+
+| Operator                                                            | Alias |
+| ------------------------------------------------------------------- | ----- |
+| [`plus`](/reference/operators/#op-plus)                             | `+`   |
+| [`subtract`](/reference/operators/#op-subtract)                     | `-`   |
+| [`multiply`](/reference/operators/#op-multiply)                     | `*`   |
+| [`divide`](/reference/operators/#op-divide)                         | `/`   |
+| [`power`](/reference/operators/#op-power)                           | `^`   |
+| [`equal`](/reference/operators/#op-equal)                           | `=`   |
+| [`notEqual`](/reference/operators/#op-notEqual)                     | `!=`  |
+| [`greaterThan`](/reference/operators/#op-greaterThan)               | `>`   |
+| [`greaterThanOrEqual`](/reference/operators/#op-greaterThanOrEqual) | `>=`  |
+| [`lessThan`](/reference/operators/#op-lessThan)                     | `<`   |
+| [`lessThanOrEqual`](/reference/operators/#op-lessThanOrEqual)       | `<=`  |
+| [`if`](/reference/operators/#op-if)                                 | `?`   |
+| [`not`](/reference/operators/#op-not)                               | `!`   |
 
 ## Null or failure
 
-A table of what to reach for: a bare reference, `firstNonNull`, `get` with a default, `fallback`, operator defaults, `validate()`, and what each one responds to.
+A reference to a value that isn't there comes through as `null`, and the evaluation carries on. A failure stops the evaluation, unless a fallback catches it.
+
+| When you want                                           | Reach for                                                                                                             | It responds to                                       |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| to recover from something that broke                    | [`fallback`](/guides/fallbacks/)                                                                                      | a failure in the node, or anywhere beneath it        |
+| to distinguish missing from `null`                      | [`get` with a `default`](/concepts/data/#missing-values)                                                              | a missing path only: a stored `null` stays `null`    |
+| to give an operator something else in place of a `null` | its [null default](/reference/operators/#defaults-for-null-missing-and-no-match), such as `plus`'s `nullValueDefault` | a `null` where an operator expects a value           |
+| the first value in a list that isn't `null`             | [`firstNonNull`](/reference/operators/#op-firstNonNull)                                                               | a `null` or a missing value, trying each in turn     |
+| a missing path to be a mistake                          | [`strictDataPaths`](/concepts/data/#when-missing-is-a-mistake)                                                        | any missing path, which then fails                   |
+| a default for an operator's parameter, everywhere       | [`operatorDefaults`](/guides/setup/#defaults-for-an-operator)                                                         | every node of that operator that doesn't set its own |
+| every mistake in the expression, now                    | [`validate()`](/guides/validation/)                                                                                   | static errors and warnings, before any data exists   |
 
 ## A whole config
 
-One complete config followed from authoring to a hostile run: checked before any data exists, run against data that breaks one field, then given a fallback per field so it survives that field and a timeout, with `fallbackCoverage` confirming it.
+Here's an account dashboard, built from one config with three dynamic fields: a greeting, the share of a quota used, and a support contact fetched by its ID. The contact already has a fallback, since a request can always fail.
+
+### Checking it before any data exists
+
+The configuration author has misspelt `round`'s `decimals`. [`validate()`](/guides/validation/) finds it without any data, with the path to the mistake and a suggestion:
+
+```ts title="dashboard.ts"
+const dashboard = {
+  '//': 'Account dashboard, evaluated on every page load',
+  title: 'Account overview',
+  greeting: { $buildString: 'Good {{$data.partOfDay}}, {{$data.user.first}}' },
+  quotaUsed: {
+    $round: {
+      value: { $multiply: [{ $divide: ['$data.usage.used', '$data.usage.limit'] }, 100] },
+      decimal: 1,
+    },
+  },
+  supportContact: {
+    $http: {
+      url: { $buildString: 'https://jsonplaceholder.typicode.com/users/{{$data.supportContactId}}' },
+      returnPath: 'name',
+    },
+    fallback: 'Unassigned',
+  },
+}
+
+fig.validate(dashboard)
+// => {
+//      valid: false,
+//      issues: [
+//        {
+//          severity: 'error',
+//          code: 'unknown-node-key',
+//          message: "'decimal' is not a parameter of 'round' — did you mean 'decimals'?",
+//          path: ['quotaUsed', '$round', 'decimal'],
+//          suggestion: 'decimals',
+//        },
+//      ],
+//    }
+```
+
+Until it's fixed, `evaluate()` refuses to run it at all, whatever the data.
+
+### Running it against data that breaks it
+
+With `decimals` fixed, here's a customer whose quota limit is 0, and whose support contact doesn't exist:
+
+<Expression
+  throws
+  title="Account dashboard"
+  code={`
+    {
+      '//': 'Account dashboard, evaluated on every page load',
+      title: 'Account overview',
+      greeting: { $buildString: 'Good {{$data.partOfDay}}, {{$data.user.first}}' },
+      quotaUsed: {
+        $round: {
+          value: { $multiply: [{ $divide: ['$data.usage.used', '$data.usage.limit'] }, 100] },
+          decimals: 1,
+        },
+      },
+      supportContact: {
+        $http: {
+          url: { $buildString: 'https://jsonplaceholder.typicode.com/users/{{$data.supportContactId}}' },
+          returnPath: 'name',
+        },
+        fallback: 'Unassigned',
+      },
+    }
+  `}
+  data={`
+    {
+      partOfDay: 'evening',
+      user: { first: 'Ada' },
+      usage: { used: 812, limit: 0 },
+      supportContactId: 999,
+    }
+  `}
+/>
+
+The division by 0 fails, and nothing catches it, so the whole evaluation throws: the greeting and the contact are lost with it. The failed request didn't cause this, since its fallback caught it.
+
+### A fallback on each field
+
+So each field gets a fallback of its own, a plain value of the right type for that field. Now the same data gives a result, with only the broken field replaced:
+
+<Expression
+  coverage
+  title="Account dashboard, with a fallback on each field"
+  code={`
+    {
+      '//': 'Account dashboard, evaluated on every page load',
+      title: 'Account overview',
+      greeting: {
+        $buildString: 'Good {{$data.partOfDay}}, {{$data.user.first}}',
+        fallback: 'Welcome',
+      },
+      quotaUsed: {
+        $round: {
+          value: { $multiply: [{ $divide: ['$data.usage.used', '$data.usage.limit'] }, 100] },
+          decimals: 1,
+        },
+        fallback: null,
+      },
+      supportContact: {
+        $http: {
+          url: { $buildString: 'https://jsonplaceholder.typicode.com/users/{{$data.supportContactId}}' },
+          returnPath: 'name',
+        },
+        fallback: 'Unassigned',
+      },
+    }
+  `}
+  data={`
+    {
+      partOfDay: 'evening',
+      user: { first: 'Ada' },
+      usage: { used: 812, limit: 0 },
+      supportContactId: 999,
+    }
+  `}
+  caption="Show coverage to see every failure the fallbacks cover. Nothing is left uncovered."
+/>
+
+[`fallbackCoverage()`](/tooling/authoring/) confirms it without any data: every way the config can fail is caught, so evaluating it never throws.
+
+Since every field's fallback is a plain value, the config is also [shielded from a timeout](/guides/fallbacks/#timeout-shielding). Here it is with a customer whose data is fine, a 50 ms `timeout`, and a support contact that takes longer than that to fetch. The fields that finished keep their values, and the contact gets its fallback:
+
+```ts title="timeout.ts"
+declare const dashboard: object
+// ---cut---
+const timed = fig.with({ timeout: 50 })
+const data = {
+  partOfDay: 'evening',
+  user: { first: 'Ada' },
+  usage: { used: 812, limit: 1000 },
+  supportContactId: 1,
+}
+
+await timed.evaluate(dashboard, { data })
+// => {
+//      title: 'Account overview',
+//      greeting: 'Good evening, Ada',
+//      quotaUsed: 81.2,
+//      supportContact: 'Unassigned',
+//    }
+```
+
+That's why `greeting` has a fallback too, though it can't fail: a field without a plain-value fallback leaves the whole config unshielded, and a timeout would throw.
