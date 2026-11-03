@@ -565,7 +565,7 @@ describe('a failing run keeps its diagnostics', () => {
 describe('the inert fast path', () => {
   it('is off under trace, so an inert input still has a tree', async () => {
     const trace = await traceOf(setup(), { a: 1, b: [2, 3] })
-    expect(trace.kind).toBe('literal')
+    expect(trace.kind).toBe('constant')
     expect(trace.status).toBe('value')
   })
 })
