@@ -222,8 +222,6 @@ Moving the demo's data here is the first step of the port, before any of the Pla
 
 ## To-do
 
-- **Retire "FigTree From First Principles" once Under the hood is written:** remove its entry from [artifacts.md](artifacts.md) and its copy from [docs-artifacts/](../docs-artifacts/), and point anything that links to it at the chapter.
-
 - **Keep a language-neutral standard in view.** Someone re-implementing FigTree in another language, such as Rust, would need an official standard: what an expression means, independent of this implementation. Not needed for v3.0, but the docs should be written so they can grow into one. Under the hood describes the model in implementation-free terms; its stage rules and guarantees, the shorthand grammar, the reference namespaces, null policy, truthiness, ordering, text rendering, path grammar, error codes and each operator's semantics are what a standard would have to pin down. The most useful single piece would be a conformance suite: the test cases as language-neutral data (expression, data, options, and the expected result or error code) that any implementation can run.
 
 ## Next step
