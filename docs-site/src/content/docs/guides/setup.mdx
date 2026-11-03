@@ -46,6 +46,27 @@ const fig = new FigTree({ timeout: 5000 })
 const visible = await fig.evaluate(expression, { data: formData })
 ```
 
+<Callout kind="caution" title="Treat a result as read-only">
+
+A result can share objects with the expression, with the data and with cached results, rather than copying them. Changing one changes the other, and can change what later evaluations return:
+
+```ts title="page.ts"
+declare const pageConfig: object
+declare const data: Record<string, unknown>
+declare const extraField: string
+type Page = { fields: string[] }
+// ---cut---
+const page = (await fig.evaluate(pageConfig, { data })) as Page
+
+// ❌️ Wrong: page.fields can be pageConfig's own array
+page.fields.push(extraField)
+
+// ✅️ Right: make a new array of your own
+const fields = [...page.fields, extraField]
+```
+
+</Callout>
+
 ## Changing options
 
 `updateOptions()` changes the instance's options, any of them, `operators` included. Each option you give replaces the one it had, except for the options that hold a set of entries, such as `http`, whose entries are merged in one at a time. `null` removes an option:
