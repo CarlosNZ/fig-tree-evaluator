@@ -88,7 +88,7 @@ describe('the inert flavour', () => {
     const direct = await fig.evaluate(config, { trace: true })
     expect(traced.result).toBe(config)
     // The same tree, timings aside
-    const shape = { kind: 'literal', path: [], status: 'value', value: config }
+    const shape = { kind: 'constant', path: [], status: 'value', value: config }
     expect(traced.trace).toMatchObject(shape)
     expect(direct.trace).toMatchObject(shape)
   })

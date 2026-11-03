@@ -28,14 +28,15 @@ import type { TraceEvent } from './runtimeInterface'
 export type TraceStatus = 'value' | 'failed' | 'fallback' | 'cancelled' | 'skipped'
 
 /**
- * Which kind of thing the entry is.
+ * Which kind of thing the entry is, named as the compiled artifact and
+ * `inspect()` name it.
  *
- * `skeleton` is an addition to the drafted vocabulary (Phase 12): a plain
- * container with evaluable descendants is neither an operator nor an
- * inert literal, and an editor painting the tree needs to tell a constant
- * apart from a shape whose holes are being filled.
+ * `constant` is a value with nothing to evaluate in it, returned as it is.
+ * `skeleton` is a plain container with evaluable descendants, whose holes
+ * are being filled: an editor painting the tree needs to tell the two
+ * apart.
  */
-export type TraceKind = 'operator' | 'fragment' | 'reference' | 'literal' | 'skeleton'
+export type TraceKind = 'operator' | 'fragment' | 'reference' | 'constant' | 'skeleton'
 
 export interface TraceNode {
   /** The static location, within its own source. */

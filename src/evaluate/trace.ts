@@ -255,7 +255,7 @@ const kindOf = (node: CompiledNode): TraceKind => {
     case 'skeleton':
       return 'skeleton'
     default:
-      return 'literal'
+      return 'constant'
   }
 }
 
