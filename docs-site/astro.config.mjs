@@ -56,6 +56,8 @@ export default defineConfig({
         baseUrl: 'https://github.com/CarlosNZ/fig-tree-evaluator/edit/v3.0-dev/docs-site/',
       },
       customCss: ['./src/styles/custom.css'],
+      // Adds the Playground page's sidebar toggle beside the theme select
+      components: { ThemeSelect: './src/components/ThemeSelect.astro' },
       // Gives the operators page its category headings' contents list
       routeMiddleware: './src/routeData.ts',
       // public/'s favicon.svg, apple-touch-icon.png and social.png are

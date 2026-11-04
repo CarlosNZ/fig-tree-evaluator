@@ -1607,8 +1607,38 @@
 
 /* ── The Playground page (PlaygroundPage.tsx) ───────────────────────────── */
 
-.fds-playground-page {
-  margin-top: 1.5rem;
+/*
+ * The page takes the window's whole width: its sidebar is hidden until the
+ * header's menu button shows it (ThemeSelect.astro), and then the playground
+ * narrows to make room. Its title stays for screen readers but isn't shown,
+ * so the page opens on the playground, and the panel below the title's loses
+ * the rule that separates them.
+ */
+:root:has(.fds-playground-page) {
+  --sl-content-width: 100%;
+}
+
+@media (min-width: 50rem) {
+  :root[data-has-sidebar]:has(.fds-playground-page):not([data-fds-menu-open]) {
+    --sl-content-inline-start: 0rem;
+  }
+
+  :root:has(.fds-playground-page):not([data-fds-menu-open]) .sidebar-pane {
+    display: none;
+  }
+}
+
+:root:has(.fds-playground-page) .content-panel:has(> .sl-container > #_top) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+:root:has(.fds-playground-page) .content-panel + .content-panel {
+  border-top: none;
 }
 
 .fds-playground-page .fds-playground {

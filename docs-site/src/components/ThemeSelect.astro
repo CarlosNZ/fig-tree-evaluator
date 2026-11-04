@@ -1,0 +1,92 @@
+---
+/**
+ * Starlight's theme select, preceded on the Playground page by a button that
+ * shows and hides the sidebar, so the select keeps its place on every page.
+ * The page opens with the sidebar hidden, so the playground has the window's
+ * whole width (custom.css). Starlight also renders the theme select at the
+ * foot of the phone menu, which is the sidebar itself, so that copy has no
+ * button: on a phone the sidebar is behind Starlight's own menu button.
+ */
+import { Icon } from '@astrojs/starlight/components'
+import Default from '@astrojs/starlight/components/ThemeSelect.astro'
+
+/** The page whose sidebar the button toggles. */
+const PLAYGROUND_PAGE = 'playground'
+
+const hasToggle = Astro.locals.starlightRoute.id === PLAYGROUND_PAGE
+---
+
+{
+  hasToggle && (
+    <div class="fds-menu-toggle-group">
+      <button type="button" class="fds-menu-toggle" aria-controls="starlight__sidebar">
+        <Icon name="bars" class="fds-menu-toggle-icon" />
+        {/* Both labels take up space, so the button's width never changes */}
+        <span class="fds-menu-toggle-labels">
+          <span class="fds-menu-toggle-show">Show menu</span>
+          <span class="fds-menu-toggle-hide">Hide menu</span>
+        </span>
+      </button>
+    </div>
+  )
+}
+<Default />
+
+<script>
+  document.querySelector('.header .fds-menu-toggle')?.addEventListener('click', () => {
+    document.documentElement.toggleAttribute('data-fds-menu-open')
+  })
+</script>
+
+<style>
+  /* Divided from the theme select as the social icons are (Header.astro) */
+  .fds-menu-toggle-group {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .fds-menu-toggle-group::after {
+    content: '';
+    height: 2rem;
+    border-inline-end: 1px solid var(--sl-color-gray-5);
+  }
+
+  :global(.sidebar-pane) .fds-menu-toggle-group {
+    display: none;
+  }
+
+  /* Styled as the theme select's label (Starlight's Select.astro) */
+  .fds-menu-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    border: 0;
+    padding: 0.625rem 0;
+    background: none;
+    color: var(--sl-color-gray-2);
+    font-size: var(--sl-text-sm);
+    cursor: pointer;
+  }
+
+  .fds-menu-toggle:hover {
+    color: var(--sl-color-white);
+  }
+
+  .fds-menu-toggle :global(.fds-menu-toggle-icon) {
+    font-size: 0.875rem;
+  }
+
+  .fds-menu-toggle-labels {
+    display: grid;
+  }
+
+  .fds-menu-toggle-labels > * {
+    grid-area: 1 / 1;
+  }
+
+  :global(:root[data-fds-menu-open]) .fds-menu-toggle-show,
+  :global(:root:not([data-fds-menu-open])) .fds-menu-toggle-hide {
+    visibility: hidden;
+  }
+</style>
