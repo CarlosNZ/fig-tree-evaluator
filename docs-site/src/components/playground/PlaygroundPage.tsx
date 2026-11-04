@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { figTree, siteOperators } from '../../lib/figTree'
-import { toJson5 } from '../../lib/json5'
-import { readPlaygroundSeed } from '../../lib/playgroundLink'
+import type { JsonData } from 'json-edit-react'
+import { exampleFigTree, figTree, siteOperators } from '../../lib/figTree'
+import { parseJson5 } from '../../lib/json5'
+import { readPlaygroundSeed, type PlaygroundSeed } from '../../lib/playgroundLink'
 import { examples } from '../../playground/examples'
 import { fragments } from '../../playground/fragments'
 import { customOperators, operatorListings } from '../../playground/operators'
 import BlurbDialog from './BlurbDialog'
-import Playground from './Playground'
+import PlaygroundEditors from './PlaygroundEditors'
 
 /** An example's blurb, rendered at build time (PlaygroundPage.astro). */
 export interface Blurb {
@@ -68,6 +69,22 @@ const isExample = (id: string | null): id is string =>
   id !== null && examples.some((example) => example.id === id)
 
 /**
+ * What an "open in editor" link carries, ready for the editors, with the
+ * instance its page used. Comments in its JSON5 are lost, since the trees
+ * can't hold them, and so is its example's extra button, which the editors
+ * have no place for.
+ */
+const fromSeed = (seed: PlaygroundSeed) => {
+  const expression = parseJson5(seed.expression)
+  const data = parseJson5(seed.data ?? '{}')
+  return {
+    expression: expression.ok ? expression.value : null,
+    data: data.ok ? (data.value as JsonData) : {},
+    figTree: exampleFigTree(seed),
+  }
+}
+
+/**
  * What the page opens with: an expression an "open in editor" link carries,
  * else the example the URL names, else the reader's last pick, else the
  * first example.
@@ -83,17 +100,22 @@ const initialSelection = (): string | null => {
 
 /**
  * The Playground page: the example picker, the picked example's blurb, and
- * the widget, which evaluates with the examples' fragments and custom
- * operators. A blurb opens as a dialog the first time the reader opens its
- * example. Picking an example remounts the widget with its expression and
- * data. An expression from an "open in editor" link keeps the instance its
- * page used, and has no example picked until the reader picks one.
+ * the data and expression editors, which evaluate with the examples'
+ * fragments and custom operators. A blurb opens as a dialog the first time
+ * the reader opens its example. Picking an example remounts the editors with
+ * its expression and data. An expression from an "open in editor" link keeps
+ * the instance its page used, and has no example picked until the reader
+ * picks one.
  *
  * Mounted `client:only`, since what it shows depends on the URL and on what
  * the reader last picked.
  */
 export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
   const [selected, setSelected] = useState(initialSelection)
+  const [seeded] = useState(() => {
+    const seed = readPlaygroundSeed(window.location.search)
+    return seed && fromSeed(seed)
+  })
   const example = examples.find(({ id }) => id === selected)
   const [showBlurb, setShowBlurb] = useState(false)
 
@@ -144,18 +166,17 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
       )}
 
       {example ? (
-        <Playground
+        <PlaygroundEditors
           key={example.id}
           id="playground"
-          title={example.name}
-          expression={toJson5(example.expression)}
-          data={toJson5(example.data ?? {})}
+          expression={example.expression}
+          data={example.data ?? {}}
           collapse={example.collapse}
           figTree={playgroundFigTree}
           operatorListings={operatorListings}
         />
       ) : (
-        <Playground key="seed" id="playground" readFromUrl expression="{}" />
+        seeded && <PlaygroundEditors key="seed" id="playground" {...seeded} />
       )}
     </div>
   )

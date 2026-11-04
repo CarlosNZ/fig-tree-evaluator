@@ -12,14 +12,8 @@ import { EvaluationToast, type ToastState } from './EvaluationToast'
 import { ResultValue } from './ResultValue'
 import type { PlaygroundProps } from './Playground'
 import { exampleAction } from './exampleActions'
+import { editorColours, editorStyles } from './editorTheme'
 import { showTrace } from '../../lib/trace'
-
-/** The editor's own colours that need a dark-mode variant (custom.css). */
-const editorColours = {
-  refData: 'var(--fds-tree-ref-data)',
-  refVars: 'var(--fds-tree-ref-vars)',
-  refParams: 'var(--fds-tree-ref-params)',
-}
 
 /** Below this width the inline widget leaves out the tree preview. */
 const PREVIEW_MIN_WIDTH = 468
@@ -31,24 +25,6 @@ const EVALUATE_DELAY = 50
 const RUNNING_TOAST_DELAY = 300
 /** How long an example's action button says it's done, once pressed. */
 const ACTION_DONE_TIME = 1500
-
-/**
- * The tree editor's layer of json-edit-react's theme. Its container is
- * transparent, so the docs' CSS sets the pane's background, and its padding
- * lines its first row up with the code pane's first line. Colours are CSS
- * variables (custom.css), so the editor follows the site's light and dark
- * themes.
- */
-const editorStyles = {
-  container: { backgroundColor: 'transparent', padding: '0.1em 0.5em 1em 1.5em' },
-  property: 'var(--fds-code-key)',
-  string: 'var(--fds-tree-string)',
-  input: 'var(--fds-tree-input)',
-  inputHighlight: 'var(--fds-tree-highlight)',
-  bracket: 'var(--fds-tree-bracket)',
-  itemCount: 'var(--fds-tree-item-count)',
-  iconCollection: 'var(--fds-tree-chevron)',
-}
 
 /** `trace` is there for an example that shows its trace (exampleActions.tsx). */
 type Outcome =

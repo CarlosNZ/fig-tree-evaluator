@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { EditorView, basicSetup } from 'codemirror'
 import { Decoration, ViewPlugin, type DecorationSet } from '@codemirror/view'
-import { Annotation, EditorState, RangeSetBuilder } from '@codemirror/state'
+import { Annotation, EditorState, Prec, RangeSetBuilder } from '@codemirror/state'
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { tags } from '@lezer/highlight'
 import { json5, json5Language } from 'codemirror-json5'
@@ -100,6 +100,14 @@ interface Props {
   lineNumbers?: boolean
   /** Shows `value` without letting it be edited, such as a trace. */
   readOnly?: boolean
+  /**
+   * Sees each key press before CodeMirror does. A key it calls
+   * `preventDefault()` on goes no further, so it can take a key CodeMirror
+   * binds, such as Mod-Enter.
+   */
+  onKeyDown?: (event: KeyboardEvent) => void
+  /** Whether the pane takes the focus when it opens. */
+  autoFocus?: boolean
 }
 
 /**
@@ -114,11 +122,15 @@ export const Json5Editor = ({
   label,
   lineNumbers = true,
   readOnly = false,
+  onKeyDown,
+  autoFocus = false,
 }: Props) => {
   const host = useRef<HTMLDivElement>(null)
   const view = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
+  const onKeyDownRef = useRef(onKeyDown)
+  onKeyDownRef.current = onKeyDown
 
   useEffect(() => {
     view.current = new EditorView({
@@ -138,9 +150,18 @@ export const Json5Editor = ({
             const echo = update.transactions.some((tr) => tr.annotation(fromParent))
             if (update.docChanged && !echo) onChangeRef.current?.(update.state.doc.toString())
           }),
+          Prec.highest(
+            EditorView.domEventHandlers({
+              keydown: (event) => {
+                onKeyDownRef.current?.(event)
+                return event.defaultPrevented
+              },
+            })
+          ),
         ],
       }),
     })
+    if (autoFocus) view.current.focus()
     return () => view.current?.destroy()
     // The view is created once; later values arrive through the effect below
   }, [])
