@@ -1,15 +1,15 @@
 # Playground examples: a proposed set
 
-A proposal for a new set of examples for the Playground page ("The Playground page" in [doc-planning.md](doc-planning.md)), written November 2026. The current set, in [docs-site/src/playground/](../docs-site/src/playground/), came across from the v2 demo with only its syntax updated, so several examples (Variables, Fragments, Custom Operators) don't show what v3 does with those features. Nothing here is decided yet: it's ideas in natural language, with no expression code.
+A proposal for a new set of examples for the Playground page ("The Playground page" in [doc-planning.md](doc-planning.md)), written November 2026. The current set, in [docs-site/src/playground/](../docs-site/src/playground/), came across from the v2 demo with only its syntax updated, and several of them (Variables, Fragments, Custom Operators) don't show those features at their best. The set is for visitors new to FigTree, most of whom will never have seen v2, so its job is to show what the library can do, not what changed since v2. Nothing here is decided yet: it's ideas in natural language, with no expression code.
 
 ## What the set should do
 
-The set should show what v3 does that v2 couldn't, and it should hang together:
+The set should show a new visitor what FigTree can do, and it should hang together:
 
 - **Each example has one main feature.** Others can appear alongside it, but the blurb is about that one.
 - **The reader is always told what to try.** The docs pages do this with comments in the data, like "Change `itemCount` to 3". The Playground should do the same.
 - **Each expression fits on a screen or two** once its tree is collapsed to its starting level.
-- **The widget's existing action buttons get used.** Show trace, Show coverage and Clear cache already work on the docs pages, and they show off v3 features well.
+- **The widget's existing action buttons get used.** Show trace, Show coverage and Clear cache already work on the docs pages, and they show things a result alone can't: how the expression ran, where it's protected from failure, and what's cached.
 
 ## The examples
 
@@ -26,7 +26,7 @@ Ordered roughly from simplest to most advanced:
 
 4. **Group ferry booking** (new: iteration and vars). A list of passengers with ages is mapped to fare types (adult, child, senior or infant) using a fare table. Each passenger gets a line, numbered with `$index`. A family discount applies when the group has at least two adults and a child (`filter` plus `length`), and the total uses `[*]` over the lines. Things to try: add or remove passengers, change ages, or set one age to `'unknown'` and watch that passenger's own fallback handle it.
 
-5. **Card game recommender** (reworks _Decision tree_). The rules move into the data: a list of games, each with player counts, a minimum age and a difficulty. `filter` (with `as: 'game'`) returns every suitable game and `find` returns the best one. The blurb can make the point that the v2 version was a 60-line nested tree, while in v3 adding a game is one line of data. It keeps the cards image.
+5. **Card game recommender** (reworks _Decision tree_). The rules move into the data: a list of games, each with player counts, a minimum age and a difficulty. `filter` (with `as: 'game'`) returns every suitable game and `find` returns the best one. The blurb can make the point that as a nested tree of `if`s, the same rules run to 60 lines and a new game means a new branch, while here it's one line of data. It keeps the cards image.
 
 6. **What to wear today** (new: vars; replaces _Star Wars_). Two variables chain together:
    - `place` geocodes a city name with Open-Meteo's geocoding API.
@@ -41,7 +41,7 @@ Ordered roughly from simplest to most advanced:
 
    Add **Show coverage**: delete a fallback and that failure point shows up as uncovered.
 
-8. **Product search** (new: SQL in the browser, which the v2 demo could never do). A Northwind query joins products and suppliers, with the search term bound into a `LIKE` and a maximum price. The rows are mapped to lines like "Chai: $18, 39 in stock (Exotic Liquids, UK)", with low or out-of-stock flags. A `firstValue` count gives a heading. One fun thing to try: type `'; DROP TABLE products; --` into the search. It's bound as a value, so nothing happens, which illustrates the sandbox.
+8. **Product search** (new: SQL, run in the browser on SQLite). A Northwind query joins products and suppliers, with the search term bound into a `LIKE` and a maximum price. The rows are mapped to lines like "Chai: $18, 39 in stock (Exotic Liquids, UK)", with low or out-of-stock flags. A `firstValue` count gives a heading. One fun thing to try: type `'; DROP TABLE products; --` into the search. It's bound as a value, so nothing happens, which illustrates the sandbox.
 
 9. **Your app's vocabulary** (reworks _Fragments_). An order-confirmation message is built from small fragments: `greeting` (already the fragment editor's starting sample), `plural` ("1 item" or "3 items") and `money`. `orderLine` calls the other fragments, showing that fragments can be nested. It shows:
    - parameters with defaults
@@ -50,13 +50,13 @@ Ordered roughly from simplest to most advanced:
 
    One fragment could hide a GraphQL request (country details from the trevorblades API), which would give the set its only GraphQL example. It also suits the fragment editor once that's ported: change `money` to put the currency after the number, and every call follows.
 
-10. **Dates, your way** (reworks _Custom operators_). Dates are the gap a host is most likely to fill. A subscription notice ("Your Pro plan renews on Saturday 14 November, in 10 days" / "expired 3 days ago") uses two custom operators, `daysUntil` and `formatDate` (`style: 'short' | 'long' | 'weekday'`). Both stages of v3's error handling appear in one example:
+10. **Dates, your way** (reworks _Custom operators_). Dates are the gap a host is most likely to fill. A subscription notice ("Your Pro plan renews on Saturday 14 November, in 10 days" / "expired 3 days ago") uses two custom operators, `daysUntil` and `formatDate` (`style: 'short' | 'long' | 'weekday'`). Both stages of FigTree's error handling appear in one example:
     - `style: 'loong'`, or an impossible fixed date caught by a `validate` hook, is a static error.
     - A bad date from the data is a runtime failure, which a fallback catches.
 
-    The blurb shows the definitions. `changeCase` should go, since v3's core has `upper` and `lower`. One problem: a fixed sample date drifts into the past. Either give `daysUntil` an optional `from` date and put both dates in the data, or use a data comment ("pick a date next week").
+    The blurb shows the definitions. `changeCase` should go, since the core operators include `upper` and `lower`. One problem: a fixed sample date drifts into the past. Either give `daysUntil` an optional `from` date and put both dates in the data, or use a data comment ("pick a date next week").
 
-11. **Complex string substitution** (kept). One v3 improvement: replace the two gender `match`es with a single variable holding a pronoun object, keyed by a `pronouns` field ('she', 'he' or 'they'). The template then reads `{{$vars.they.lives}}`, which shows that tokens read paths into a variable's value.
+11. **Complex string substitution** (kept). One improvement: replace the two gender `match`es with a single variable holding a pronoun object, keyed by a `pronouns` field ('she', 'he' or 'they'). The template then reads `{{$vars.they.lives}}`, which shows that tokens read paths into a variable's value.
 
 12. **Random user** (kept, now about caching). Drop `noCache` and add **Clear cache**:
     - Evaluating again gives the same person, because the response is cached.
@@ -69,7 +69,7 @@ If the set can grow:
 
 - **Tidying form input:** `regex` replace and extract, `trim`, `lower` and `convert`, with a list of problems built by `filter` over validation rules.
 - **Feature-flag targeting:** a flags config with percentage rollout via `modulo` on the user id, a beta list via `some`, and the plan via `match`.
-- **Spot the mistakes:** an expression with four static errors (an unknown operator, a misspelt parameter, a `$vars` typo, and `$element` used after `as`), which the reader fixes one by one. Unusual for a playground, but it shows v3's checking better than anything else.
+- **Spot the mistakes:** an expression with four static errors (an unknown operator, a misspelt parameter, a `$vars` typo, and `$element` used after `as`), which the reader fixes one by one. Unusual for a playground, but nothing else shows as clearly that FigTree checks an expression before it runs.
 
 ## Changes the set needs
 

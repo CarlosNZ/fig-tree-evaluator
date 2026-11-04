@@ -207,7 +207,7 @@ What stays out:
 
 Moving the demo's data here is the first step of the port, before any of the Playground's features, since every later step reads it. **Done (October 2026):** [docs-site/src/playground/](../docs-site/src/playground/) holds the examples (`examples.ts`), their blurbs and images (`blurbs/`), the fragments, with the fragment editor's starting sample (`fragments.ts`), and the custom operators and their listings (`operators.ts`). The blurbs' links point at the site's pages; their content gets an edit pass later.
 
-**A new set of examples, written for v3.** The ported examples are the v2 demo's with only their syntax updated, so several don't show what v3 does with their feature. A proposed replacement set is in [playground-examples-plan.md](playground-examples-plan.md) (November 2026, not yet decided).
+**A new set of examples.** The ported examples are the v2 demo's with only their syntax updated, and several don't show their feature at its best. The set is for visitors new to FigTree, so its job is to show off the library, not what changed since v2. A proposed replacement set is in [playground-examples-plan.md](playground-examples-plan.md) (November 2026, not yet decided).
 
 ## Dependencies
 
