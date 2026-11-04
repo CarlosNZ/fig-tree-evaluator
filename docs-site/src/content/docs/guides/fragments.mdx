@@ -73,84 +73,11 @@ In such cases, you can define a Fragment, give it a name, then use that name in 
   `}
 />
 
-## Defining and registering fragments
-
-Fragments are registered on your FigTree instance, in the `fragments` option, each under the name it's called by:
-
-<FragmentSetup names={['priceWithTax']} />
-
-A definition holds:
-
-- **`expression`:** the fragment's body, which can be any expression, including calls to other fragments. It reads its arguments with `$params` references, such as `$params.amount`.
-- **`parameters`:** what the fragment is called with, keyed by name. A fragment that needs none leaves it out.
-- **`listing`:** how editors and other tools present the fragment, such as its description and its parameters' ([Fragments in an editor](#fragments-in-an-editor)).
-- **`metadata`:** anything your own tools need. FigTree never reads it.
-
-### Declaring parameters
-
-Each parameter can declare:
-
-- **`type`:** what it accepts, such as `'number'` or `['string', 'null']`, in the same terms as an operator's parameters ([Parameters](/custom-operators/parameters/)). If it's left out, any value is accepted.
-- **`default`:** the value used when a call leaves the parameter out. It's a fixed value, never an expression.
-- **`required`:** a parameter is required unless it has a `default` or sets `required: false`.
-- **`constraints`:** further checks on an array, such as its exact `length`, or the shape each of its elements must have ([Types and constraints](/custom-operators/parameters/#types-and-constraints)).
-
-Passing `null` counts as leaving a parameter out, unless its `type` includes `null`:
-
-<Expression
-  fragments
-  code={`
-    {
-      // Left out, so the default 15% applies
-      nz: { $priceWithTax: { amount: 80.49 } },
-      au: { $priceWithTax: { amount: 80.49, rate: 10 } },
-      custom: { $priceWithTax: { amount: 80.49, rate: '$data.customRate' } },
-    }
-  `}
-  data={`
-    {
-      // A form field left blank. Give it a rate, such as 20, to see it used
-      customRate: null,
-    }
-  `}
-/>
-
-<Callout kind="tip" title="A computed default">
-  A parameter's `default` is always a fixed value. When the default has to be computed, such as a tax rate from the region's settings, set `required: false` and leave `default` out. The parameter is then `null` in the body whenever a call leaves it out, so the body can fill the gap itself: `{ $firstNonNull: ['$params.rate', '$data.region.taxRate'] }`.
-</Callout>
-
-### Checked when registered
-
-`new FigTree()` checks every fragment it's given, and throws a `FigTreeError` if anything's wrong, with the code `'invalid-options'` and every problem in its `issues`. Registration runs all the checks [`validate()`](/guides/validation/#static-errors) runs on an expression, as well as some of its own, such as that each `$params` reference names a declared parameter, that each `default` matches its parameter's type, and that the fragment's name doesn't clash with an operator's name or alias.
-
-### Adding, replacing and removing fragments
-
-[`updateOptions()`](/guides/setup/#changing-options) can change the registered fragments, merging what it's given with what's there:
-
-```ts title="update.ts"
-fig.updateOptions({
-  fragments: {
-    // A new name is added, beside the fragments already registered
-    fullName: {
-      expression: { $buildString: '{{$params.first}} {{$params.last}}' },
-      parameters: { first: { type: 'string' }, last: { type: 'string' } },
-    },
-    // A name already registered is replaced, as a whole
-    shippingCost: {
-      expression: { $multiply: ['$params.weightKg', 4.5] },
-      parameters: { weightKg: { type: 'number' } },
-    },
-    // null removes one
-    legacyDiscount: null,
-  },
-})
-```
-
-The whole set is checked again, as `new FigTree()` checks it, and an update that fails the check throws and changes nothing. That includes one that leaves a fragment calling another that's no longer there, whether it was removed, or its operator was taken out of `operators`. Fragments given together can call each other in any order, but a fragment can't call one that hasn't been registered yet, so register the two together, or the one being called first.
-
 ## Calling a fragment
 
 A fragment is called just like an operator, with its name as a key prefixed with `$`. Its arguments are always given by name, though: a fragment has no positional or single-value form.
+
+Which fragments you can call is up to your app, which registers them ([Registering fragments](#registering-fragments)).
 
 A fragment with no parameters is called with an empty object, as in `{ $refreshRates: {} }`.
 
@@ -196,7 +123,7 @@ Fragments and [variables](/concepts/variables/) both save you repeating yourself
 
 They work well together. This fragment looks up a country's currency, and gives `null` for a country the lookup doesn't know:
 
-<FragmentSetup names={['countryCurrency']} http />
+<FragmentSetup plain names={['countryCurrency']} />
 
 Here we define two variables which each call a fragment, so the `if` doesn't repeat them across its `condition`, `then` and `else`:
 
@@ -225,39 +152,13 @@ Here we define two variables which each call a fragment, so the `if` doesn't rep
   `}
 />
 
-## What a fragment body can see
-
-A fragment body is sealed off from the expression that calls it, so it means the same thing wherever it's called. It can read the evaluation's `$data`, its own `$params`, and the variables and iterators inside it. It can't see the caller's variables, or the `$element` and `$index` of an iterator the call is inside. An attempt to do so is a static error, on registration.
-
-To use one of those in a fragment, pass it in as an argument:
-
-<Expression
-  fragments
-  code={`
-    {
-      $map: {
-        input: '$data.cart',
-        each: { $priceWithTax: { amount: '$element.price' } },
-      },
-    }
-  `}
-  data={`
-    {
-      cart: [
-        { item: 'Teapot', price: 80.49 },
-        { item: 'Tea towel', price: 12.5 },
-      ],
-    }
-  `}
-/>
-
 ## When a fragment fails
 
 A failure inside a fragment body bubbles up like any other, to the nearest [fallback](/guides/fallbacks/).
 
 In `$error`, a failure inside a body has two extra fields: `fragment`, the fragment it happened in, and `fragmentPath`, where it happened in that fragment's definition. Its `path` points at the call. In this example, a fragment averages a list of orders:
 
-<FragmentSetup names={['averageOrder']} />
+<FragmentSetup plain names={['averageOrder']} />
 
 With no orders, there's nothing to add up, so its `plus` fails:
 
@@ -283,7 +184,114 @@ With no orders, there's nothing to add up, so its `plus` fails:
 
 A failed argument, such as a string passed as `amount`, belongs to the calling expression, so its `$error` has neither field.
 
-## Validating a fragment during authoring
+## Writing a fragment
+
+A fragment is defined once, and your app registers it under the name it's called by. Your app may let you write fragments of your own, or only call the ones it provides. Here's the definition of `priceWithTax`:
+
+<FragmentSetup plain names={['priceWithTax']} />
+
+A definition holds:
+
+- **`expression`:** the fragment's body, which can be any expression, including calls to other fragments. It reads its arguments with `$params` references, such as `$params.amount`.
+- **`parameters`:** what the fragment is called with, keyed by name. A fragment that needs none leaves it out.
+- **`listing`:** how editors and other tools present the fragment, such as its description and its parameters' ([Fragments in an editor](#fragments-in-an-editor)).
+- **`metadata`:** anything your own tools need. FigTree never reads it.
+
+### Declaring parameters
+
+Each parameter can declare:
+
+- **`type`:** what it accepts, such as `'number'` or `['string', 'null']`, in the same terms as an operator's parameters ([Parameters](/custom-operators/parameters/)). If it's left out, any value is accepted.
+- **`default`:** the value used when a call leaves the parameter out. It's a fixed value, never an expression.
+- **`required`:** a parameter is required unless it has a `default` or sets `required: false`.
+- **`constraints`:** further checks on an array, such as its exact `length`, or the shape each of its elements must have ([Types and constraints](/custom-operators/parameters/#types-and-constraints)).
+
+Passing `null` counts as leaving a parameter out, unless its `type` includes `null`:
+
+<Expression
+  fragments
+  code={`
+    {
+      // Left out, so the default 15% applies
+      nz: { $priceWithTax: { amount: 80.49 } },
+      au: { $priceWithTax: { amount: 80.49, rate: 10 } },
+      custom: { $priceWithTax: { amount: 80.49, rate: '$data.customRate' } },
+    }
+  `}
+  data={`
+    {
+      // A form field left blank. Give it a rate, such as 20, to see it used
+      customRate: null,
+    }
+  `}
+/>
+
+<Callout kind="tip" title="A computed default">
+  A parameter's `default` is always a fixed value. When the default has to be computed, such as a tax rate from the region's settings, set `required: false` and leave `default` out. The parameter is then `null` in the body whenever a call leaves it out, so the body can fill the gap itself: `{ $firstNonNull: ['$params.rate', '$data.region.taxRate'] }`.
+</Callout>
+
+### What a fragment body can see
+
+A fragment body is sealed off from the expression that calls it, so it means the same thing wherever it's called. It can read the evaluation's `$data`, its own `$params`, and the variables and iterators inside it. It can't see the caller's variables, or the `$element` and `$index` of an iterator the call is inside. An attempt to do so is a static error, on registration.
+
+To use one of those in a fragment, pass it in as an argument:
+
+<Expression
+  fragments
+  code={`
+    {
+      $map: {
+        input: '$data.cart',
+        each: { $priceWithTax: { amount: '$element.price' } },
+      },
+    }
+  `}
+  data={`
+    {
+      cart: [
+        { item: 'Teapot', price: 80.49 },
+        { item: 'Tea towel', price: 12.5 },
+      ],
+    }
+  `}
+/>
+
+## Registering fragments
+
+Fragments are registered on your FigTree instance, in the `fragments` option, each under the name it's called by:
+
+<FragmentSetup names={['priceWithTax']} />
+
+### Checked when registered
+
+`new FigTree()` checks every fragment it's given, and throws a `FigTreeError` if anything's wrong, with the code `'invalid-options'` and every problem in its `issues`. Registration runs all the checks [`validate()`](/guides/validation/#static-errors) runs on an expression, as well as some of its own, such as that each `$params` reference names a declared parameter, that each `default` matches its parameter's type, and that the fragment's name doesn't clash with an operator's name or alias.
+
+### Adding, replacing and removing fragments
+
+[`updateOptions()`](/guides/setup/#changing-options) can change the registered fragments, merging what it's given with what's there:
+
+```ts title="update.ts"
+fig.updateOptions({
+  fragments: {
+    // A new name is added, beside the fragments already registered
+    fullName: {
+      expression: { $buildString: '{{$params.first}} {{$params.last}}' },
+      parameters: { first: { type: 'string' }, last: { type: 'string' } },
+    },
+    // A name already registered is replaced, as a whole
+    shippingCost: {
+      expression: { $multiply: ['$params.weightKg', 4.5] },
+      parameters: { weightKg: { type: 'number' } },
+    },
+    // null removes one
+    legacyDiscount: null,
+  },
+})
+```
+
+The whole set is checked again, as `new FigTree()` checks it, and an update that fails the check throws and changes nothing. That includes one that leaves a fragment calling another that's no longer there, whether it was removed, or its operator was taken out of `operators`. Fragments given together can call each other in any order, but a fragment can't call one that hasn't been registered yet, so register the two together, or the one being called first.
+
+### Validating a fragment during authoring
 
 Like with normal expressions, a fragment body can be checked using `validate()`. The only difference is that you must provide a second argument, listing the parameters expected:
 
@@ -305,7 +313,7 @@ fig.getDependencies(fragmentBody).params
 // => { names: ['amount', 'rat'], dynamic: false }
 ```
 
-## Fragments in an editor
+### Fragments in an editor
 
 A fragment definition can carry two more keys, intended primarily for external tools such as a visual editor: a `listing`, with what an editor needs to present the fragment, and `metadata`, for anything of your own. FigTree itself never uses either:
 
