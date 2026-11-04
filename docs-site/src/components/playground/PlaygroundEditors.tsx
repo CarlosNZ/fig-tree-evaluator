@@ -15,7 +15,7 @@ import type {
   ListingMap,
 } from 'fig-tree-evaluator'
 import { JsonEditor, type JsonData, type TextEditorProps } from 'json-edit-react'
-import { FigTreeEditor, type Evaluation } from 'fig-tree-editor-react'
+import { FigTreeEditor, type Evaluation, type FigTreeEditorHandle } from 'fig-tree-editor-react'
 import 'fig-tree-editor-react/style.css'
 import { toJson5 } from '../../lib/json5'
 import { customAnalyses } from '../../lib/operators'
@@ -106,6 +106,7 @@ export default function PlaygroundEditors(props: PlaygroundEditorsProps) {
     props.coverageOptions
   )
   useImperativeHandle(props.handle, () => ({ refreshCoverage }), [refreshCoverage])
+  const editor = useRef<FigTreeEditorHandle>(null)
   const editExpression = (next: unknown) => {
     setExpression(next)
     refreshCoverage({ expression: next })
@@ -149,12 +150,16 @@ export default function PlaygroundEditors(props: PlaygroundEditorsProps) {
       </section>
       <section className="fds-widget" aria-label="Expression">
         <div className="fds-playground-pane">
-          <CoverageBadge coverage={coverage} />
+          <CoverageBadge
+            coverage={coverage}
+            onReveal={(path) => editor.current?.reveal({ path })}
+          />
           <FigTreeEditor
             figTree={props.figTree}
             operatorListings={props.operatorListings}
             expression={expression}
             setExpression={editExpression}
+            editorRef={editor}
             // The data's root can be edited into something other than an
             // object, which evaluation can't take
             evaluationData={isRecord(data) ? data : undefined}

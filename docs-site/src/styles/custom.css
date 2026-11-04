@@ -1708,12 +1708,25 @@
   /* The editor's base size, so its hover card is the size of the editor's */
   font-size: 1rem;
   line-height: 1.1;
+  /*
+   * The summary shows sooner than the tree's cards, which wait so as not to
+   * flash up as the pointer crosses the tree: the badge is hovered on purpose
+   */
+  --ft-hover-card-delay: 0.1s;
 }
 
 .fds-coverage-badge-label {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
   font-size: 0.6875rem;
   font-weight: 600;
-  cursor: default;
+  cursor: pointer;
+}
+
+.fds-coverage-badge-label:hover {
+  text-decoration: underline;
 }
 
 .fds-coverage-badge-label--covered {
@@ -1724,9 +1737,49 @@
   color: var(--fds-toast-fallback);
 }
 
+/* The summary card, while the panel is open */
+.fds-coverage-badge[data-open] .ft-hover-card-anchor > .ft-hover-card {
+  display: none;
+}
+
+/*
+ * The badge's panel, which looks like the editor's hover cards but is open
+ * until it's closed, takes the pointer, and scrolls when it's long
+ */
+.fds-coverage-panel.ft-hover-card {
+  visibility: visible;
+  opacity: 1;
+  left: auto;
+  right: 0;
+  max-width: 26em;
+  max-height: min(24em, 60vh);
+  overflow-y: auto;
+  pointer-events: auto;
+  line-height: 1.25;
+}
+
 .fds-coverage-findings {
-  display: block;
   margin-top: 0.8em;
+}
+
+/* A failure, which shows its node in the tree */
+.fds-coverage-finding {
+  display: block;
+  width: 100%;
+  margin: 0.15em 0 0;
+  padding: 0.3em 0.4em;
+  border: none;
+  border-radius: 0.25em;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fds-coverage-finding:hover,
+.fds-coverage-finding:focus-visible {
+  background: #f1f3f5;
 }
 
 /*
