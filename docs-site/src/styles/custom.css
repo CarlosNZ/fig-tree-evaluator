@@ -1102,6 +1102,18 @@
   color: var(--sl-color-black);
 }
 
+/* Between the two: outlined in the accent, and filled with it on hover */
+.fds-widget-action--accent {
+  border-color: var(--sl-color-text-accent);
+  color: var(--sl-color-text-accent);
+}
+
+.fds-widget-action--accent:hover:enabled {
+  border-color: var(--sl-color-accent);
+  background: var(--sl-color-accent);
+  color: var(--sl-color-black);
+}
+
 .fds-widget-action:disabled {
   cursor: default;
   opacity: 0.5;
@@ -1740,8 +1752,11 @@
   background: var(--sl-color-bg-nav);
 }
 
+/* The bar's buttons are as tall as the picker beside them */
 .fds-playground-footer .fds-widget-action {
+  height: 2.5rem;
   margin-left: 0;
+  padding-inline: 0.9rem;
 }
 
 /* The picker and its Info share a row, the select giving up width to fit */
@@ -1763,6 +1778,7 @@
 }
 
 .fds-playground-footer .fds-example-select .ft-select-trigger {
+  height: 2.5rem;
   min-width: 14rem;
   max-width: 100%;
 }

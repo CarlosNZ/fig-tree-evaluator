@@ -186,7 +186,7 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
             />
           </div>
           <button
-            className="fds-widget-action"
+            className="fds-widget-action fds-widget-action--accent"
             disabled={!blurb}
             onClick={() => setShowBlurb(true)}
           >
@@ -200,7 +200,7 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
         <div className="fds-playground-footer-end">
           <span className="fds-playground-version">fig-tree-evaluator v{figTree.version}</span>
           {/* TO-DO: open the Options modal */}
-          <button className="fds-widget-action" disabled>
+          <button className="fds-widget-action fds-widget-action--primary" disabled>
             <svg viewBox="0 0 16 16" aria-hidden="true">
               <path d="M2.5 4.5h4M9.5 4.5h4M2.5 11.5h6M11.5 11.5h2" />
               <circle cx="8" cy="4.5" r="1.5" />
