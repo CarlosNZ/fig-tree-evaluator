@@ -207,6 +207,8 @@ What stays out:
 
 Moving the demo's data here is the first step of the port, before any of the Playground's features, since every later step reads it. **Done (October 2026):** [docs-site/src/playground/](../docs-site/src/playground/) holds the examples (`examples.ts`), their blurbs and images (`blurbs/`), the fragments, with the fragment editor's starting sample (`fragments.ts`), and the custom operators and their listings (`operators.ts`). The blurbs' links point at the site's pages; their content gets an edit pass later.
 
+**A new set of examples, written for v3.** The ported examples are the v2 demo's with only their syntax updated, so several don't show what v3 does with their feature. A proposed replacement set is in [playground-examples-plan.md](playground-examples-plan.md) (November 2026, not yet decided).
+
 ## Dependencies
 
 - **The v3 editor.** `fig-tree-editor-react`'s `main` branch, and its only published release (1.0.1), depend on `fig-tree-evaluator ^2.23.2`. Its `v3.0-dev` branch tracks the v3 previews (`^3.0.0-preview.9`), but has no published release, so the docs site uses it through a local link (`link:` to a local clone, `~/GitHub/fig-tree-editor-react` on Carl's machine) until a v3 editor preview is on npm.
