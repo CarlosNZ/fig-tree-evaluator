@@ -173,20 +173,6 @@ There's one exception: a fallback that reads `$error` is there to report the fai
   `}
 />
 
-## Instance-wide fallbacks
-
-A `fallback` in [`operatorDefaults`](/guides/setup/#defaults-for-an-operator) applies to every node of that operator that doesn't set its own. It must be a plain value, never an expression, but it _can_ read `$error`, so setting one in development can be handy:
-
-```ts title="defaults.ts"
-import { FigTree, FetchClient, coreOperators, httpOperators } from 'fig-tree-evaluator'
-// ---cut---
-const fig = new FigTree({
-  operators: [coreOperators, httpOperators(new FetchClient())],
-  // Every failed request shows its error in place -- a useful dev aid
-  operatorDefaults: { http: { fallback: '$error' } },
-})
-```
-
 ## Covering the whole expression
 
 A fallback only covers its own node, so a failure in another branch without one carries on up the tree, and if nothing above it has a fallback, `evaluate()` still throws. An expression where no runtime failure can cause it to throw is said to be "fully covered".
@@ -237,7 +223,7 @@ Some errors won't be caught by a fallback, by design — errors that should be 
 
 There's one way an expression can soften a global `timeout`: give the node at the top a fallback that's a plain value. When time runs out, the evaluation then returns that fallback instead of throwing.
 
-A fallback counts as a plain value when there's nothing to evaluate: it's built only from fixed values and `$error` reads, such as `{ status: 'unavailable', reason: '$error.code' }`. A default fallback from `operatorDefaults` counts too.
+A fallback counts as a plain value when there's nothing to evaluate: it's built only from fixed values and `$error` reads, such as `{ status: 'unavailable', reason: '$error.code' }`. A [default fallback](#instance-wide-fallbacks) set by your app counts too.
 
 An expression doesn't have to be a single node, though. It can be a plain object or array with nodes inside it, such as a whole config ([Expressions and nodes](/concepts/expressions/)). Then each of those nodes needs a plain fallback of its own. When time runs out, each one that finished gives its real value, and each one still running gives its fallback:
 
@@ -261,6 +247,20 @@ await fig.evaluate(dashboard, { timeout: 2000 })
 It's all or nothing. If any of them has no fallback, or one that needs evaluating, such as a backup request, a timeout throws as usual, even if the others had finished. That way, whether an expression is shielded is something you can tell from the expression alone.
 
 Cancelling with `signal` is never shielded: your app asked to stop, so nothing is waiting for a result.
+
+## Instance-wide fallbacks
+
+A `fallback` in [`operatorDefaults`](/guides/setup/#defaults-for-an-operator) applies to every node of that operator that doesn't set its own. It must be a plain value, never an expression, but it _can_ read `$error`, so setting one in development can be handy:
+
+```ts title="defaults.ts"
+import { FigTree, FetchClient, coreOperators, httpOperators } from 'fig-tree-evaluator'
+// ---cut---
+const fig = new FigTree({
+  operators: [coreOperators, httpOperators(new FetchClient())],
+  // Every failed request shows its error in place -- a useful dev aid
+  operatorDefaults: { http: { fallback: '$error' } },
+})
+```
 
 ## Errors that reach the host
 
