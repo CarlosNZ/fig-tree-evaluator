@@ -46,7 +46,7 @@ export const figTree = new FigTree({ operators: siteOperators })
  * point is the requests they send: a reader who runs one again sees its
  * requests sent again in the network tab.
  */
-const noCache = {
+export const noCache = {
   operatorDefaults: {
     http: { noCache: true },
     graphQL: { noCache: true },

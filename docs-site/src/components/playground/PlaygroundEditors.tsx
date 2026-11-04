@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+} from 'react'
 import JSON5 from 'json5'
 import type { FigTree, ListingMap } from 'fig-tree-evaluator'
 import { JsonEditor, type JsonData, type TextEditorProps } from 'json-edit-react'
@@ -57,6 +63,8 @@ export interface PlaygroundEditorsProps {
    * collapsed. The editor's own default if not given.
    */
   collapse?: number
+  /** A toast of the page's own, stacked above the evaluation toast. */
+  notice?: ReactNode
 }
 
 /**
@@ -128,7 +136,10 @@ export default function PlaygroundEditors(props: PlaygroundEditorsProps) {
           />
         </div>
       </section>
-      <EvaluationToast toast={toast} onClose={() => setToast(null)} />
+      <div className="fds-playground-toasts">
+        {props.notice}
+        <EvaluationToast toast={toast} onClose={() => setToast(null)} />
+      </div>
     </div>
   )
 }

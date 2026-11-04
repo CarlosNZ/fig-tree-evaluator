@@ -1685,15 +1685,30 @@
 }
 
 /*
- * An evaluation's toast, at the foot of the window, which the panes outgrow,
- * above the bar there
+ * The toasts, at the foot of the window, which the panes outgrow, above the
+ * bar there: a configuration change above an evaluation's
  */
-.fds-playground-editors > .fds-toast-region {
+.fds-playground-toasts {
   position: fixed;
   right: 1rem;
   bottom: calc(var(--fds-playground-footer-height) + 1rem);
   z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
   width: min(24rem, calc(100vw - 2rem));
+  pointer-events: none;
+}
+
+.fds-playground-toasts > .fds-toast-region {
+  position: static;
+  width: auto;
+}
+
+.fds-toast-changes {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: var(--sl-text-sm);
 }
 
 /* An object or array edited as text, in the site's JSON5 pane */
@@ -2039,6 +2054,11 @@
 
 .fds-toast--fallback {
   --fds-toast-accent: var(--fds-toast-fallback);
+}
+
+/* What an example changed in the Playground's configuration (ConfigToast.tsx) */
+.fds-toast--config {
+  --fds-toast-accent: var(--sl-color-text-accent);
 }
 
 .fds-toast-head {

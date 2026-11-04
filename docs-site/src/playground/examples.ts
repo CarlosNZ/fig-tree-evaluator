@@ -1,3 +1,6 @@
+import type { FigTreeOptions, FragmentDefinition } from 'fig-tree-evaluator'
+import { fragments } from './fragments'
+
 /**
  * The Playground's examples, which its example picker offers. The demo app in
  * fig-tree-editor-react (`demo/`) reads this folder too, through a Vite alias
@@ -7,6 +10,23 @@
  * in `blurbs/img/`, referenced by relative path. The fragments and custom
  * operators the examples use are in ./fragments.ts and ./operators.ts.
  */
+/**
+ * The options an example can set, all plain data. As with `updateOptions()`,
+ * null puts back FigTree's default.
+ */
+export type ExampleOptions = {
+  [
+    Key in
+      | 'http'
+      | 'graphQL'
+      | 'operatorDefaults'
+      | 'strictDataPaths'
+      | 'timeout'
+      | 'maxDepth'
+      | 'maxNodes'
+  ]?: FigTreeOptions[Key] | null
+}
+
 export interface PlaygroundExample {
   /**
    * A slug, for the Playground's URL and for remembering the reader's last
@@ -20,6 +40,18 @@ export interface PlaygroundExample {
   expression: unknown
   /** How many levels of the tree start open. */
   collapse?: number
+  /**
+   * Options the example needs, merged into the reader's own each time it's
+   * opened, and kept after it. It runs with whatever else the reader, or the
+   * last example, left set, so it sets or resets every option it's sensitive
+   * to.
+   */
+  options?: ExampleOptions
+  /**
+   * Fragments the example calls, added to the reader's own each time it's
+   * opened, and replacing any of the same name.
+   */
+  fragments?: Record<string, FragmentDefinition>
 }
 
 export const examples: PlaygroundExample[] = [
@@ -398,6 +430,7 @@ export const examples: PlaygroundExample[] = [
       },
     },
     collapse: 3,
+    fragments,
   },
   {
     id: 'custom-operators',

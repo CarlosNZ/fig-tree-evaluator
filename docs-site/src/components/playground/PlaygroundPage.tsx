@@ -1,15 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { JsonData } from 'json-edit-react'
 import { Select } from 'fig-tree-editor-react'
-import { exampleFigTree } from '../../lib/figTree'
 import { parseJson5 } from '../../lib/json5'
 import { readPlaygroundSeed, type PlaygroundSeed } from '../../lib/playgroundLink'
 import { examples } from '../../playground/examples'
 import { operatorListings } from '../../playground/operators'
 import BlurbDialog from './BlurbDialog'
 import ConfigDialog from './ConfigDialog'
+import { ConfigToast, type ConfigNotice } from './ConfigToast'
 import PlaygroundEditors from './PlaygroundEditors'
-import { applyConfig, initialConfig, playgroundFigTree } from './playgroundSetup'
+import {
+  applyConfig,
+  applySetup,
+  initialConfig,
+  playgroundFigTree,
+  seedSetup,
+} from './playgroundSetup'
 
 /** An example's blurb, rendered at build time (PlaygroundPage.astro). */
 export interface Blurb {
@@ -67,10 +73,9 @@ const isExample = (id: string | null): id is string =>
   id !== null && examples.some((example) => example.id === id)
 
 /**
- * What an "open in editor" link carries, ready for the editors, with the
- * instance its page used. Comments in its JSON5 are lost, since the trees
- * can't hold them, and so is its example's extra button, which the editors
- * have no place for.
+ * What an "open in editor" link carries, ready for the editors. Comments in
+ * its JSON5 are lost, since the trees can't hold them, and so is its
+ * example's extra button, which the editors have no place for.
  */
 const fromSeed = (seed: PlaygroundSeed) => {
   const expression = parseJson5(seed.expression)
@@ -78,7 +83,6 @@ const fromSeed = (seed: PlaygroundSeed) => {
   return {
     expression: expression.ok ? expression.value : null,
     data: data.ok ? (data.value as JsonData) : {},
-    figTree: exampleFigTree(seed),
   }
 }
 
@@ -103,24 +107,34 @@ const initialSelection = (): string | null => {
  * the picked example's blurb and the Configuration panel. A blurb opens as a
  * dialog the first time the reader opens its example, and again from Info.
  * Picking an example remounts the editors with its expression and data. An
- * expression from an "open in editor" link keeps the instance its page used,
- * and has no example picked until the reader picks one.
+ * expression from an "open in editor" link has no example picked until the
+ * reader picks one.
+ *
+ * Opening an example, or a link, merges the options and fragments it needs
+ * into the configuration, and a toast says what that changed, if anything.
  *
  * Mounted `client:only`, since what it shows depends on the URL and on what
  * the reader last picked.
  */
 export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
   const [selected, setSelected] = useState(initialSelection)
-  const [seeded] = useState(() => {
-    const seed = readPlaygroundSeed(window.location.search)
-    return seed && fromSeed(seed)
-  })
+  const [seed] = useState(() => readPlaygroundSeed(window.location.search))
+  const [seeded] = useState(() => seed && fromSeed(seed))
   const example = examples.find(({ id }) => id === selected)
   const [showBlurb, setShowBlurb] = useState(false)
   const [config, setConfig] = useState(initialConfig)
   const [showConfig, setShowConfig] = useState(false)
+  const [notice, setNotice] = useState<ConfigNotice | null>(null)
+  const noticeId = useRef(0)
 
   useEffect(() => {
+    const setup = example ?? (seed && seedSetup(seed))
+    if (setup) {
+      const { config, changes } = applySetup(setup)
+      setConfig(config)
+      if (changes.length > 0)
+        setNotice({ id: ++noticeId.current, source: example ? 'example' : 'link', changes })
+    }
     if (selected === null) return
     remember(selected)
     if (blurbs[selected] && !visited()[selected]) setShowBlurb(true)
@@ -136,6 +150,17 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
   }
 
   const blurb = example && blurbs[example.id]
+
+  const configToast = (
+    <ConfigToast
+      notice={notice}
+      onConfigure={() => {
+        setNotice(null)
+        setShowConfig(true)
+      }}
+      onClose={() => setNotice(null)}
+    />
+  )
 
   return (
     <div className="fds-playground-page">
@@ -170,9 +195,19 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
           collapse={example.collapse}
           figTree={playgroundFigTree}
           operatorListings={operatorListings}
+          notice={configToast}
         />
       ) : (
-        seeded && <PlaygroundEditors key="seed" id="playground" {...seeded} />
+        seeded && (
+          <PlaygroundEditors
+            key="seed"
+            id="playground"
+            {...seeded}
+            figTree={playgroundFigTree}
+            operatorListings={operatorListings}
+            notice={configToast}
+          />
+        )
       )}
 
       <div className="fds-playground-footer not-content">

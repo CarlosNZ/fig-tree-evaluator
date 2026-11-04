@@ -4,7 +4,11 @@ import {
   type FragmentDefinition,
   type OptionsUpdate,
 } from 'fig-tree-evaluator'
-import { siteOperators } from '../../lib/figTree'
+import { noCache, siteOperators } from '../../lib/figTree'
+import { fragments as docsFragments } from '../../lib/fragments'
+import { customOperators as docsOperators } from '../../lib/operators'
+import type { PlaygroundSeed } from '../../lib/playgroundLink'
+import type { PlaygroundExample } from '../../playground/examples'
 import { fragments } from '../../playground/fragments'
 import { customOperators } from '../../playground/operators'
 
@@ -93,8 +97,12 @@ class CountingStore {
 
 export const cacheStore = new CountingStore(DEFAULT_CACHE_SIZE)
 
-/** Every operator the Playground can use: the site's, and its examples' own. */
-const operators = [...siteOperators, ...customOperators]
+/**
+ * Every operator the Playground can use: the site's, its examples' own, and
+ * the docs pages' custom operators, which their "open in editor" links can
+ * call.
+ */
+const operators = [...siteOperators, ...customOperators, ...docsOperators]
 
 /**
  * The Playground's one instance, for as long as the page is open, so its
@@ -243,4 +251,115 @@ export const initialConfig = (): PlaygroundConfig => {
   const options = kept<PlaygroundOptions>(OPTIONS_KEY)
   if (options) tryInstall({ options })
   return applied
+}
+
+/** What an example, or an "open in editor" link, asks of the configuration. */
+export type PlaygroundSetup = Pick<PlaygroundExample, 'options' | 'fragments'>
+
+/** What an "open in editor" link asks for: what its docs page's example evaluated with. */
+export const seedSetup = (seed: PlaygroundSeed): PlaygroundSetup => ({
+  ...(seed.fragments && { fragments: docsFragments }),
+  ...(seed.noCache && { options: noCache }),
+})
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/**
+ * `previous` with `change` merged in, `levels` deep, below which a change
+ * replaces whole. A null removes, at any level.
+ */
+const merge = (previous: unknown, change: unknown, levels: number): unknown => {
+  if (change === null) return undefined
+  if (levels === 0 || !isRecord(change)) return change
+  const result: Record<string, unknown> = { ...(isRecord(previous) ? previous : {}) }
+  for (const [key, value] of Object.entries(change)) {
+    const next = merge(result[key], value, levels - 1)
+    if (next === undefined) delete result[key]
+    else result[key] = next
+  }
+  return result
+}
+
+/**
+ * The configuration with a setup merged in. The options merge three levels
+ * deep, an option, then a block's key, then an operator's default or a
+ * header, so a link's `noCache` keeps the reader's other defaults for that
+ * operator. A fragment replaces one of the same name, and none is removed.
+ */
+const withSetup = ({ options, fragments }: PlaygroundConfig, setup: PlaygroundSetup) => ({
+  options: merge(options, setup.options ?? {}, 3) as PlaygroundOptions,
+  fragments: { ...fragments, ...setup.fragments },
+})
+
+/** Plain data, so its serialisation is enough to compare it. */
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
+
+const list = (names: string[]) =>
+  names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
+
+/** The names whose entries differ between two blocks. */
+const changedIn = (before: Record<string, unknown> = {}, after: Record<string, unknown> = {}) =>
+  Object.keys({ ...before, ...after }).filter((name) => !same(before[name], after[name]))
+
+const LIMITS = [
+  ['timeout', 'timeout', ' ms'],
+  ['maxDepth', 'max depth', ''],
+  ['maxNodes', 'max nodes', ''],
+] as const
+
+const BLOCKS = [
+  ['http', 'HTTP settings'],
+  ['graphQL', 'GraphQL settings'],
+  ['cache', 'cache settings'],
+] as const
+
+/** What changed from one configuration to another, as the toast lists it. */
+const describeChanges = (before: PlaygroundConfig, after: PlaygroundConfig): string[] => {
+  const [was, now] = [before.options, after.options]
+  const changes: string[] = []
+  if (!same(was.strictDataPaths, now.strictDataPaths))
+    changes.push(`strict data paths ${now.strictDataPaths ? 'on' : 'off'}`)
+  for (const [key, label, unit] of LIMITS)
+    if (!same(was[key], now[key]))
+      changes.push(now[key] === undefined ? `no ${label}` : `${label} ${now[key]}${unit}`)
+  for (const [key, label] of BLOCKS) if (!same(was[key], now[key])) changes.push(label)
+  const operators = changedIn(was.operatorDefaults, now.operatorDefaults)
+  if (operators.length > 0) {
+    const caching = usesCache(now.operatorDefaults)
+    const flipped = caching !== usesCache(was.operatorDefaults)
+    changes.push(
+      `operator defaults for ${list(operators)}${flipped ? `, caching ${caching ? 'on' : 'off'}` : ''}`
+    )
+  }
+  const names = changedIn(before.fragments, after.fragments)
+  const added = names.filter((name) => !(name in before.fragments))
+  const replaced = names.filter((name) => name in before.fragments)
+  if (added.length > 0)
+    changes.push(`${added.length === 1 ? 'fragment' : 'fragments'} ${list(added)} added`)
+  if (replaced.length > 0)
+    changes.push(`${replaced.length === 1 ? 'fragment' : 'fragments'} ${list(replaced)} replaced`)
+  return changes
+}
+
+/**
+ * Merges what an example or a link asks for into the configuration, then
+ * applies and keeps it. It returns the configuration, and what changed,
+ * which is nothing if all of it was in place already. FigTree refusing it is
+ * a mistake in the example, so it's logged, and the configuration stays as
+ * it was.
+ */
+export const applySetup = (
+  setup: PlaygroundSetup
+): { config: PlaygroundConfig; changes: string[] } => {
+  const next = withSetup(applied, setup)
+  if (same(applied, next)) return { config: applied, changes: [] }
+  const changes = describeChanges(applied, next)
+  try {
+    applyConfig(next)
+  } catch (error) {
+    console.error("The Playground's instance refused this setup:", setup, error)
+    return { config: applied, changes: [] }
+  }
+  return { config: next, changes }
 }
