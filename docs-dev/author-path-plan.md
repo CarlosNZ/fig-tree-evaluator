@@ -43,17 +43,23 @@ The Concepts chapter, read in order, already walks an expression author through 
 
 The one real exception was Data references, which opened with developer material. **Done:** the detail in "The data object" (instance data against per-call data, its two `ts` blocks and the "Per-call data replaces instance data" callout) moved to Setting up FigTree's "Options for a single evaluation". Data references keeps what an expression author needs: the app decides what the data holds, and should make clear what's available.
 
-## Open, after Getting started
+### Expression-author material first on the mixed pages
 
-1. **Author material first on the mixed pages:** what moves down each page, and whether host sections get a marker. See "How the pages divide" below. A first proposal, for reference: on Fallbacks and errors, move "Instance-wide fallbacks" down to just before "Errors that reach the host"; reorder Fragments as calling, then what a body sees and failures, then writing a fragment, then registering (which needs `<FragmentSetup>` to show a definition as a plain JSON5 object as well); reorder HTTP and SQL as requests and queries, failures, the node's `timeout` and caching, then the developer's sections.
-2. **The no-TypeScript rule:** whether it applies to Getting started only, and whether it's a convention or something the build checks.
-3. **Fit with the pages still to be written or edited.**
+**Done.** Each mixed page puts the expression author's sections first and the developer's last, with no marker on the developer's sections: an expression author can stop at the first one.
+
+- **Fallbacks and errors:** "Instance-wide fallbacks" moved down beside "Errors that reach the host".
+- **Fragments:** calling a fragment and when one fails, then writing a fragment (its definition, parameters and what its body can see), then registering. `<FragmentSetup plain>` shows a definition on its own as JSON5, so only the registering section shows the host code.
+- **HTTP and SQL:** requests and queries, relative URLs and headers, failures, a request's own timeout and caching, then the developer's sections (adding the operators, base endpoints and shared headers, cancellation and driver timeouts, writing a client). The intro says the app decides whether the operators are available.
+
+## Open
+
+1. **The no-TypeScript rule:** whether it's needed at all, now that Getting started has no code blocks.
+2. **Fit with the pages still to be written or edited.**
 
 ## Follow-ups
 
 - **The term, site-wide:** "configuration author" appears 15 times across 9 pages (Syntax at a glance, Setting up FigTree, the three Under the hood pages, the editor page, and three Custom operators pages), and "the author" alone a few times. Each becomes "expression author", and so does the voice guide's "Fixed terms" entry, which says "configuration authors".
 - **The `/authoring` page's intro:** one line saying it's for developers building tools for expression authors.
-- **The home page:** "Get started" links to `/getting-started/` rather than `/concepts/expressions/`.
 - **doc-planning.md:** Getting started joins "Site chapters", and the "Splitting the main path by audience" section is reduced to the outcome and a link here.
 
 ## How the pages divide
