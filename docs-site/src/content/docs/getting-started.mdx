@@ -1,73 +1,48 @@
 ---
 title: Getting started
-description: The two audiences these docs are written for, and an expression author's path through them
+description: Who these docs are written for, and where each of them should go next
 ---
 
 New to FigTree? Start with the [Concepts chapter](/concepts/expressions/) — it's a solid walkthrough of the key ideas that need to be understood by developers and expression authors alike.
 
-These docs in general, though, target two main audiences:
+These docs in general, though, target two different but overlapping audiences:
 - **Expression authors** — whoever _configures_ your system, such as admins, implementers or the developers themselves, constructing the FigTree expressions that define its rules.
 - **Developers** — the ones _implementing_ FigTree in an app. They decide where FigTree is used (which parts of the app have dynamic rules), which options and operators are available, and provide the tools expression authors work with, such as UI editors, validation procedures and fragment authoring capabilities.
 
-This page clarifies the difference and points you in the right direction for your use case. But everyone should start with [Concepts](/concepts/expressions/).
+This page clarifies the difference and points you in the right direction for your use case. But seriously, everyone should start with [Concepts](/concepts/expressions/).
 
 {/* Plan: docs-dev/author-path-plan.md. No code blocks on this page, only inline snippets: it orients, and the pages it links to teach. */}
 
 ## What your app decides
 
-An expression is only half the picture: the app that evaluates it decides what it can do. Say you're writing the rule for when a form field shows up. Whether that rule can read the user's age, look something up in a database, or call a shared eligibility check depends on how the app's developers have set FigTree up.
+A FigTree expression is only half the picture: the app that evaluates it decides what it can do. Say you're writing a rule for when a particular form field shows up. Whether that rule can read the user's age, look something up in a database, or call a common discount calculation depends on how the app's developers have set FigTree up.
 
-Here's what they decide, and where each is explained:
+Here's some of what they decide, and where each is explained:
 
 - **Which operators you can use:** the [core operators](/reference/operators/) by default, though an app can offer fewer. The `http`, `graphQL` and `sql` operators, and any custom operators of the app's own, are there only if the app adds them ([Choosing operators](/guides/setup/#choosing-operators)).
-- **What `$data` holds:** the values your expression reads, such as a form's answers or the signed-in user ([The data object](/concepts/data/#the-data-object)).
-- **Which fragments you can call:** named expressions the app registers, which you call just like operators ([Calling a fragment](/guides/fragments/#calling-a-fragment)).
-- **What a missing path gives:** `null` by default, or an error if the app turns on `strictDataPaths` ([When missing is a mistake](/concepts/data/#when-missing-is-a-mistake)).
-- **Defaults for an operator:** values every node of an operator takes unless it sets its own, such as a `fallback` on every `http` request ([Defaults for an operator](/guides/setup/#defaults-for-an-operator)).
-- **Limits:** how long an evaluation can run, and how large an expression can be ([Limits](/guides/setup/#limits)).
-- **How long responses are kept:** by default, a request's response is reused for 30 minutes, and `noCache: true` on a node turns that off for it ([Turning caching off](/guides/caching/#turning-caching-off)).
-- **How your work gets checked:** FigTree can find the mistakes in an expression before it ever runs ([Checking expressions](/guides/validation/)), and show which failures its fallbacks cover ([`/authoring`](/tooling/authoring/)). Developers build these checks into the tools you use, such as an editor, or a check when you save.
+- **What `$data` holds:** the values your expression reads, such as a form's answers or the current user's details ([The data object](/concepts/data/#the-data-object)). The app also decides whether a missing value gives `null` or is an [error](/concepts/data/#when-missing-is-a-mistake).
+- **Which fragments you can call:** named expressions the app registers, which you call just like operators ([Calling a fragment](/guides/fragments/#calling-a-fragment)). (And whether you can create your own.)
+- **Defaults for an operator:** settings that apply everywhere an operator is used, unless you set them yourself in an expression. For example, the app might have every failed `http` request return `null` rather than an error ([Defaults for an operator](/guides/setup/#defaults-for-an-operator)).
+- **Limits:** when a slow request should time out, and how large an expression can be ([Limits](/guides/setup/#limits)).
+- **How your work gets checked:** FigTree can find the mistakes in an expression before it ever runs ([Checking expressions](/guides/validation/)), and show where fallbacks should be applied ([`/authoring`](/tooling/authoring/)). Developers build these checks into the tools you use, such as a visual editor, or a validation check when you save.
 
 ## Writing an expression
 
-The [Concepts](/concepts/expressions/) chapter teaches the language, and it's written to be read in order. Alongside it:
+The [Concepts](/concepts/expressions/) chapter teaches the language, and is written to be read in order. Alongside it:
 
 - **[Fragments](/guides/fragments/):** calling the app's named expressions, and writing their bodies, where your app lets you.
+- **[Checking expressions](/guides/validation/):** every mistake FigTree can find before an expression runs, such as a misspelt operator, and how to check paths against sample data.
+- **[Fallbacks and errors](/guides/fallbacks/):** giving a value in place of anything that fails, such as a request to a server that's down.
+- **[Missing values](/concepts/data/#missing-values):** a value that isn't in the data comes through as `null`, and the expression carries on; how to give something else instead.
 - **[Syntax at a glance](/reference/syntax/):** the whole language on one page, for when you know what you want and need the exact form.
 - **[Operator reference](/reference/operators/):** every operator, with its parameters and examples.
 
-## Before it runs
-
-Mistakes in the expression itself, such as a misspelt operator or a parameter it doesn't have, are **static errors**. FigTree finds them before anything runs, and won't run the expression until they're fixed, so no `fallback` can catch one ([Compiled first, then run](/concepts/evaluation/#compiled-first-then-run)). The upside is that they can all be found while you're writing, without any data.
-
-- **Every static error:** listed, with an example of each, in [Static errors](/guides/validation/#static-errors).
-- **Misspelt paths:** a `$data` path that isn't there isn't a static error, since real data has gaps. Given sample data, though, the check warns about every path the sample doesn't have ([Checking against sample data](/guides/validation/#checking-against-sample-data)).
-
-## When the data surprises you
-
-The data is the part you can't see while you're writing, so an expression has to be ready for whatever arrives:
-
-- **Missing values are `null`:** a reference to something that isn't there gives `null`, and the evaluation carries on. Each parameter has its own rule for a `null`, and most pass it on, so the parts of the result that depend on it come out `null` too ([Null handling](/concepts/evaluation/#null-handling)). To get something other than `null`, use `get`'s `default` or `firstNonNull` ([Missing values](/concepts/data/#missing-values)).
-- **Types aren't converted:** `'1'` isn't `1`, and a value of the wrong type is a failure. To change a type on purpose, use [`convert`](/reference/operators/#op-convert) ([Types and truthiness](/concepts/evaluation/#types-and-truthiness)).
-- **Fallbacks:** a `fallback` on a node gives a value in its place when the node, or anything inside it, fails, and `$error` inside it reads what went wrong ([Fallbacks and errors](/guides/fallbacks/)).
-- **Covering everything:** a failure no fallback catches makes the whole evaluation throw, and your app gets an error instead of a result. A plain-value fallback at the top makes sure that never happens, and a fallback on each part keeps the parts that worked ([Covering the whole expression](/guides/fallbacks/#covering-the-whole-expression)).
-- **Running out of time:** if your app sets a time limit, running over it stops everything, fallbacks included, unless the nodes at the top all have plain-value fallbacks, which are returned instead ([Timeout shielding](/guides/fallbacks/#timeout-shielding)).
-
-## Traps
-
-A few rules catch people out:
-
-- **`0` and `''` count as false:** in a condition, such as `if`'s, a price of `0` reads the same as a missing one. Test for what you mean, such as `{ $notEqual: ['$data.price', null] }` ([Types and truthiness](/concepts/evaluation/#types-and-truthiness)).
-- **Only a whole string is a reference:** `'$data.total'` reads a value, but `'Total: $data.total'` is just text. To put a value in text, use a `buildString` template: `{ $buildString: 'Total: {{$data.total}}' }` ([`$data.` strings](/concepts/data/#data-strings)).
-- **Every key prefixed with `$` is checked:** data of your own with keys like that, such as a MongoDB query, goes inside `literal`, or it's an error ([Operators](/concepts/expressions/#operators)).
-- **Names are exact:** `$if` works, but `$If` is a static error ([Nodes](/reference/syntax/#nodes)).
-
 ## If you're the developer
 
-Everything under [What your app decides](#what-your-app-decides) is your decision, and each link there leads to how you make it. After [Concepts](/concepts/expressions/), these are your pages:
+Everything under [What your app decides](#what-your-app-decides) is up to you to implement, and each link there shows how. After [Concepts](/concepts/expressions/), these are your pages:
 
 - **[Guides](/guides/setup/):** setting up an instance, checking expressions, fallbacks and errors, fragments, HTTP and SQL, caching and tracing.
-- **[Visual editor component](/editor/):** an editor your expression authors can work in.
 - **[Custom operators](/custom-operators/writing/):** operators of your own, for what the core ones can't do.
-- **[Beyond evaluation](/tooling/overview/):** converting expressions, presenting operators in a tool, and analyses such as which failures an expression's fallbacks cover.
 - **[API reference](/api/figtree/):** the `FigTree` class and its options.
+- **[Beyond evaluation](/tooling/overview/):** converting expressions, presenting operators in a tool, and analyses such as which failures an expression's fallbacks cover.
+- **[Visual editor component](/editor/):** a React component to give expression authors a visual editor in your app.
