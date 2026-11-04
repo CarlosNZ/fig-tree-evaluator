@@ -1679,9 +1679,54 @@
   align-items: start;
 }
 
+/*
+ * Little padding above the tree, so the space above the root's name is about
+ * the space between its baseline and the root node's frame, and none below,
+ * where the editor has padding of its own
+ */
 .fds-playground-pane {
-  padding: 0.5rem 0.25rem;
+  --fds-playground-pane-padding-top: 0.2rem;
+  position: relative;
+  padding: var(--fds-playground-pane-padding-top) 0.25rem 0rem;
   background: var(--fds-tree-bg);
+}
+
+/*
+ * Whether the expression is fully covered, in the pane's top right corner,
+ * centred in the space between the pane's top edge and the frame of the
+ * tree's root node. The frame starts below the pane's padding, the editor's
+ * own (0.1rem), and the root's row (1.7rem).
+ */
+.fds-coverage-badge {
+  position: absolute;
+  top: 0;
+  right: 0.75rem;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  height: calc(var(--fds-playground-pane-padding-top) + 1.8rem);
+  /* The editor's base size, so its hover card is the size of the editor's */
+  font-size: 1rem;
+  line-height: 1.1;
+}
+
+.fds-coverage-badge-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  cursor: default;
+}
+
+.fds-coverage-badge-label--covered {
+  color: var(--fds-toast-done);
+}
+
+.fds-coverage-badge-label--uncovered {
+  color: var(--fds-toast-fallback);
+}
+
+.fds-coverage-findings {
+  display: block;
+  margin-top: 0.8em;
 }
 
 /*

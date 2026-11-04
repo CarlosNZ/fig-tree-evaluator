@@ -15,9 +15,7 @@ Failures in expressions need [fallbacks](/guides/fallbacks/) to prevent `evaluat
 
 That's where `fallbackCoverage()` comes in — a function that tells you if an expression is fully covered (no runtime failure can reach the root) or not, with a detailed report about the coverage status throughout the expression tree, including which fallback catches each failure. It's for building the tools offered to expression authors, such as an editor that marks what isn't covered, or a check before an expression is saved.
 
-{/* TO-DO: the Playground has no Safe flag yet. Bring it across from the editor demo, or cut this paragraph before the site goes live */}
-
-The demo on the [Playground](/playground/) page on this site shows a "Safe" flag indicating if the current expression is fully covered, and is powered by `fallbackCoverage()`.
+The demo on the [Playground](/playground/) page on this site shows a "Fully covered" badge indicating if the current expression is fully covered, and is powered by `fallbackCoverage()`.
 
 ## `fallbackCoverage()`
 

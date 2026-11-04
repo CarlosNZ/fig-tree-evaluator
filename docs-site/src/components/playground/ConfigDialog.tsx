@@ -39,6 +39,7 @@ interface Form {
   timeout: string
   maxDepth: string
   maxNodes: string
+  strictNumbers: boolean
 }
 
 const text = (value: unknown) => (value === undefined || value === null ? '' : String(value))
@@ -61,6 +62,7 @@ const toForm = ({ options, fragments }: PlaygroundConfig): Form => ({
   timeout: text(options.timeout),
   maxDepth: text(options.maxDepth),
   maxNodes: text(options.maxNodes),
+  strictNumbers: options.coverage?.strictNumbers ?? false,
 })
 
 /** A field's text, with nothing in it as no value. */
@@ -109,6 +111,7 @@ const optionsFrom = (form: Form): PlaygroundOptions | string => {
       timeout: values.timeout,
       maxDepth: values.maxDepth,
       maxNodes: values.maxNodes,
+      coverage: block({ strictNumbers: form.strictNumbers || undefined }),
     }),
     // Kept as it is, even empty, since `fallback: null` is a default
     ...(Object.keys(form.operatorDefaults).length > 0 && {
@@ -379,6 +382,19 @@ export default function ConfigDialog({ config, onSave, onClose }: ConfigDialogPr
                 </Field>
               </div>
             </details>
+          </section>
+
+          <section className="fds-config-section">
+            <h3 className="fds-config-heading">Coverage</h3>
+            <label className="fds-config-check">
+              <input
+                type="checkbox"
+                checked={form.strictNumbers}
+                onChange={() => update({ strictNumbers: !form.strictNumbers })}
+              />
+              Strict numbers: a number from the data may be NaN or infinite, and arithmetic may
+              overflow
+            </label>
           </section>
         </div>
 

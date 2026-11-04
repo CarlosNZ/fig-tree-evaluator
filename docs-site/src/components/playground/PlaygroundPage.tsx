@@ -151,6 +151,11 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
 
   const blurb = example && blurbs[example.id]
 
+  const coverage = {
+    strictNumbers: config.options.coverage?.strictNumbers === true,
+    revision: config,
+  }
+
   const configToast = (
     <ConfigToast
       notice={notice}
@@ -196,6 +201,7 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
           figTree={playgroundFigTree}
           operatorListings={operatorListings}
           notice={configToast}
+          coverage={coverage}
         />
       ) : (
         seeded && (
@@ -206,6 +212,7 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
             figTree={playgroundFigTree}
             operatorListings={operatorListings}
             notice={configToast}
+            coverage={coverage}
           />
         )
       )}

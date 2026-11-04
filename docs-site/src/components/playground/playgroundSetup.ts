@@ -1,5 +1,6 @@
 import {
   FigTree,
+  type FallbackCoverageOptions,
   type FigTreeOptions,
   type FragmentDefinition,
   type OptionsUpdate,
@@ -14,13 +15,14 @@ import { customOperators } from '../../playground/operators'
 
 /**
  * The options the Playground's Configuration panel sets on its instance,
- * besides its fragments. They're plain data, so they can be kept in local
- * storage. The operators never change.
+ * besides its fragments, and `coverage`, the options of the coverage badge's
+ * analysis. They're plain data, so they can be kept in local storage. The
+ * operators never change.
  */
 export type PlaygroundOptions = Pick<
   FigTreeOptions,
   'http' | 'graphQL' | 'operatorDefaults' | 'strictDataPaths' | 'timeout' | 'maxDepth' | 'maxNodes'
-> & { cache?: { maxSize?: number; maxTime?: number } }
+> & { cache?: { maxSize?: number; maxTime?: number }; coverage?: FallbackCoverageOptions }
 
 export type OperatorDefaults = NonNullable<PlaygroundOptions['operatorDefaults']>
 

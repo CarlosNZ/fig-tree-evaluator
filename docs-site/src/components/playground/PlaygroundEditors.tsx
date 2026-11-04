@@ -13,6 +13,7 @@ import 'fig-tree-editor-react/style.css'
 import { toJson5 } from '../../lib/json5'
 import { Json5Editor } from './Json5Editor'
 import { EvaluationToast, type ToastState } from './EvaluationToast'
+import CoverageBadge from './CoverageBadge'
 import { editorColours, editorStyles } from './editorTheme'
 
 /** An Evaluate in the tree that takes longer than this shows a running toast. */
@@ -65,6 +66,12 @@ export interface PlaygroundEditorsProps {
   collapse?: number
   /** A toast of the page's own, stacked above the evaluation toast. */
   notice?: ReactNode
+  /**
+   * Shows whether the expression is fully covered, with the coverage
+   * analysis's options, and a value that changes whenever the instance's
+   * configuration does.
+   */
+  coverage?: { strictNumbers: boolean; revision: unknown }
 }
 
 /**
@@ -77,6 +84,7 @@ export default function PlaygroundEditors(props: PlaygroundEditorsProps) {
   const [data, setData] = useState(props.data)
   const [expression, setExpression] = useState(props.expression)
   const [toast, setToast] = useState<ToastState | null>(null)
+  const [valid, setValid] = useState(false)
 
   // An Evaluate in the tree: a toast once it has run, and one while it runs
   // if that takes a moment. Each press gets a new id, so its toast replaces
@@ -116,6 +124,14 @@ export default function PlaygroundEditors(props: PlaygroundEditorsProps) {
       </section>
       <section className="fds-widget" aria-label="Expression">
         <div className="fds-playground-pane">
+          {props.coverage && (
+            <CoverageBadge
+              figTree={props.figTree}
+              expression={expression}
+              valid={valid}
+              {...props.coverage}
+            />
+          )}
           <FigTreeEditor
             figTree={props.figTree}
             operatorListings={props.operatorListings}
@@ -128,6 +144,7 @@ export default function PlaygroundEditors(props: PlaygroundEditorsProps) {
             collapse={props.collapse}
             theme={editorStyles}
             editorTheme={editorColours}
+            onStatusChange={({ valid }) => setValid(valid)}
             onEvaluateStart={onEvaluateStart}
             onEvaluate={onEvaluate}
             minWidth="100%"
