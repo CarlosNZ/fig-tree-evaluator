@@ -5,6 +5,7 @@ import { readPlaygroundSeed } from '../../lib/playgroundLink'
 import { examples } from '../../playground/examples'
 import { fragments } from '../../playground/fragments'
 import { customOperators, operatorListings } from '../../playground/operators'
+import BlurbDialog from './BlurbDialog'
 import Playground from './Playground'
 
 /** An example's blurb, rendered at build time (PlaygroundPage.astro). */
@@ -28,6 +29,8 @@ const playgroundFigTree = figTree.with({
 const PARAM = 'example'
 /** Where the reader's last pick is remembered. */
 const STORAGE_KEY = 'fds-playground-example'
+/** Where the examples whose blurbs the reader has seen are remembered. */
+const VISITED_KEY = 'fds-playground-visited'
 
 const remembered = (): string | null => {
   try {
@@ -42,6 +45,22 @@ const remember = (id: string) => {
     localStorage.setItem(STORAGE_KEY, id)
   } catch {
     // Nothing remembered, then
+  }
+}
+
+const visited = (): Record<string, true> => {
+  try {
+    return JSON.parse(localStorage.getItem(VISITED_KEY) ?? '{}')
+  } catch {
+    return {}
+  }
+}
+
+const markVisited = (id: string) => {
+  try {
+    localStorage.setItem(VISITED_KEY, JSON.stringify({ ...visited(), [id]: true }))
+  } catch {
+    // Its blurb opens again next time, then
   }
 }
 
@@ -65,7 +84,8 @@ const initialSelection = (): string | null => {
 /**
  * The Playground page: the example picker, the picked example's blurb, and
  * the widget, which evaluates with the examples' fragments and custom
- * operators. Picking an example remounts the widget with its expression and
+ * operators. A blurb opens as a dialog the first time the reader opens its
+ * example. Picking an example remounts the widget with its expression and
  * data. An expression from an "open in editor" link keeps the instance its
  * page used, and has no example picked until the reader picks one.
  *
@@ -75,9 +95,12 @@ const initialSelection = (): string | null => {
 export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
   const [selected, setSelected] = useState(initialSelection)
   const example = examples.find(({ id }) => id === selected)
+  const [showBlurb, setShowBlurb] = useState(false)
 
   useEffect(() => {
-    if (selected !== null) remember(selected)
+    if (selected === null) return
+    remember(selected)
+    if (blurbs[selected] && !visited()[selected]) setShowBlurb(true)
   }, [selected])
 
   const pick = (id: string) => {
@@ -109,11 +132,15 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
         </select>
       </label>
 
-      {blurb && (
-        <details className="fds-blurb" open>
-          <summary>{blurb.title}</summary>
-          <div className="fds-blurb-body" dangerouslySetInnerHTML={{ __html: blurb.html }} />
-        </details>
+      {blurb && showBlurb && (
+        <BlurbDialog
+          key={`blurb-${example.id}`}
+          blurb={blurb}
+          onClose={() => {
+            markVisited(example.id)
+            setShowBlurb(false)
+          }}
+        />
       )}
 
       {example ? (
