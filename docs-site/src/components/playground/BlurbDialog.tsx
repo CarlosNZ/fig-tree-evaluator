@@ -19,7 +19,7 @@ export default function BlurbDialog({ blurb, onClose }: BlurbDialogProps) {
 
   return (
     <dialog
-      className="fds-blurb-dialog"
+      className="fds-dialog"
       ref={dialog}
       aria-labelledby="fds-blurb-dialog-title"
       onClose={onClose}
@@ -29,9 +29,9 @@ export default function BlurbDialog({ blurb, onClose }: BlurbDialogProps) {
         if (event.target === dialog.current) dialog.current.close()
       }}
     >
-      <div className="fds-blurb-dialog-content">
+      <div className="fds-dialog-content">
         <div className="fds-widget-toolbar not-content">
-          <h2 id="fds-blurb-dialog-title" className="fds-blurb-dialog-title">
+          <h2 id="fds-blurb-dialog-title" className="fds-dialog-title">
             {blurb.title}
           </h2>
           <button className="fds-widget-action" onClick={() => dialog.current?.close()}>

@@ -31,8 +31,11 @@ const TextEditor = ({ value, onChange, onKeyDown }: TextEditorProps) => (
   />
 )
 
-/** Both editors read and write JSON5, as the rest of the site shows it. */
-const json5Props = {
+/**
+ * The Playground's tree editors read and write JSON5, as the rest of the site
+ * shows it, and edit an object or array as text in the site's JSON5 pane.
+ */
+export const json5Props = {
   jsonParse: JSON5.parse,
   jsonStringify: (value: JsonData) => toJson5(value),
   TextEditor,

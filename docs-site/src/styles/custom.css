@@ -1388,22 +1388,23 @@
 }
 
 /*
- * json-edit-react's type dropdown, on a dark page: a native <select> in a
- * white box, which takes the page's colours. Its variables are set on :root,
- * so the widget's own values override them here.
+ * json-edit-react's type dropdown, on a dark page (in the widget, and in the
+ * Playground's Configuration panel): a native <select> in a white box, which
+ * takes the page's colours. Its variables are set on :root, so the widget's
+ * own values override them here.
  */
-:root[data-theme='dark'] .fds-widget {
+:root[data-theme='dark'] :is(.fds-widget, .fds-config-dialog) {
   --jer-select-border: var(--sl-color-gray-5);
   --jer-select-focus: var(--sl-color-gray-3);
   --jer-select-arrow: var(--sl-color-gray-3);
 }
 
-:root[data-theme='dark'] .fds-widget .jer-select {
+:root[data-theme='dark'] :is(.fds-widget, .fds-config-dialog) .jer-select {
   background: var(--sl-color-bg);
   color-scheme: dark;
 }
 
-:root[data-theme='dark'] .fds-widget .jer-select select {
+:root[data-theme='dark'] :is(.fds-widget, .fds-config-dialog) .jer-select select {
   color: var(--sl-color-text);
 }
 
@@ -1419,7 +1420,9 @@
   color: var(--sl-color-text);
 }
 
-:root[data-theme='dark'] .fds-widget input.ft-select-input::placeholder,
+:root[data-theme='dark']
+  :is(.fds-widget, .fds-playground-footer)
+  input.ft-select-input::placeholder,
 :root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-placeholder,
 :root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-chevron {
   color: var(--sl-color-gray-3);
@@ -1445,12 +1448,6 @@
   background-color: var(--sl-color-gray-6);
 }
 
-/* The current option keeps the editor's own colours when it's highlighted too */
-:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-selected {
-  background-color: rgb(27, 38, 101);
-  color: white;
-}
-
 :root[data-theme='dark']
   :is(.fds-widget, .fds-playground-footer)
   .ft-select-option.ft-select-disabled {
@@ -1458,25 +1455,34 @@
   background-color: transparent;
 }
 
-:root[data-theme='dark'] .fds-widget .ft-select-option-description {
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-option-description {
   color: var(--sl-color-gray-2);
 }
 
-:root[data-theme='dark'] .fds-widget .ft-select-option-hint {
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-option-hint {
   color: var(--sl-color-text-accent);
 }
 
-:root[data-theme='dark'] .fds-widget .ft-select-selected {
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-selected {
   background-color: var(--sl-color-accent-low);
   color: var(--sl-color-text-accent);
 }
 
-:root[data-theme='dark'] .fds-widget .ft-select-selected .ft-select-option-description,
-:root[data-theme='dark'] .fds-widget .ft-select-disabled .ft-select-option-description {
+:root[data-theme='dark']
+  :is(.fds-widget, .fds-playground-footer)
+  .ft-select-selected
+  .ft-select-option-description,
+:root[data-theme='dark']
+  :is(.fds-widget, .fds-playground-footer)
+  .ft-select-disabled
+  .ft-select-option-description {
   color: inherit;
 }
 
-:root[data-theme='dark'] .fds-widget .ft-select-selected .ft-select-option-hint {
+:root[data-theme='dark']
+  :is(.fds-widget, .fds-playground-footer)
+  .ft-select-selected
+  .ft-select-option-hint {
   color: #ffd24d;
 }
 
@@ -1802,10 +1808,14 @@
   color: var(--sl-color-gray-3);
 }
 
-/* A blurb as a dialog (BlurbDialog.tsx), styled as the expanded overlay */
-.fds-blurb-dialog {
+/*
+ * The Playground's dialogs (BlurbDialog.tsx, ConfigDialog.tsx), styled as the
+ * expanded overlay: a toolbar with the title and a Close, over a body that
+ * scrolls
+ */
+.fds-dialog {
   margin: auto;
-  width: min(92vw, 52rem);
+  width: min(92vw, var(--fds-dialog-width, 52rem));
   max-height: 85vh;
   padding: 0;
   border: 1px solid var(--sl-color-hairline);
@@ -1814,30 +1824,31 @@
   color: var(--sl-color-text);
 }
 
-.fds-blurb-dialog::backdrop {
+.fds-dialog::backdrop {
   background: rgb(0 0 0 / 0.5);
 }
 
-:root:has(.fds-blurb-dialog[open]) {
+:root:has(.fds-dialog[open]) {
   overflow: hidden;
 }
 
-.fds-blurb-dialog-content {
+.fds-dialog-content {
   display: flex;
   flex-direction: column;
   max-height: 85vh;
 }
 
-.fds-blurb-dialog .fds-widget-toolbar {
+.fds-dialog .fds-widget-toolbar {
   flex: none;
 }
 
-.fds-blurb-dialog .fds-blurb-dialog-title {
+.fds-dialog .fds-dialog-title {
   margin: 0;
   font-size: var(--sl-text-lg);
   color: var(--sl-color-white);
 }
 
+/* An example's blurb */
 .fds-blurb-body {
   overflow-y: auto;
   padding: 1rem 1.25rem 1.25rem;
@@ -1847,6 +1858,141 @@
 .fds-blurb-body img {
   max-width: 100%;
   height: auto;
+}
+
+/* The Configuration panel: sections of labelled fields, then Cancel and Save */
+.fds-config-dialog {
+  --fds-dialog-width: 42rem;
+}
+
+.fds-config-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  overflow-y: auto;
+  padding: 1rem 1.25rem 1.25rem;
+  font-size: var(--sl-text-sm);
+}
+
+.fds-config-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.fds-config-section + .fds-config-section {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--sl-color-hairline);
+}
+
+.fds-config-heading {
+  margin: 0;
+  font-size: var(--sl-text-base);
+  font-weight: 600;
+  color: var(--sl-color-white);
+}
+
+.fds-config-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.fds-config-label {
+  font-weight: 600;
+  color: var(--sl-color-gray-2);
+}
+
+.fds-config-hint {
+  font-weight: normal;
+  color: var(--sl-color-gray-3);
+}
+
+.fds-config-field :is(input, textarea) {
+  font: inherit;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.375rem;
+  background: var(--sl-color-bg);
+  color: var(--sl-color-text);
+}
+
+.fds-config-field textarea {
+  min-height: 3.5em;
+  resize: vertical;
+  font-family: var(--__sl-font-mono);
+  font-size: var(--sl-text-xs);
+}
+
+/* Short fields side by side, such as the cache's size and time */
+.fds-config-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.6rem 1rem;
+  align-items: end;
+}
+
+.fds-config-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--sl-color-gray-2);
+}
+
+.fds-config-check input {
+  accent-color: var(--sl-color-accent);
+}
+
+/* A section's optional part, folded away until it's wanted */
+.fds-config-more > summary {
+  font-weight: 600;
+  color: var(--sl-color-gray-2);
+  cursor: pointer;
+}
+
+.fds-config-more[open] > summary {
+  margin-bottom: 0.6rem;
+}
+
+.fds-config-more > .fds-config-section {
+  padding-left: 1rem;
+}
+
+/* A tree editor in the panel, on the editors' own background (.fds-widget) */
+.fds-config-tree {
+  padding: 0.25rem;
+  border-radius: 0.375rem;
+  background: color-mix(in oklab, var(--sl-color-bg), var(--sl-color-text) 4%);
+}
+
+.fds-config-cache {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: var(--sl-color-gray-3);
+}
+
+.fds-config-footer {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem 0.75rem;
+  padding: 0.6rem 1.25rem;
+  border-top: 1px solid var(--sl-color-hairline);
+  background: var(--sl-color-bg-nav);
+}
+
+:is(.fds-config-footer, .fds-config-cache) .fds-widget-action {
+  margin-left: 0;
+}
+
+.fds-config-error {
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--fds-error-text);
+  font-size: var(--sl-text-sm);
 }
 
 /* ── The tree's evaluation toasts (EvaluationToast.tsx) ── */
