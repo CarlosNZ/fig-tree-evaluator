@@ -128,7 +128,7 @@ The hook is called with three arguments:
 
 - **`literalParams`**: the node's parameter values that are known (i.e. don't need to be evaluated) before anything runs, by name. A parameter omitted from the node gets its default, where there is one: the instance's [`operatorDefaults`](/guides/setup/#defaults-for-an-operator) entry, or else the definition's `default`.
 - **`helpers`**: functions for reading and type-checking values the way FigTree itself does ([Helpers](#helpers)).
-- **`authored`**: a `Set` of the names of the parameters the configuration author wrote on the node, as values or as expressions (unlike `literalParams`), but _not_ those filled in with defaults.
+- **`authored`**: a `Set` of the names of the parameters in the node, as values or as expressions (unlike `literalParams`), but _not_ those filled in with defaults.
 
 Here's what the hook receives for two nodes of the `regex` above:
 
@@ -165,7 +165,7 @@ Here's what the hook receives for two nodes of the `regex` above:
 | `mode`        | `'test'`           | —             | Its default                                            |
 | `replacement` | `''`               | —             | Its default (even though it does nothing in this mode) |
 
-For a check about what the configuration author _wrote_, use `authored`. For example, `regex` warns about a `replacement` outside `'replace'` mode, where it does nothing, by checking `authored.has('replacement')`. Since `replacement` has a default, it's in `literalParams` whatever the `mode`, and it wouldn't make sense to warn the configuration author about something they didn't actually write (and can't change).
+For a check about what the expression author _wrote_, use `authored`. For example, `regex` warns about a `replacement` outside `'replace'` mode, where it does nothing, by checking `authored.has('replacement')`. Since `replacement` has a default, it's in `literalParams` whatever the `mode`, and it wouldn't make sense to warn the expression author about something they didn't actually write (and can't change).
 
 <Callout kind="caution" title="Check each value's type">
   `literalParams` isn't typed from the declarations, and a value of the wrong type still reaches the hook, with its type error reported separately. So check a value's type before using it, as `regex` does with `typeof pattern === 'string'`, which also tells you whether the value is known.

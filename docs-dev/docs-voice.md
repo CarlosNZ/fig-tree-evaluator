@@ -28,14 +28,14 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
   - Before: a stand-in opening "Errors no fallback catches" with "FigTree is _strict where it can be, and forgiving where it has to be_, and these are the strict cases:"
   - After: "Some errors won't be caught by a fallback, by design — errors that should be handled during authoring, or are due to defined resource limits or manual cancellation, must be dealt with separately:"
 - **"A key prefixed with `$`" (or "`$`-prefixed key"), never "`$` key".** The short form leans on a term the reader has to remember.
-- **The people who write expressions are "configuration authors".** Never phrase a scenario so it implies end users write them.
+- **The people who write expressions are "expression authors",** never "configuration authors" or "author" alone. Name them only where a person matters to the point, such as someone saving a rule; otherwise say what's written or what happens, as in "what's written on the node". Never phrase a scenario so it implies end users write them.
 - **An operator _returns_ its result**, never "gives".
 - **Nodes _fail_; evaluations _throw_.** A node's failure becomes a throw only when no fallback catches it.
   - Before: "with the node that threw marked `failed`"
   - After: "with the node the error came from marked `failed`"
-- **Only people and FigTree act.** A node, value or parameter doesn't write, decide or determine anything: name the configuration author, the host or FigTree.
+- **Only people and FigTree act.** A node, value or parameter doesn't write, decide or determine anything: name the expression author, the host or FigTree.
   - Before: "the parameters the node writes"; "allows other nodes in an expression to determine if…"
-  - After: "the parameters the configuration author wrote on the node"; "FigTree can tell, before anything runs, whether…"
+  - After: "the parameters the expression author wrote on the node"; "FigTree can tell, before anything runs, whether…"
 - **Where a method and a definition field share a name, write the method as `fig.validate()` or `fig.evaluate()`,** wherever both are in play, and say when each runs.
   - Before: "**`compile()` and `evaluate()`**: the first time an expression is compiled", on a page about an operator's `evaluate`
   - After: "**`fig.compile()` and `fig.evaluate()`**: … Compiling is the first thing `fig.evaluate()` does, before it evaluates any nodes"
@@ -186,7 +186,7 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
   - Cut: a section on what an operator must handle when it's cancelled, repeated or skipped, ending "An operator that [changes anything outside FigTree] is responsible for what happens…"
 - **Advise the reader only on their own use of FigTree,** not on how other tools should handle its output. A warning is framed around what the reader is building, not around why FigTree's own feature works the way it does.
   - Cut: "code that reads a trace, such as a debug panel or a logger, should pass over an event whose `type` it doesn't recognise"
-  - After: "To let configuration authors rename `$element` in an iterator of your own, declare a parameter named `as` with `evaluationMode: 'structural'`…", rather than why the core iterators' `as` has to be known before anything runs
+  - After: "To let expression authors rename `$element` in an iterator of your own, declare a parameter named `as` with `evaluationMode: 'structural'`…", rather than why the core iterators' `as` has to be known before anything runs
 - **Only what the reader can place here.** Cut what an earlier page covered, and allusions to features they haven't met; a bare API name that means nothing yet is better described by what it does. Not strict: a later feature is fine where it makes an important point and is clear without its page.
   - Before: "`validate()` also warns about two things…", on a page that hadn't mentioned `validate()`
   - Before: "covers fallbacks in full: reading what went wrong with `$error`, a fallback for every use of an operator, and the errors your app receives"

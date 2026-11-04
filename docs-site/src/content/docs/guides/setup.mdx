@@ -229,7 +229,7 @@ const fig = new FigTree({
 
 ## Limits
 
-You can set limits on the resources an expression can use, so that one a configuration author has inadvertently made too large or too slow can't hold things up ([Evaluation is bounded](/under-the-hood/guarantees/#evaluation-is-bounded)). There are two kinds:
+You can set limits on the resources an expression can use, so that one made too large or too slow by mistake can't hold things up ([Evaluation is bounded](/under-the-hood/guarantees/#evaluation-is-bounded)). There are two kinds:
 
 - **Size:** `maxDepth` limits how deep an expression tree can go, and `maxNodes` limits the total number of evaluable nodes in the expression. Both are checked before anything runs, so an expression that exceeds either never starts.
 - **Time:** `timeout` gives up on an evaluation that takes longer than that many milliseconds, fallbacks included.

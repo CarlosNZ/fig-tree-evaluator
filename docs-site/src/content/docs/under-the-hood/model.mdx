@@ -40,7 +40,7 @@ One of those facts is whether the expression is **shielded from a timeout**: whe
 
 ## Check
 
-Checking is a second pass over the _compiled_ tree. It reads each operator's definition, and compares it with what the configuration author wrote on the node:
+Checking is a second pass over the _compiled_ tree. It reads each operator's definition, and compares it with what's written on the node:
 
 - each fixed parameter value against the type the operator declares it should be, and each operator's _result_ against what the parameter it feeds in the node above expects
 - the parameters an operator or fragment requires, and the ones it doesn't have
@@ -115,7 +115,7 @@ A few things to notice in it:
 - The two reads of `order.total` are separate pieces, but the data paths are listed once in "Reads from the data".
 - It isn't shielded from a timeout, since `message` has no fallback.
 
-Checking then finds nothing to report. Had the configuration author written `thn` for `then`, this is where it would show up, with the path of the mistake, before any data exists.
+Checking then finds nothing to report. Had the expression said `thn` instead of `then`, this is where it would show up, with the path of the mistake, before any data exists.
 
 Now it's evaluated, with [tracing](/guides/tracing/) on, against an order of 80 with 15 shipping:
 

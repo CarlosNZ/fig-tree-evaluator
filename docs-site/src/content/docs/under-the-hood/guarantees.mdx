@@ -54,7 +54,7 @@ The promise covers FigTree and its own operators. A custom operator is given the
 
 > For any expression, `fig.validate()` returns a report and never throws, however malformed the expression is. The report lists every problem found, not just the first, each with its path in the expression. It can throw _only_ when its own options are invalid.
 
-A configuration author fixing an expression sees everything wrong with it at once, and an editor can show every problem in place. Something that can't be compiled at all, such as an operator that doesn't exist or a node with two operators in it, is reported, and checking carries on with the rest of the expression. That includes an expression nested too deep to walk.
+Whoever is fixing an expression sees everything wrong with it at once, and an editor can show every problem in place. Something that can't be compiled at all, such as an operator that doesn't exist or a node with two operators in it, is reported, and checking carries on with the rest of the expression. That includes an expression nested too deep to walk.
 
 `fig.getDependencies()` and `fig.isEvaluable()` make the same promise.
 

@@ -262,7 +262,7 @@ Declaring a parameter `'literal'` tells FigTree that its value can never be an e
 
 <Callout kind="caution" title="Don't forget to make it literal">
 
-To let configuration authors rename `$element` in an iterator of your own, declare a parameter named `as` with `evaluationMode: 'literal'`, as [`sortBy`](#perelement) does. Without it, FigTree never recognises the new name, so a reference such as `'$order.total'` is read as plain text, and the expression gives that same text for every element instead of each order's total. `validate()` warns about it, but evaluating doesn't fail.
+To let expression authors rename `$element` in an iterator of your own, declare a parameter named `as` with `evaluationMode: 'literal'`, as [`sortBy`](#perelement) does. Without it, FigTree never recognises the new name, so a reference such as `'$order.total'` is read as plain text, and the expression gives that same text for every element instead of each order's total. `validate()` warns about it, but evaluating doesn't fail.
 
 ```ts
 // ❌️ Wrong: no renaming, so '$order.total' is just text

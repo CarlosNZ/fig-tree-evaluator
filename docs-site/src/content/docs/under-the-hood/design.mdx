@@ -139,7 +139,7 @@ So a FigTree operator _declares_ itself: its parameters, the type each one takes
 
 ## Strict where it can be, and forgiving where it has to be
 
-The simple evaluator only finds a mistake by running into it — a mistyped operator throws the first time the rule is evaluated, which might be in front of a user next week. A configuration author wants to know about problems when they save the rule, but at that point there's no data to evaluate it with, and no user whose requests it could send.
+The simple evaluator only finds a mistake by running into it — a mistyped operator throws the first time the rule is evaluated, which might be in front of a user next week. An expression author wants to know about problems when they save the rule, but at that point there's no data to evaluate it with, and no user whose requests it could send.
 
 Compiling, though, has already resolved every operator, parameter and reference against the operators' declarations, so many mistakes are known without any data at all. FigTree can report those before anything runs, and leaves only what depends on the data for the evaluation:
 
@@ -150,9 +150,9 @@ Compiling, though, has already resolved every operator, parameter and reference 
 | A value of the wrong type, written into the expression | A value of the wrong type, read from the data |
 | A variable that's read but never defined         | A missing value, where it isn't allowed         |
 
-[`validate()`](/guides/validation/#validating-before-you-store) reports every mistake it finds, rather than stopping at the first, and never throws however broken the expression is, so a configuration author sees everything that needs fixing at once ([Checking never throws](/under-the-hood/guarantees/#checking-never-throws)).
+[`validate()`](/guides/validation/#validating-before-you-store) reports every mistake it finds, rather than stopping at the first, and never throws however broken the expression is, so an expression author sees everything that needs fixing at once ([Checking never throws](/under-the-hood/guarantees/#checking-never-throws)).
 
-The two sides are handled differently. A mistake in the expression is a [static error](/guides/validation/#static-errors), which no fallback catches, since the configuration author can fix it now. A problem in the data can't be fixed in advance, so it's handled while the expression runs, with null handling and fallbacks ([Absence isn't failure](#absence-isnt-failure)).
+The two sides are handled differently. A mistake in the expression is a [static error](/guides/validation/#static-errors), which no fallback catches, since it can be fixed now. A problem in the data can't be fixed in advance, so it's handled while the expression runs, with null handling and fallbacks ([Absence isn't failure](#absence-isnt-failure)).
 
 ## Not every argument is computed
 
@@ -221,7 +221,7 @@ Compiling settles which strings are references, so it has to know every name in 
 
 The simple evaluator's answer to anything going wrong is to throw. But real data has gaps, such as a form field left blank or a user without a middle name, and if each gap threw, every optional field would need guarding. So a missing value is `null`, and the evaluation carries on ([Null handling](/concepts/evaluation/#null-handling)).
 
-A failure is something else: an operator that can't do its job, such as an HTTP request that errors, or an illegal arithmetic operation. A configuration author can plan for one with a [fallback](/guides/fallbacks/) — the value a node returns if it fails. A failure no fallback catches makes the evaluation throw.
+A failure is something else: an operator that can't do its job, such as an HTTP request that errors, or an illegal arithmetic operation. An expression author can plan for one with a [fallback](/guides/fallbacks/) — the value a node returns if it fails. A failure no fallback catches makes the evaluation throw.
 
 ## Not repeating slow work
 
