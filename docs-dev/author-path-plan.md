@@ -51,15 +51,13 @@ The one real exception was Data references, which opened with developer material
 - **Fragments:** calling a fragment and when one fails, then writing a fragment (its definition, parameters and what its body can see), then registering. `<FragmentSetup plain>` shows a definition on its own as JSON5, so only the registering section shows the host code.
 - **HTTP and SQL:** requests and queries, relative URLs and headers, failures, a request's own timeout and caching, then the developer's sections (adding the operators, base endpoints and shared headers, cancellation and driver timeouts, writing a client). The intro says the app decides whether the operators are available.
 
+### No no-TypeScript rule
+
+The proposal's rule that the expression author's pages show no TypeScript isn't needed, as a convention or a build check. Getting started has no code blocks, and the expression author's sections on the mixed pages show an expression as `json5`, so a check would guard almost nothing.
+
 ## Open
 
-1. **The no-TypeScript rule:** whether it's needed at all, now that Getting started has no code blocks.
-2. **Fit with the pages still to be written or edited.**
-
-## Follow-ups
-
-- **The term, site-wide:** "configuration author" appears 15 times across 9 pages (Syntax at a glance, Setting up FigTree, the three Under the hood pages, the editor page, and three Custom operators pages), and "the author" alone a few times. Each becomes "expression author", and so does the voice guide's "Fixed terms" entry, which says "configuration authors".
-- **doc-planning.md:** Getting started joins "Site chapters", and the "Splitting the main path by audience" section is reduced to the outcome and a link here.
+1. **The pages still to be written:** of those, only the Visual editor component page touches this. Its "What it is" already says the editor is for apps where people other than developers write expressions; the page itself is for developers.
 
 ## How the pages divide
 
