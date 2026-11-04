@@ -1,6 +1,6 @@
 ---
 title: HTTP and SQL
-description: 'Pull live data from APIs and databases into your expressions: choosing a client, making requests and queries, and handling failures, timeouts and caching'
+description: 'Pull live data from APIs and databases into your expressions: making requests and queries, handling failures, timeouts and caching, and choosing a client'
 sidebar:
   order: 5
 ---
@@ -10,53 +10,11 @@ import Expression from '../../../components/Expression.astro'
 
 FigTree ships with three operators that can access external resources, which open up a world of possibilities to your configuration logic: `http`, `graphQL`, and `sql`. However, they're not enabled by default since they require a bit more configuration, and can potentially be abused — so they need to be explicitly allowed.
 
+Your app decides whether they're available: the developer's side is at the end of this page ([Adding the I/O operators](#adding-the-io-operators)).
+
 <Callout kind="danger" title="Reads only">
   It is strongly recommended that you don't use FigTree's I/O operators to run mutations or any operations that change external state — FigTree is for evaluating expressions, not running commands. However, enforcing this is the host's responsibility, done through the clients you provide (e.g. an SQL client with a user with `SELECT`-only permissions).
 </Callout>
-
-## Adding the I/O operators
-
-FigTree comes with four clients, each a thin wrapper around a library you may already use:
-
-- **`FetchClient`**: the `fetch` built into browsers, Node, Deno and Bun: `new FetchClient()`. To use a different one, such as a `fetch` wrapped to retry failed requests, pass it in: `new FetchClient(fetchWithRetry)`.
-- **`AxiosClient`**: [Axios](https://axios-http.com), passed in as the `axios` import itself, `new AxiosClient(axios)`, or as an instance you've configured with `axios.create()`.
-- **`PostgresConnection`**: a [node-postgres](https://node-postgres.com) `Client` or `Pool`.
-- **`SQLiteConnection`**: a database opened with the [sqlite](https://www.npmjs.com/package/sqlite) package.
-
-The libraries themselves aren't bundled, so you install the one you use and pass it in. `httpOperators()` takes an HTTP client and gives you `http` and `graphQL`, and `sqlOperators()` takes a database connection and gives you `sql`. List them in the `operators` option, along with `coreOperators`:
-
-```ts title="fig.ts"
-// @filename: pg.d.ts
-declare module 'pg' {
-  import type { PgClientLike } from 'fig-tree-evaluator'
-  const pg: { Pool: new (config?: object) => PgClientLike }
-  export default pg
-}
-// @filename: fig.ts
-// ---cut---
-import pg from 'pg'
-import {
-  FigTree,
-  coreOperators,
-  httpOperators,
-  sqlOperators,
-  FetchClient,
-  PostgresConnection,
-} from 'fig-tree-evaluator'
-
-// Connects using the PG* environment variables
-const pool = new pg.Pool()
-
-export const fig = new FigTree({
-  operators: [
-    coreOperators,
-    httpOperators(new FetchClient()),
-    sqlOperators(new PostgresConnection(pool)),
-  ],
-})
-```
-
-With no client, `httpOperators()` uses a `FetchClient`. An expression that uses an operator that hasn't been registered gives a [static error](/guides/validation/#static-errors).
 
 ## Making HTTP requests
 
@@ -140,35 +98,16 @@ Query string parameters go in `query`, and FigTree encodes them for you. A param
   `}
 />
 
-Most apps use a single GraphQL endpoint, which you can set once on the instance ([below](#base-endpoints-and-shared-headers)), so the expressions can leave `url` out.
+Most apps use a single GraphQL endpoint, which your app can set once, so expressions can leave `url` out ([Relative URLs and headers](#relative-urls-and-headers)).
 
-## Base endpoints and shared headers
+## Relative URLs and headers
 
-An app's expressions often make their requests to the same API. The instance's `http` option sets what they share: a `baseEndpoint` that relative URLs are joined to, and `headers` sent with every request. The `graphQL` option does the same for GraphQL, with its own `endpoint` and `headers`:
+Your app can also set a base for the URLs your expressions request, plus headers to send with every request, such as a token for its API. A URL that starts with `http://` or `https://` is used as written, and anything else is joined to the base. An empty `url` is the base itself.
 
-```ts title="fig.ts"
-import { FigTree, coreOperators, httpOperators } from 'fig-tree-evaluator'
-declare const apiToken: string
-// ---cut---
-const fig = new FigTree({
-  operators: [coreOperators, httpOperators()],
-  http: {
-    baseEndpoint: 'https://api.example.com/v2',
-    headers: { Authorization: `Bearer ${apiToken}` },
-  },
-  graphQL: { endpoint: 'https://api.example.com/graphql' },
-})
+A node's own `headers` are added to the app's, with the node's ones taking precedence. A GraphQL request gets the app's HTTP headers, then its GraphQL ones, then the node's. To _remove_ a header the app sets, such as a token that a public endpoint shouldn't receive, set it to `null`:
 
-// Sent to https://api.example.com/v2/products/42, with the Authorization header
-const price = { $http: { url: 'products/42', returnPath: 'price' } }
-```
-
-A URL that starts with `http://` or `https://` is used as written, and anything else is joined to the base. An empty `url` is the base itself.
-
-A node's own `headers` are added to the instance's, and a header set in both takes the node's value. A GraphQL request gets the `http` headers, then the `graphQL` ones, then the node's. To leave out a header the instance sets, such as a token that a public endpoint shouldn't receive, set it to `null`:
-
-```ts title="public.ts"
-const forecast = {
+```json5
+{
   $http: {
     url: 'https://weather.example.com/forecast',
     headers: { Authorization: null },
@@ -178,7 +117,7 @@ const forecast = {
 
 <Callout kind="caution" title="Header names are matched exactly">
 
-FigTree doesn't treat `authorization` and `Authorization` as the same header, though servers do. So `headers: { authorization: null }` doesn't remove an `Authorization` header set on the instance: both are sent. Pick one spelling for each header, and keep to it.
+FigTree doesn't treat `authorization` and `Authorization` as the same header, though servers do. So `headers: { authorization: 'Bearer abc123' }` doesn't overwrite an `Authorization` header set by your app: both are sent.
 
 </Callout>
 
@@ -246,19 +185,19 @@ A failed request fails its node like anything else, so a fallback can catch it, 
 - **`'invalid-response'`**: a successful response that isn't JSON, or a GraphQL response with neither `data` nor `errors`. `errorData` has the `url` and the `response`.
 - **`'graphql-errors'`**: a GraphQL response with errors in it, even if it has some `data` as well. `errorData.errors` is the response's array of errors.
 - **`'sql-error'`**: the database refused the query. `errorData` has the `driver` (`'postgres'` or `'sqlite'`), and usually a `driverCode`, the database's own code for the error, such as Postgres's `'42703'` for an unknown column.
-- **`'request-timeout'`**: the node's own `timeout` ran out ([below](#timeouts-and-cancellation)).
+- **`'request-timeout'`**: the node's own `timeout` ran out ([below](#a-requests-own-timeout)).
 - **`'request-failure'`**: anything else, such as the server being unreachable. It has a `message`, but no `errorData`.
 
 <Callout kind="note" title="Safe to log">
   A header's value never appears in a failure, or in a [trace](/guides/tracing/), since headers are where credentials usually go. A long response that isn't JSON, such as a proxy's error page, is cut to its first 500 characters.
 </Callout>
 
-## Timeouts and cancellation
+## A request's own timeout
 
 A slow server can hold up the whole expression. The `timeout` parameter on `http`, `graphQL` and `sql` limits how long that one request can take, in milliseconds. Running out is an ordinary failure, so the node's fallback catches it:
 
-```ts title="forecast.ts"
-const forecast = {
+```json5
+{
   $http: {
     url: 'https://weather.example.com/forecast',
     timeout: 2000,
@@ -267,42 +206,7 @@ const forecast = {
 }
 ```
 
-This is separate from the instance's `timeout`, which gives up on the whole evaluation, fallbacks included ([Limits](/guides/setup/#limits)).
-
-When a request is no longer wanted, because a timeout ran out, the evaluation was cancelled, or an `and` or `find` already had its answer, FigTree cancels it through the client. The HTTP clients abort the request. The SQL drivers can't stop a query that's already running, so the node still fails on time, but the query carries on in the database until it's done. A limit on the connection itself stops it there, and node-postgres sets none by default:
-
-```ts title="db.ts"
-// @filename: pg.d.ts
-declare module 'pg' {
-  import type { PgClientLike } from 'fig-tree-evaluator'
-  const pg: { Pool: new (config?: object) => PgClientLike }
-  export default pg
-}
-// @filename: db.ts
-// ---cut---
-import pg from 'pg'
-
-// The database stops any query that runs longer than 10 seconds
-const pool = new pg.Pool({ statement_timeout: 10_000 })
-```
-
-Axios has no timeout of its own either. To give every request one, pass `AxiosClient` an instance made with `axios.create()`:
-
-```ts title="http.ts"
-// @filename: axios.d.ts
-declare module 'axios' {
-  import type { AxiosLike } from 'fig-tree-evaluator'
-  const axios: AxiosLike & { create: (config?: object) => AxiosLike }
-  export default axios
-}
-// @filename: http.ts
-// ---cut---
-import axios from 'axios'
-import { AxiosClient, httpOperators } from 'fig-tree-evaluator'
-
-// Axios gives up on any request that takes longer than 10 seconds
-const http = httpOperators(new AxiosClient(axios.create({ timeout: 10_000 })))
-```
+This is separate from your app's `timeout`, which gives up on the whole evaluation, fallbacks included ([Limits](/guides/setup/#limits)).
 
 ## Caching responses
 
@@ -343,6 +247,109 @@ Putting the request in a [variable](/concepts/variables/) sends it once:
   caption="Run this with the Network tab open: one request, read twice."
 />
 
+## Adding the I/O operators
+
+FigTree comes with four clients, each a thin wrapper around a library you may already use:
+
+- **`FetchClient`**: the `fetch` built into browsers, Node, Deno and Bun: `new FetchClient()`. To use a different one, such as a `fetch` wrapped to retry failed requests, pass it in: `new FetchClient(fetchWithRetry)`.
+- **`AxiosClient`**: [Axios](https://axios-http.com), passed in as the `axios` import itself, `new AxiosClient(axios)`, or as an instance you've configured with `axios.create()`.
+- **`PostgresConnection`**: a [node-postgres](https://node-postgres.com) `Client` or `Pool`.
+- **`SQLiteConnection`**: a database opened with the [sqlite](https://www.npmjs.com/package/sqlite) package.
+
+The libraries themselves aren't bundled, so you install the one you use and pass it in. `httpOperators()` takes an HTTP client and gives you `http` and `graphQL`, and `sqlOperators()` takes a database connection and gives you `sql`. List them in the `operators` option, along with `coreOperators`:
+
+```ts title="fig.ts"
+// @filename: pg.d.ts
+declare module 'pg' {
+  import type { PgClientLike } from 'fig-tree-evaluator'
+  const pg: { Pool: new (config?: object) => PgClientLike }
+  export default pg
+}
+// @filename: fig.ts
+// ---cut---
+import pg from 'pg'
+import {
+  FigTree,
+  coreOperators,
+  httpOperators,
+  sqlOperators,
+  FetchClient,
+  PostgresConnection,
+} from 'fig-tree-evaluator'
+
+// Connects using the PG* environment variables
+const pool = new pg.Pool()
+
+export const fig = new FigTree({
+  operators: [
+    coreOperators,
+    httpOperators(new FetchClient()),
+    sqlOperators(new PostgresConnection(pool)),
+  ],
+})
+```
+
+With no client, `httpOperators()` uses a `FetchClient`. An expression that uses an operator that hasn't been registered gives a [static error](/guides/validation/#static-errors).
+
+## Base endpoints and shared headers
+
+An app's expressions often make their requests to the same API. The instance's `http` option sets what they share: a `baseEndpoint` that relative URLs are joined to, and `headers` sent with every request. The `graphQL` option does the same for GraphQL, with its own `endpoint` and `headers`:
+
+```ts title="fig.ts"
+import { FigTree, coreOperators, httpOperators } from 'fig-tree-evaluator'
+declare const apiToken: string
+// ---cut---
+const fig = new FigTree({
+  operators: [coreOperators, httpOperators()],
+  http: {
+    baseEndpoint: 'https://api.example.com/v2',
+    headers: { Authorization: `Bearer ${apiToken}` },
+  },
+  graphQL: { endpoint: 'https://api.example.com/graphql' },
+})
+
+// Sent to https://api.example.com/v2/products/42, with the Authorization header
+const price = { $http: { url: 'products/42', returnPath: 'price' } }
+```
+
+[Relative URLs and headers](#relative-urls-and-headers) covers how a node's URL and headers combine with these.
+
+## Timeouts and cancellation
+
+When a request is no longer wanted, because a timeout ran out, the evaluation was cancelled, or an `and` or `find` already had its answer, FigTree cancels it through the client. The HTTP clients abort the request. The SQL drivers can't stop a query that's already running, so the node still fails on time, but the query carries on in the database until it's done. A limit on the connection itself stops it there, and node-postgres sets none by default:
+
+```ts title="db.ts"
+// @filename: pg.d.ts
+declare module 'pg' {
+  import type { PgClientLike } from 'fig-tree-evaluator'
+  const pg: { Pool: new (config?: object) => PgClientLike }
+  export default pg
+}
+// @filename: db.ts
+// ---cut---
+import pg from 'pg'
+
+// The database stops any query that runs longer than 10 seconds
+const pool = new pg.Pool({ statement_timeout: 10_000 })
+```
+
+Axios has no timeout of its own either. To give every request one, pass `AxiosClient` an instance made with `axios.create()`:
+
+```ts title="http.ts"
+// @filename: axios.d.ts
+declare module 'axios' {
+  import type { AxiosLike } from 'fig-tree-evaluator'
+  const axios: AxiosLike & { create: (config?: object) => AxiosLike }
+  export default axios
+}
+// @filename: http.ts
+// ---cut---
+import axios from 'axios'
+import { AxiosClient, httpOperators } from 'fig-tree-evaluator'
+
+// Axios gives up on any request that takes longer than 10 seconds
+const http = httpOperators(new AxiosClient(axios.create({ timeout: 10_000 })))
+```
 
 ## Writing your own client
 

@@ -216,7 +216,7 @@ Some errors won't be caught by a fallback, by design — errors that should be 
 - **Limits and cancelling:** the evaluation's `timeout` running out, or your app aborting the evaluation's `signal` ([Setting up FigTree](/guides/setup/#limits)). Everything stops, fallbacks included: no fallback starts after the deadline, so a slow backup request can't drag it out.
 
 <Callout kind="note" title="A request's own timeout">
-  The `http` and `sql` operators' own `timeout` parameter limits a single request. Going over it is an ordinary failure, with the code `'request-timeout'`, which the node's fallback catches ([HTTP and SQL](/guides/http-and-sql/#timeouts-and-cancellation)).
+  The `http` and `sql` operators' own `timeout` parameter limits a single request. Going over it is an ordinary failure, with the code `'request-timeout'`, which the node's fallback catches ([HTTP and SQL](/guides/http-and-sql/#a-requests-own-timeout)).
 </Callout>
 
 ### Timeout shielding

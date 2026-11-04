@@ -97,7 +97,7 @@ FigTree never waits on a result it no longer needs. When the evaluation is cance
 
 For an operator that waits on something outside FigTree, such as a server or a database, in-flight requests _can_ be cancelled: just pass `context.signal` to whatever it awaits (as `sql` passes it to the connection, above).
 
-To let an expression put a time limit on a single node, as `timeout` does on `http` and `sql`, declare an `'integer'` parameter and name it in `timeoutParam`, as the `sql` definition above does. Its value, in milliseconds, is added to the signal as a timeout. Running out fails the node with `request-timeout`, an ordinary failure that the node's fallback can catch ([Timeouts and cancellation](/guides/http-and-sql/#timeouts-and-cancellation) has an example). The instance's own `timeout`, by contrast, gives up on the whole evaluation ([Limits](/guides/setup/#limits)).
+To let an expression put a time limit on a single node, as `timeout` does on `http` and `sql`, declare an `'integer'` parameter and name it in `timeoutParam`, as the `sql` definition above does. Its value, in milliseconds, is added to the signal as a timeout. Running out fails the node with `request-timeout`, an ordinary failure that the node's fallback can catch ([A request's own timeout](/guides/http-and-sql/#a-requests-own-timeout) has an example). The instance's own `timeout`, by contrast, gives up on the whole evaluation ([Limits](/guides/setup/#limits)).
 
 ## Caching
 
