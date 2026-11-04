@@ -16,21 +16,16 @@ Why:
 
 The current Concepts and Guides line is already close to the author and host line, which is why the remaining fixes are small: all six Concepts pages are mostly author material, and of the seven Guides pages, four are host-only and three are mixed (Fallbacks, Fragments, HTTP and SQL).
 
-### The author page
+### The Getting started page
 
-One new page, organised around the two sides of each feature: in a line or two each, what you write, what your app provides, and where to read more, with links to section anchors and no rules restated. It absorbs "What your app decides" from the proposal. It differs from Syntax at a glance, which says what an expression can contain; this page says how to work as an author: what to rely on the app for, how your work gets checked, how to make it robust, and the traps.
+One new page that orients both audiences and points each to the pages that teach, with no rules restated and no code blocks. It absorbs "What your app decides" from the proposal. Drafted with the full outline (static errors, surprises in the data, traps) and pruned in Carl's edit pass to three sections, since the pages it links to already make those points:
 
-It opens by naming the docs' two audiences, which overlap. In Carl's words, as a starting point for the intro: "This documentation is largely written for two different audiences, although there is inevitably some overlap: Expression authors — admins, etc who construct the expressions that define the rules of your system; and developers — the ones implementing FigTree in an app, who decide options, operator availability and offer the _tools_ used by expression authors to do what they do (editors, validating procedures, fragment authoring and access, etc.)"
+1. **The opening:** start with Concepts (said twice, on purpose), and the two different but overlapping audiences: expression authors, whoever configures the system, and developers, who implement FigTree in an app and provide the tools expression authors work with.
+2. **What your app decides:** a concrete case (a rule for when a form field shows up), then the decisions: which operators exist, what `$data` holds and whether a missing value is an error, which fragments you can call (and whether you can create your own), operator defaults, limits, and how your work gets checked.
+3. **Writing an expression:** Concepts in order, then Fragments, Checking expressions, Fallbacks and errors, Missing values, Syntax at a glance and the operator reference.
+4. **If you're the developer:** "What your app decides" is theirs to implement, then their pages after Concepts: Guides, Custom operators, the API reference, Beyond evaluation, and the visual editor component (named as a React component, so the reader knows it's for them).
 
-Then, one or two sentences per item, each linking to the section that explains it:
-
-1. **What your app decides:** which operators exist (and whether HTTP and SQL are among them), what `$data` holds, which fragments you can call, whether a missing path is an error, any operator defaults, the time limit, and how your work gets checked (an editor, a check on save, CI).
-2. **Writing:** nodes and references, variables, iteration, calling fragments, and writing fragment bodies where the app allows it. Links go to the Concepts pages and Syntax at a glance.
-3. **Before it runs:** static errors, and why no fallback catches them; checking against sample data; what an editor shows.
-4. **When the data surprises you:** a missing value is `null`; null behaviour; types aren't converted; fallbacks and `$error`; covering the whole expression; shielding from a timeout.
-5. **Traps:** `0` and `''` count as false; only a whole string is a reference; a `$` key in your own data needs `literal`.
-
-A short paragraph addresses developers too, without telling them where to start: the Concepts pages are for them as well, and everything under "What your app decides" is a decision they make.
+Its wording avoids terms the reader hasn't met yet where the reader's goal says the same thing, such as `/authoring` showing "where fallbacks should be applied" rather than which failures are uncovered.
 
 **Getting started** is its title. It's a one-page chapter, first in the sidebar, at `/getting-started/`, and the home page's "Get started" button leads to it. It orients rather than summarises, so it can come before the pages that teach, and its next link goes on to Expressions and nodes.
 
