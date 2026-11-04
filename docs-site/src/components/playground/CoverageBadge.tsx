@@ -1,47 +1,13 @@
-import { useEffect, useState } from 'react'
-import type { CoverageFinding, FallbackCoverage, FigTree } from 'fig-tree-evaluator'
-import { fallbackCoverage } from 'fig-tree-evaluator/authoring'
+import type { CoverageFinding, FallbackCoverage } from 'fig-tree-evaluator'
 import { CardLines, HoverCard, type CardLine } from 'fig-tree-editor-react'
-import { customAnalyses } from '../../lib/operators'
-
-export interface CoverageBadgeProps {
-  figTree: FigTree
-  expression: unknown
-  /** Whether the expression has no errors: its coverage means nothing until then. */
-  valid: boolean
-  strictNumbers: boolean
-  /** Changes whenever the instance's options or fragments do, which coverage depends on. */
-  revision: unknown
-}
 
 /**
  * Whether the expression is fully covered: nothing in it can fail without a
- * fallback to catch it, by `fallbackCoverage()` with the docs' custom
- * operators' analyses. A card lists each failure nothing catches. The
- * analysis is async, so the badge keeps its last answer until the next
- * settles, and shows nothing while the expression has errors.
+ * fallback to catch it (useFallbackCoverage.ts). A card lists each failure
+ * nothing catches. Nothing shows while there's no coverage, as while the
+ * expression has errors.
  */
-export default function CoverageBadge({
-  figTree,
-  expression,
-  valid,
-  strictNumbers,
-  revision,
-}: CoverageBadgeProps) {
-  const [coverage, setCoverage] = useState<FallbackCoverage | null>(null)
-
-  useEffect(() => {
-    if (!valid) return setCoverage(null)
-    let current = true
-    fallbackCoverage(figTree, expression, customAnalyses, { strictNumbers }).then(
-      (result) => current && setCoverage(result),
-      () => current && setCoverage(null)
-    )
-    return () => {
-      current = false
-    }
-  }, [figTree, expression, valid, strictNumbers, revision])
-
+export default function CoverageBadge({ coverage }: { coverage: FallbackCoverage | null }) {
   if (coverage === null) return null
   const { uncovered } = coverage
   const covered = uncovered.length === 0

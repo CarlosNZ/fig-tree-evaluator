@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { JsonData } from 'json-edit-react'
 import { Select } from 'fig-tree-editor-react'
 import { parseJson5 } from '../../lib/json5'
@@ -8,13 +8,15 @@ import { operatorListings } from '../../playground/operators'
 import BlurbDialog from './BlurbDialog'
 import ConfigDialog from './ConfigDialog'
 import { ConfigToast, type ConfigNotice } from './ConfigToast'
-import PlaygroundEditors from './PlaygroundEditors'
+import PlaygroundEditors, { type PlaygroundEditorsHandle } from './PlaygroundEditors'
 import {
   applyConfig,
   applySetup,
   initialConfig,
   playgroundFigTree,
   seedSetup,
+  type PlaygroundConfig,
+  type PlaygroundSetup,
 } from './playgroundSetup'
 
 /** An example's blurb, rendered at build time (PlaygroundPage.astro). */
@@ -100,6 +102,47 @@ const initialSelection = (): string | null => {
   return isExample(last) ? last : examples[0].id
 }
 
+let notices = 0
+
+/**
+ * Merges what an example or a link needs into the configuration, with the
+ * toast saying what that changed, or none if nothing did.
+ */
+const openSetup = (setup: PlaygroundSetup, source: ConfigNotice['source']) => {
+  const { config, changes } = applySetup(setup)
+  const notice: ConfigNotice | null = changes.length > 0 ? { id: ++notices, source, changes } : null
+  return { config, notice }
+}
+
+interface Opening {
+  selected: string | null
+  seed: PlaygroundSeed | null
+  config: PlaygroundConfig
+  notice: ConfigNotice | null
+}
+
+let opening: Opening | undefined
+
+/**
+ * What the page opens with: the example or link it shows (initialSelection),
+ * and the configuration kept from last time, with what that example or link
+ * needs merged in. Worked out once, however often React asks, so the merge
+ * and its toast happen once.
+ */
+const open = (): Opening => {
+  if (opening) return opening
+  const seed = readPlaygroundSeed(window.location.search)
+  const selected = initialSelection()
+  const example = examples.find(({ id }) => id === selected)
+  let config = initialConfig()
+  let notice: ConfigNotice | null = null
+  if (example) ({ config, notice } = openSetup(example, 'example'))
+  else if (seed) ({ config, notice } = openSetup(seedSetup(seed), 'link'))
+  if (selected !== null) remember(selected)
+  opening = { selected, seed, config, notice }
+  return opening
+}
+
 /**
  * The Playground page: the data and expression editors, which evaluate with
  * the Playground's own instance (playgroundSetup.ts), and a bar fixed to the
@@ -117,44 +160,48 @@ const initialSelection = (): string | null => {
  * the reader last picked.
  */
 export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
-  const [selected, setSelected] = useState(initialSelection)
-  const [seed] = useState(() => readPlaygroundSeed(window.location.search))
-  const [seeded] = useState(() => seed && fromSeed(seed))
+  const unseen = (id: string | null): boolean => id !== null && !!blurbs[id] && !visited()[id]
+
+  const [selected, setSelected] = useState(() => open().selected)
+  const [seeded] = useState(() => {
+    const { seed } = open()
+    return seed && fromSeed(seed)
+  })
   const example = examples.find(({ id }) => id === selected)
-  const [showBlurb, setShowBlurb] = useState(false)
-  const [config, setConfig] = useState(initialConfig)
+  const [showBlurb, setShowBlurb] = useState(() => unseen(open().selected))
+  const [config, setConfig] = useState(() => open().config)
   const [showConfig, setShowConfig] = useState(false)
-  const [notice, setNotice] = useState<ConfigNotice | null>(null)
-  const noticeId = useRef(0)
+  const [notice, setNotice] = useState(() => open().notice)
+  const editors = useRef<PlaygroundEditorsHandle>(null)
 
-  useEffect(() => {
-    const setup = example ?? (seed && seedSetup(seed))
-    if (setup) {
-      const { config, changes } = applySetup(setup)
-      setConfig(config)
-      if (changes.length > 0)
-        setNotice({ id: ++noticeId.current, source: example ? 'example' : 'link', changes })
-    }
-    if (selected === null) return
-    remember(selected)
-    if (blurbs[selected] && !visited()[selected]) setShowBlurb(true)
-  }, [selected])
-
+  // The example's configuration is in place before its editors mount, so
+  // they work out its coverage under it
   const pick = (id: string) => {
     // The URL names the example in place of whatever it held
     const url = new URL(window.location.href)
     url.search = new URLSearchParams({ [PARAM]: id }).toString()
     url.hash = ''
     window.history.replaceState(null, '', url)
+    const opened = openSetup(
+      examples.find((example) => example.id === id)!,
+      'example'
+    )
+    setConfig(opened.config)
+    if (opened.notice) setNotice(opened.notice)
+    remember(id)
+    setShowBlurb(unseen(id))
     setSelected(id)
   }
 
-  const blurb = example && blurbs[example.id]
-
-  const coverage = {
-    strictNumbers: config.options.coverage?.strictNumbers === true,
-    revision: config,
+  // The instance changes in place, which the editors can't see, so their
+  // coverage is worked out again here
+  const save = (next: PlaygroundConfig) => {
+    applyConfig(next)
+    setConfig(next)
+    editors.current?.refreshCoverage({ options: next.options.coverage })
   }
+
+  const blurb = example && blurbs[example.id]
 
   const configToast = (
     <ConfigToast
@@ -181,14 +228,7 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
       )}
 
       {showConfig && (
-        <ConfigDialog
-          config={config}
-          onSave={(next) => {
-            applyConfig(next)
-            setConfig(next)
-          }}
-          onClose={() => setShowConfig(false)}
-        />
+        <ConfigDialog config={config} onSave={save} onClose={() => setShowConfig(false)} />
       )}
 
       {example ? (
@@ -201,7 +241,8 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
           figTree={playgroundFigTree}
           operatorListings={operatorListings}
           notice={configToast}
-          coverage={coverage}
+          coverageOptions={config.options.coverage}
+          handle={editors}
         />
       ) : (
         seeded && (
@@ -212,7 +253,8 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
             figTree={playgroundFigTree}
             operatorListings={operatorListings}
             notice={configToast}
-            coverage={coverage}
+            coverageOptions={config.options.coverage}
+            handle={editors}
           />
         )
       )}
