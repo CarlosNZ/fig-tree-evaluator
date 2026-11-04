@@ -59,7 +59,6 @@ The one real exception was Data references, which opened with developer material
 ## Follow-ups
 
 - **The term, site-wide:** "configuration author" appears 15 times across 9 pages (Syntax at a glance, Setting up FigTree, the three Under the hood pages, the editor page, and three Custom operators pages), and "the author" alone a few times. Each becomes "expression author", and so does the voice guide's "Fixed terms" entry, which says "configuration authors".
-- **The `/authoring` page's intro:** one line saying it's for developers building tools for expression authors.
 - **doc-planning.md:** Getting started joins "Site chapters", and the "Splitting the main path by audience" section is reduced to the outcome and a link here.
 
 ## How the pages divide

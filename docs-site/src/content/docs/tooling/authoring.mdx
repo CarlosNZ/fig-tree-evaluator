@@ -13,7 +13,7 @@ import SourceLink from '../../../components/SourceLink.astro'
 
 Failures in expressions need [fallbacks](/guides/fallbacks/) to prevent `evaluate()` from throwing. But a fallback on one node might still allow an uncaught failure on a sibling branch to propagate to the root, and 💥! A plain-value fallback at the root is the sure-fire way to prevent this, but it's a blunt instrument, and you'll usually want fallbacks nearer each failure as well ([Covering the whole expression](/guides/fallbacks/#covering-the-whole-expression)). So it's worth knowing not just _whether_ a failure can reach the root, but _where_ each one can happen, and which fallback will catch it.
 
-That's where `fallbackCoverage()` comes in — a function that tells you if an expression is fully covered (no runtime failure can reach the root) or not, with a detailed report about the coverage status throughout the expression tree, including which fallback catches each failure.
+That's where `fallbackCoverage()` comes in — a function that tells you if an expression is fully covered (no runtime failure can reach the root) or not, with a detailed report about the coverage status throughout the expression tree, including which fallback catches each failure. It's for building the tools offered to expression authors, such as an editor that marks what isn't covered, or a check before an expression is saved.
 
 {/* TO-DO: the Playground has no Safe flag yet. Bring it across from the editor demo, or cut this paragraph before the site goes live */}
 
