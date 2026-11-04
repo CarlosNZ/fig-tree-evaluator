@@ -9,7 +9,7 @@ import { operatorListings } from '../../playground/operators'
 import BlurbDialog from './BlurbDialog'
 import ConfigDialog from './ConfigDialog'
 import PlaygroundEditors from './PlaygroundEditors'
-import { applyOptions, initialOptions, playgroundFigTree } from './playgroundSetup'
+import { applyConfig, initialConfig, playgroundFigTree } from './playgroundSetup'
 
 /** An example's blurb, rendered at build time (PlaygroundPage.astro). */
 export interface Blurb {
@@ -117,7 +117,7 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
   })
   const example = examples.find(({ id }) => id === selected)
   const [showBlurb, setShowBlurb] = useState(false)
-  const [options, setOptions] = useState(initialOptions)
+  const [config, setConfig] = useState(initialConfig)
   const [showConfig, setShowConfig] = useState(false)
 
   useEffect(() => {
@@ -152,10 +152,10 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
 
       {showConfig && (
         <ConfigDialog
-          options={options}
+          config={config}
           onSave={(next) => {
-            applyOptions(next)
-            setOptions(next)
+            applyConfig(next)
+            setConfig(next)
           }}
           onClose={() => setShowConfig(false)}
         />

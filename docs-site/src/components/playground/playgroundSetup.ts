@@ -1,12 +1,17 @@
-import { FigTree, type FigTreeOptions, type OptionsUpdate } from 'fig-tree-evaluator'
+import {
+  FigTree,
+  type FigTreeOptions,
+  type FragmentDefinition,
+  type OptionsUpdate,
+} from 'fig-tree-evaluator'
 import { siteOperators } from '../../lib/figTree'
 import { fragments } from '../../playground/fragments'
 import { customOperators } from '../../playground/operators'
 
 /**
- * The options the Playground's Configuration panel sets on its instance.
- * They're plain data, so they can be kept in local storage. The fragments are
- * kept apart from them, and the operators never change.
+ * The options the Playground's Configuration panel sets on its instance,
+ * besides its fragments. They're plain data, so they can be kept in local
+ * storage. The operators never change.
  */
 export type PlaygroundOptions = Pick<
   FigTreeOptions,
@@ -15,8 +20,23 @@ export type PlaygroundOptions = Pick<
 
 export type OperatorDefaults = NonNullable<PlaygroundOptions['operatorDefaults']>
 
-/** Where the options are kept. */
+export type Fragments = Record<string, FragmentDefinition>
+
+/** Everything the Configuration panel sets: the options, and the fragments. */
+export interface PlaygroundConfig {
+  options: PlaygroundOptions
+  fragments: Fragments
+}
+
+/**
+ * Where the options and the fragments are kept: apart, so a change to the
+ * shape of one never loses the other.
+ */
 const OPTIONS_KEY = 'fds-playground-options'
+const FRAGMENTS_KEY = 'fds-playground-fragments'
+
+/** The fragments the Playground starts with, and Reset Fragments puts back. */
+export const defaultFragments: Fragments = fragments
 
 /** FigTree's own defaults, which the panel's empty cache fields mean. */
 export const DEFAULT_CACHE_SIZE = 50
@@ -83,7 +103,11 @@ const operators = [...siteOperators, ...customOperators]
  * operators are given here, and everything else goes through
  * `applyOptions()`.
  */
-export const playgroundFigTree = new FigTree({ operators, fragments, cache: { store: cacheStore } })
+export const playgroundFigTree = new FigTree({
+  operators,
+  fragments: defaultFragments,
+  cache: { store: cacheStore },
+})
 
 /**
  * The operators that cache: what the panel's "Use cache?" turns off, each by
@@ -158,34 +182,65 @@ const prepareOptions = (
   maxNodes: options.maxNodes ?? null,
 })
 
-let applied: PlaygroundOptions = {}
+let applied: PlaygroundConfig = { options: {}, fragments: defaultFragments }
 
 /**
- * Makes `options` the instance's options, and keeps them. It throws on
- * options FigTree refuses, leaving the instance and what's kept as they were.
+ * Makes `config` the instance's, in one update: it throws on options or
+ * fragments FigTree refuses, leaving the instance as it was.
  */
-export const applyOptions = (options: PlaygroundOptions) => {
-  playgroundFigTree.updateOptions(prepareOptions(applied, options))
-  cacheStore.resize(options.cache?.maxSize ?? DEFAULT_CACHE_SIZE)
-  applied = options
+const install = (config: PlaygroundConfig) => {
+  playgroundFigTree.updateOptions({
+    ...prepareOptions(applied.options, config.options),
+    fragments: replacing(applied.fragments, config.fragments),
+  })
+  cacheStore.resize(config.options.cache?.maxSize ?? DEFAULT_CACHE_SIZE)
+  applied = config
+}
+
+const keep = (key: string, value: unknown) => {
   try {
-    localStorage.setItem(OPTIONS_KEY, JSON.stringify(options))
+    localStorage.setItem(key, JSON.stringify(value))
   } catch {
-    // Not kept, then: they apply until the page closes
+    // Not kept, then: it applies until the page closes
   }
 }
 
-/** The kept options if FigTree still accepts them, else none, applied to the instance. */
-export const initialOptions = (): PlaygroundOptions => {
+const kept = <Value>(key: string): Value | undefined => {
   try {
-    const kept = localStorage.getItem(OPTIONS_KEY)
-    if (kept) {
-      const options = JSON.parse(kept) as PlaygroundOptions
-      applyOptions(options)
-      return options
-    }
+    const text = localStorage.getItem(key)
+    return text === null ? undefined : (JSON.parse(text) as Value)
   } catch {
-    // Unreadable, or refused since they were kept
+    return undefined
   }
-  return {}
+}
+
+/**
+ * Makes `config` the instance's, and keeps it. It throws on options or
+ * fragments FigTree refuses, leaving the instance and what's kept as they
+ * were.
+ */
+export const applyConfig = (config: PlaygroundConfig) => {
+  install(config)
+  keep(OPTIONS_KEY, config.options)
+  keep(FRAGMENTS_KEY, config.fragments)
+}
+
+/**
+ * What was kept, applied to the instance: the fragments, then the options,
+ * each only if FigTree still accepts it, so one it refuses doesn't lose the
+ * other. What it refuses stays kept until the reader next saves.
+ */
+export const initialConfig = (): PlaygroundConfig => {
+  const tryInstall = (changes: Partial<PlaygroundConfig>) => {
+    try {
+      install({ ...applied, ...changes })
+    } catch {
+      // Refused since it was kept
+    }
+  }
+  const fragments = kept<Fragments>(FRAGMENTS_KEY)
+  if (fragments) tryInstall({ fragments })
+  const options = kept<PlaygroundOptions>(OPTIONS_KEY)
+  if (options) tryInstall({ options })
+  return applied
 }

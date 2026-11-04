@@ -54,7 +54,7 @@ const STARTING_VALUES: Record<string, unknown> = {
 }
 
 /** A value of a declared type: the first of a list of literals, and null for `any`. */
-const startingValueFor = (type: ExpectedType) => {
+export const startingValueFor = (type: ExpectedType) => {
   if (typeof type === 'string') return STARTING_VALUES[type] ?? null
   if ('literal' in type) return type.literal[0]
   return STARTING_VALUES[type[0]] ?? null

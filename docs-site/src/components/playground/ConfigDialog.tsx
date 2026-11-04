@@ -2,15 +2,19 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { JsonEditor } from 'json-edit-react'
 import { editorStyles } from './editorTheme'
 import { json5Props } from './PlaygroundEditors'
+import { fragmentsRestrictions } from './fragmentsEditor'
 import { operatorDefaultsRestrictions } from './operatorDefaultsEditor'
 import {
   DEFAULT_CACHE_SIZE,
   DEFAULT_CACHE_TIME,
   cacheStore,
+  defaultFragments,
   playgroundFigTree,
   setCaching,
   usesCache,
+  type Fragments,
   type OperatorDefaults,
+  type PlaygroundConfig,
   type PlaygroundOptions,
 } from './playgroundSetup'
 
@@ -27,6 +31,7 @@ interface Form {
   gqlEndpoint: string
   gqlAuthorization: string
   gqlHeaders: Headers
+  fragments: Fragments
   operatorDefaults: OperatorDefaults
   maxCacheSize: string
   maxCacheTime: string
@@ -41,13 +46,14 @@ const text = (value: unknown) => (value === undefined || value === null ? '' : S
 /** Headers without their Authorization, which the panel has a field of its own for. */
 const otherHeaders = ({ Authorization: _, ...rest }: Headers = {}) => rest
 
-const toForm = (options: PlaygroundOptions): Form => ({
+const toForm = ({ options, fragments }: PlaygroundConfig): Form => ({
   baseEndpoint: text(options.http?.baseEndpoint),
   authorization: text(options.http?.headers?.Authorization),
   headers: otherHeaders(options.http?.headers),
   gqlEndpoint: text(options.graphQL?.endpoint),
   gqlAuthorization: text(options.graphQL?.headers?.Authorization),
   gqlHeaders: otherHeaders(options.graphQL?.headers),
+  fragments,
   operatorDefaults: options.operatorDefaults ?? {},
   maxCacheSize: text(options.cache?.maxSize),
   maxCacheTime: text(options.cache?.maxTime),
@@ -74,7 +80,7 @@ const headersWith = (authorization: string, headers: Headers) =>
   block({ Authorization: given(authorization), ...headers }) as Headers | undefined
 
 /** The options the form describes, or what's wrong with one of its number fields. */
-const fromForm = (form: Form): PlaygroundOptions | string => {
+const optionsFrom = (form: Form): PlaygroundOptions | string => {
   const numbers: [string, string, string][] = [
     ['maxSize', form.maxCacheSize, 'The cache size'],
     ['maxTime', form.maxCacheTime, "The cache's max time"],
@@ -138,7 +144,7 @@ const Tree = <Data extends object>({
   data: Data
   setData: (data: Data) => void
   rootName: string
-} & Partial<typeof operatorDefaultsRestrictions>) => (
+} & Partial<typeof operatorDefaultsRestrictions & typeof fragmentsRestrictions>) => (
   <div className="fds-config-tree">
     <JsonEditor
       data={data}
@@ -157,22 +163,22 @@ const Tree = <Data extends object>({
 )
 
 export interface ConfigDialogProps {
-  options: PlaygroundOptions
-  /** Applies and keeps the options; throws on options FigTree refuses. */
-  onSave: (options: PlaygroundOptions) => void
+  config: PlaygroundConfig
+  /** Applies and keeps the configuration; throws on one FigTree refuses. */
+  onSave: (config: PlaygroundConfig) => void
   onClose: () => void
 }
 
 /**
  * The Configuration panel, as a modal dialog, open from when it mounts. It
- * edits a copy of the options, which Save applies: FigTree checks them, and
- * one it refuses shows in the panel, leaving everything as it was. Cancel,
- * Close and Escape put the copy away. A click on the backdrop doesn't, since
- * it would lose the edits.
+ * edits a copy of the options and fragments, which Save applies: FigTree
+ * checks them, and what it refuses shows in the panel, leaving everything as
+ * it was. Cancel, Close and Escape put the copy away, Reset Fragments
+ * included. A click on the backdrop doesn't, since it would lose the edits.
  */
-export default function ConfigDialog({ options, onSave, onClose }: ConfigDialogProps) {
+export default function ConfigDialog({ config, onSave, onClose }: ConfigDialogProps) {
   const dialog = useRef<HTMLDialogElement>(null)
-  const [form, setForm] = useState(() => toForm(options))
+  const [form, setForm] = useState(() => toForm(config))
   const [error, setError] = useState<string | null>(null)
   const [cacheSize, setCacheSize] = useState(cacheStore.size)
 
@@ -183,10 +189,10 @@ export default function ConfigDialog({ options, onSave, onClose }: ConfigDialogP
   const update = (changes: Partial<Form>) => setForm((current) => ({ ...current, ...changes }))
 
   const save = () => {
-    const next = fromForm(form)
-    if (typeof next === 'string') return setError(next)
+    const options = optionsFrom(form)
+    if (typeof options === 'string') return setError(options)
     try {
-      onSave(next)
+      onSave({ options, fragments: form.fragments })
     } catch (refusal) {
       return setError(refusal instanceof Error ? refusal.message : String(refusal))
     }
@@ -200,6 +206,8 @@ export default function ConfigDialog({ options, onSave, onClose }: ConfigDialogP
   }
 
   const caching = usesCache(form.operatorDefaults)
+  // Plain data, so its serialisation is enough to compare it
+  const fragmentsChanged = JSON.stringify(form.fragments) !== JSON.stringify(defaultFragments)
 
   return (
     <dialog
@@ -263,6 +271,25 @@ export default function ConfigDialog({ options, onSave, onClose }: ConfigDialogP
                 />
               </div>
             </details>
+          </section>
+
+          <section className="fds-config-section">
+            <h3 className="fds-config-heading">Fragments</h3>
+            <Tree
+              data={form.fragments}
+              setData={(fragments) => update({ fragments })}
+              rootName="fragments"
+              {...fragmentsRestrictions}
+            />
+            <div className="fds-config-actions">
+              <button
+                className="fds-widget-action"
+                disabled={!fragmentsChanged}
+                onClick={() => update({ fragments: defaultFragments })}
+              >
+                Reset fragments
+              </button>
+            </div>
           </section>
 
           <section className="fds-config-section">
