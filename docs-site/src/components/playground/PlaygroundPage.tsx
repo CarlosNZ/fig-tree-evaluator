@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { JsonData } from 'json-edit-react'
+import { Select } from 'fig-tree-editor-react'
 import { exampleFigTree, figTree, siteOperators } from '../../lib/figTree'
 import { parseJson5 } from '../../lib/json5'
 import { readPlaygroundSeed, type PlaygroundSeed } from '../../lib/playgroundLink'
@@ -65,6 +66,8 @@ const markVisited = (id: string) => {
   }
 }
 
+const exampleOptions = examples.map(({ id, name }) => ({ label: name, value: id }))
+
 const isExample = (id: string | null): id is string =>
   id !== null && examples.some((example) => example.id === id)
 
@@ -99,10 +102,11 @@ const initialSelection = (): string | null => {
 }
 
 /**
- * The Playground page: the example picker, the picked example's blurb, and
- * the data and expression editors, which evaluate with the examples'
- * fragments and custom operators. A blurb opens as a dialog the first time
- * the reader opens its example. Picking an example remounts the editors with
+ * The Playground page: the data and expression editors, which evaluate with
+ * the examples' fragments and custom operators, and a bar fixed to the foot
+ * of the window with the example picker, the version, and buttons for the
+ * picked example's blurb and the configuration. A blurb opens as a dialog the
+ * first time the reader opens its example, and again from Info. Picking an example remounts the editors with
  * its expression and data. An expression from an "open in editor" link keeps
  * the instance its page used, and has no example picked until the reader
  * picks one.
@@ -138,22 +142,6 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
 
   return (
     <div className="fds-playground-page">
-      <label className="fds-picker">
-        <span className="fds-picker-label">Example</span>
-        <select value={selected ?? ''} onChange={(event) => pick(event.target.value)}>
-          {selected === null && (
-            <option value="" disabled>
-              From a docs page
-            </option>
-          )}
-          {examples.map(({ id, name }) => (
-            <option key={id} value={id}>
-              {name}
-            </option>
-          ))}
-        </select>
-      </label>
-
       {blurb && showBlurb && (
         <BlurbDialog
           key={`blurb-${example.id}`}
@@ -178,6 +166,50 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
       ) : (
         seeded && <PlaygroundEditors key="seed" id="playground" {...seeded} />
       )}
+
+      <div className="fds-playground-footer not-content">
+        <div className="fds-playground-footer-start">
+          {/*
+            The editor's select, not a native one: a browser places a native
+            select's list where it likes, and at the foot of the screen that
+            can be far from the box. This one opens upward (custom.css).
+          */}
+          <div className="fds-picker">
+            <span className="fds-picker-label">Example</span>
+            <Select
+              className="fds-example-select"
+              options={exampleOptions}
+              selected={selected}
+              highlighted={selected}
+              setSelected={({ value }) => pick(value)}
+              placeholder="From a docs page"
+            />
+          </div>
+          <button
+            className="fds-widget-action"
+            disabled={!blurb}
+            onClick={() => setShowBlurb(true)}
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <circle cx="8" cy="8" r="6.5" />
+              <path d="M8 7.5v3.5M8 5h.01" />
+            </svg>
+            Info
+          </button>
+        </div>
+        <div className="fds-playground-footer-end">
+          <span className="fds-playground-version">fig-tree-evaluator v{figTree.version}</span>
+          {/* TO-DO: open the Options modal */}
+          <button className="fds-widget-action" disabled>
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M2.5 4.5h4M9.5 4.5h4M2.5 11.5h6M11.5 11.5h2" />
+              <circle cx="8" cy="4.5" r="1.5" />
+              <circle cx="10" cy="11.5" r="1.5" />
+            </svg>
+            Configuration
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

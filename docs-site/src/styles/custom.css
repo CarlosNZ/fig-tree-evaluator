@@ -1396,43 +1396,52 @@
 }
 
 /*
- * The editor's own select (the operator and parameter pickers), on a dark
- * page: its white boxes and list take the page's colours. Its border is
- * `!important` in the editor's stylesheet, so this one is too.
+ * The editor's own select (the operator and parameter pickers, and the
+ * Playground's example picker), on a dark page: its white boxes and list take
+ * the page's colours. Its border is `!important` in the editor's stylesheet,
+ * so this one is too.
  */
-:root[data-theme='dark'] .fds-widget .ft-select-input {
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-input {
   border-color: var(--sl-color-gray-5) !important;
   background-color: var(--sl-color-bg);
   color: var(--sl-color-text);
 }
 
 :root[data-theme='dark'] .fds-widget input.ft-select-input::placeholder,
-:root[data-theme='dark'] .fds-widget .ft-select-placeholder,
-:root[data-theme='dark'] .fds-widget .ft-select-chevron {
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-placeholder,
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-chevron {
   color: var(--sl-color-gray-3);
 }
 
-:root[data-theme='dark'] .fds-widget .ft-select-dropdown {
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-dropdown {
   border-color: var(--sl-color-gray-5);
   background-color: var(--sl-color-bg-nav);
   color: var(--sl-color-text);
   box-shadow: 0 0.3em 1em rgb(0 0 0 / 0.4);
 }
 
-:root[data-theme='dark'] .fds-widget .ft-select-group-label {
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-group-label {
   background-color: var(--sl-color-gray-6);
 }
 
-:root[data-theme='dark'] .fds-widget .ft-option-border {
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-option-border {
   border-top-color: var(--sl-color-gray-5);
 }
 
-:root[data-theme='dark'] .fds-widget .ft-select-option:hover,
-:root[data-theme='dark'] .fds-widget .ft-select-highlighted {
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-option:hover,
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-highlighted {
   background-color: var(--sl-color-gray-6);
 }
 
-:root[data-theme='dark'] .fds-widget .ft-select-option.ft-select-disabled {
+/* The current option keeps the editor's own colours when it's highlighted too */
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-selected {
+  background-color: rgb(27, 38, 101);
+  color: white;
+}
+
+:root[data-theme='dark']
+  :is(.fds-widget, .fds-playground-footer)
+  .ft-select-option.ft-select-disabled {
   color: var(--sl-color-gray-4);
   background-color: transparent;
 }
@@ -1650,7 +1659,6 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
   gap: 1rem;
   align-items: start;
-  margin-top: 1rem;
 }
 
 .fds-playground-pane {
@@ -1658,11 +1666,14 @@
   background: var(--fds-tree-bg);
 }
 
-/* An evaluation's toast, at the foot of the window, which the panes outgrow */
+/*
+ * An evaluation's toast, at the foot of the window, which the panes outgrow,
+ * above the bar there
+ */
 .fds-playground-editors > .fds-toast-region {
   position: fixed;
   right: 1rem;
-  bottom: 1rem;
+  bottom: calc(var(--fds-playground-footer-height) + 1rem);
   z-index: 10;
   width: min(24rem, calc(100vw - 2rem));
 }
@@ -1693,13 +1704,86 @@
   color: var(--sl-color-white);
 }
 
-.fds-picker select {
-  font: inherit;
-  padding: 0.3rem 0.6rem;
-  border: 1px solid var(--sl-color-hairline-shade);
-  border-radius: 0.375rem;
-  background: var(--sl-color-bg);
-  color: var(--sl-color-text);
+/*
+ * The bar fixed to the foot of the window, across the content beside the
+ * sidebar: the example picker and its Info, then the version and the
+ * configuration. The page leaves room below the editors to scroll them clear
+ * of it. On a phone, it wraps onto two rows.
+ */
+:root:has(.fds-playground-footer) {
+  --fds-playground-footer-height: 3.25rem;
+}
+
+@media (max-width: 50rem) {
+  :root:has(.fds-playground-footer) {
+    --fds-playground-footer-height: 5.75rem;
+  }
+}
+
+.fds-playground-page {
+  padding-bottom: var(--fds-playground-footer-height);
+}
+
+.fds-playground-footer {
+  position: fixed;
+  inset-inline: var(--sl-content-inline-start, 0) 0;
+  bottom: 0;
+  /* Above the editors' own layers, within the content's stacking context */
+  z-index: 100;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  min-height: var(--fds-playground-footer-height);
+  padding: 0.5rem var(--sl-content-pad-x);
+  border-top: 1px solid var(--sl-color-hairline-shade);
+  background: var(--sl-color-bg-nav);
+}
+
+.fds-playground-footer .fds-widget-action {
+  margin-left: 0;
+}
+
+/* The picker and its Info share a row, the select giving up width to fit */
+.fds-playground-footer-start {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.fds-playground-footer .fds-picker {
+  min-width: 0;
+}
+
+/* The example picker (the editor's select), whose list opens upward */
+.fds-playground-footer .fds-example-select {
+  min-width: 0;
+  font-size: var(--sl-text-sm);
+}
+
+.fds-playground-footer .fds-example-select .ft-select-trigger {
+  min-width: 14rem;
+  max-width: 100%;
+}
+
+.fds-playground-footer .fds-example-select .ft-select-dropdown {
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 0.25em;
+  max-height: min(24em, 70vh);
+}
+
+.fds-playground-footer-end {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: auto;
+}
+
+.fds-playground-version {
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-3);
 }
 
 /* A blurb as a dialog (BlurbDialog.tsx), styled as the expanded overlay */
