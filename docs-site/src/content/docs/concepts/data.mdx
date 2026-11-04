@@ -5,42 +5,13 @@ sidebar:
   order: 3
 ---
 
-import Callout from '../../../components/Callout.astro'
 import Expression from '../../../components/Expression.astro'
 
-Most expressions do something with your application's data — define logic for form fields based on a user's input, compose messages based on user data, or make API calls based on application state, for example. You pass this data to FigTree when evaluating an expression, and `$data` references, such as `$data.user.name`, read from it.
+Most expressions do something with your application's data — define logic for form fields based on a user's input, compose messages based on user data, or make API calls based on application state, for example. Your app passes this data to FigTree when it evaluates an expression, and `$data` references, such as `$data.user.name`, read from it.
 
 ## The data object
 
-FigTree takes data in two places:
-
-- **On the instance**, for values that *stay the same* from one evaluation to the next: app settings, a lookup table, the signed-in user. It's the `data` option when you create the instance, and [Setting up FigTree](/guides/setup/#changing-options) shows how to change it later.
-- **With each evaluation**, for what *changes* every time: form data, API requests, event payloads. It's `data` in `evaluate()`'s second argument.
-
-```ts title="data.ts"
-import { FigTree } from 'fig-tree-evaluator'
-
-const fig = new FigTree({ data: { currency: 'NZD', gstRate: 0.15 } })
-
-const data = { order: { id: 'A-1042', subtotal: 80.49 } }
-await fig.evaluate('$data.order.id', { data }) // => 'A-1042'
-```
-
-<Callout kind="caution" title="Per-call data replaces instance data">
-
-Data passed with an evaluation replaces the instance's data for that evaluation — the two are never merged. So above, `$data.gstRate` would give `null`, since the instance's data has been replaced by the object holding `order`. When an expression needs both, pass one object holding both:
-
-```ts title="data.ts"
-import { FigTree } from 'fig-tree-evaluator'
-const settings = { currency: 'NZD', gstRate: 0.15 }
-const fig = new FigTree({ data: settings })
-const data = { order: { id: 'A-1042', subtotal: 80.49 } }
-// ---cut---
-await fig.evaluate('$data.gstRate', { data }) // => null
-await fig.evaluate('$data.gstRate', { data: { ...settings, ...data } }) // => 0.15
-```
-
-</Callout>
+What's in the data is up to your app. It should make clear what's available to you, such as a list of the fields you can read, or sample data to [check your expression against](/guides/validation/#checking-against-sample-data). For developers, [Setting up FigTree](/guides/setup/#options-for-a-single-evaluation) shows how to pass it.
 
 ## `$data.` strings
 

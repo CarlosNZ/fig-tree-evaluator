@@ -46,6 +46,20 @@ const fig = new FigTree({ timeout: 5000 })
 const visible = await fig.evaluate(expression, { data: formData })
 ```
 
+Data on the instance suits values that _stay the same_, such as app settings or a lookup table; data passed with an evaluation suits what _changes_ every time, such as a form's answers.
+
+Data passed with an evaluation replaces the instance's data for that evaluation — the two are never merged. When an expression needs both, pass one object holding both:
+
+```ts title="data.ts"
+import { FigTree } from 'fig-tree-evaluator'
+const settings = { currency: 'NZD', gstRate: 0.15 }
+const fig = new FigTree({ data: settings })
+const data = { order: { id: 'A-1042', subtotal: 80.49 } }
+// ---cut---
+await fig.evaluate('$data.gstRate', { data }) // => null
+await fig.evaluate('$data.gstRate', { data: { ...settings, ...data } }) // => 0.15
+```
+
 <Callout kind="caution" title="Treat a result as read-only">
 
 A result can share objects with the expression, with the data and with cached results, rather than copying them. Changing one changes the other, and can change what later evaluations return:

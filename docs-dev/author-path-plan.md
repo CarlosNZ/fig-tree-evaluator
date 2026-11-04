@@ -41,7 +41,7 @@ Getting started is written before anything else here is decided, since how it tu
 
 The Concepts chapter, read in order, already walks an expression author through the language, so its order stays as it is and Getting started points to it as a whole rather than page by page. How evaluation works stays second: Variables and Iteration build on it (lazy evaluation, truthiness, `and` and `or` stopping early), so moving it later would turn those back-references into forward ones. Its developer material is small and at the ends of sections: the `await fig.evaluate()` block and the synchronous-evaluator callout, the compile-cache sentence, and the closing pointer to `operatorDefaults`. Shorthand and canonical forms is similar, with "Converting" last.
 
-The one real exception is Data references, which opens with developer material. **To do after Getting started:** move the detail in "The data object" (instance data against per-call data, its two `ts` blocks and the "Per-call data replaces instance data" callout) to Setting up FigTree's "Options for a single evaluation", leaving a sentence or two and a link.
+The one real exception was Data references, which opened with developer material. **Done:** the detail in "The data object" (instance data against per-call data, its two `ts` blocks and the "Per-call data replaces instance data" callout) moved to Setting up FigTree's "Options for a single evaluation". Data references keeps what an expression author needs: the app decides what the data holds, and should make clear what's available.
 
 ## Open, after Getting started
 
