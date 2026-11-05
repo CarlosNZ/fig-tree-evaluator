@@ -179,8 +179,6 @@ What the demo has, and where the Playground stands with each (November 2026, on 
 Still to do besides the fragment editor:
 
 - **Show trace.** The docs widget's Show trace has no counterpart on the Playground, and the new example set uses it (example 2 in [playground-examples-plan.md](playground-examples-plan.md)). The widget's other two actions are covered: coverage by the badge, and Clear cache in the Configuration panel.
-- **The CORS note** on the Playground page (a `NOTE` in `playground.mdx`): say that a reader's own API only works there if it allows cross-origin requests.
-- **The `plus` coverage finding.** With any data reference among its elements, `plus` reports "may receive something other than array, as constrained", so even the first example shows "1 uncovered". The finding probably comes from its `homogeneous` constraint, under a message naming the type. To check in the library, in a session of its own.
 - **The new example set** (below).
 
 The demo's SQL runs through a local Express and Postgres server, so it never worked on the hosted demo. The Playground's SQL already runs in the browser, on SQLite.
