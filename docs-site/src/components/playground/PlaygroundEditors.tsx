@@ -16,7 +16,14 @@ import type {
 } from 'fig-tree-evaluator'
 import { JsonEditor, type JsonData, type TextEditorProps } from 'json-edit-react'
 import { useUndo } from '@json-edit-react/utils'
-import { FigTreeEditor, type Evaluation, type FigTreeEditorHandle } from 'fig-tree-editor-react'
+import {
+  FigTreeEditor,
+  FragmentDefinitionEditor,
+  FragmentSelect,
+  type Evaluation,
+  type FigTreeEditorHandle,
+  type useFragmentEditor,
+} from 'fig-tree-editor-react'
 import 'fig-tree-editor-react/style.css'
 import { toJson5 } from '../../lib/json5'
 import { customAnalyses } from '../../lib/operators'
@@ -95,12 +102,10 @@ const useHistory = <Value,>(
   return { value, write, ...history }
 }
 
-const HistoryButtons = ({
-  history,
-}: {
-  history: { undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean }
-}) => (
-  <div className="fds-playground-history">
+type History = { undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean }
+
+const HistoryActions = ({ history }: { history: History }) => (
+  <>
     <button
       className="fds-widget-action fds-widget-action--accent"
       disabled={!history.canUndo}
@@ -121,8 +126,104 @@ const HistoryButtons = ({
       </svg>
       Redo
     </button>
+  </>
+)
+
+const HistoryButtons = ({ history }: { history: History }) => (
+  <div className="fds-playground-history">
+    <HistoryActions history={history} />
   </div>
 )
+
+export type FragmentEditor = ReturnType<typeof useFragmentEditor>
+
+/** What the editors are given in fragment mode. */
+export interface FragmentMode {
+  editor: FragmentEditor
+  /** Back to the expression, from the bar's button. */
+  onLeave: () => void
+}
+
+/**
+ * The bar across both panes in fragment mode: which fragment is being edited,
+ * the one undo history its definition has, body and declarations together,
+ * its Save, and the way back to the expression.
+ */
+const FragmentBar = ({ editor, onLeave }: FragmentMode) => (
+  <div className="fds-widget fds-playground-fragment-bar">
+    <div className="fds-widget-toolbar">
+      <div className="fds-picker">
+        <span className="fds-picker-label">Fragment</span>
+        <FragmentSelect {...editor.selectProps} />
+      </div>
+      <div className="fds-playground-fragment-actions">
+        <HistoryActions history={editor} />
+        <button
+          className="fds-widget-action fds-widget-action--primary"
+          disabled={!editor.canSave}
+          onClick={editor.save}
+        >
+          Save
+        </button>
+      </div>
+      <button className="fds-widget-action" onClick={onLeave}>
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M4 4l8 8M12 4l-8 8" />
+        </svg>
+        Back to expression
+      </button>
+    </div>
+  </div>
+)
+
+/**
+ * The left pane in fragment mode: the fragment's declarations and metadata,
+ * or the data, which a body can read too, by the switch above it. It mounts
+ * on each switch to fragment mode, so it opens on the definition.
+ */
+const DefinitionOrData = ({
+  figTree,
+  editor,
+  data,
+}: {
+  figTree: FigTree
+  editor: FragmentEditor
+  data: ReactNode
+}) => {
+  const [view, setView] = useState<'definition' | 'data'>('definition')
+  return (
+    <>
+      <div className="fds-widget-toolbar">
+        <div className="fds-segmented" role="group" aria-label="Show">
+          {(['definition', 'data'] as const).map((option) => (
+            <button
+              key={option}
+              className="fds-segmented-option"
+              aria-pressed={view === option}
+              onClick={() => setView(option)}
+            >
+              {option === 'definition' ? 'Definition' : 'Data'}
+            </button>
+          ))}
+        </div>
+      </div>
+      {view === 'definition' ? (
+        <div className="fds-playground-pane">
+          <FragmentDefinitionEditor
+            figTree={figTree}
+            {...editor.definitionProps}
+            theme={editorStyles}
+            minWidth="100%"
+            maxWidth="100%"
+            {...json5Props}
+          />
+        </div>
+      ) : (
+        data
+      )}
+    </>
+  )
+}
 
 export interface PlaygroundEditorsProps {
   /** The element id, which "open in editor" links target. */
@@ -141,6 +242,13 @@ export interface PlaygroundEditorsProps {
   notice?: ReactNode
   /** The options of the analysis behind the "Fully covered" badge. */
   coverageOptions?: FallbackCoverageOptions
+  /**
+   * Present in fragment mode, where the expression editor edits the
+   * fragment's body, the left pane its declarations or the data, and a bar
+   * above both says which fragment it is. The coverage badge is hidden, since
+   * a body's failures are its callers' to catch.
+   */
+  fragmentMode?: FragmentMode
   /** For a host that changes the instance in place, which the badge can't see. */
   handle?: Ref<PlaygroundEditorsHandle>
   /**
@@ -154,6 +262,8 @@ export interface PlaygroundEditorsProps {
 export interface PlaygroundEditorsHandle {
   /** Works out the expression's coverage again, as after a change of the instance's options. */
   refreshCoverage: (refresh?: CoverageRefresh) => Promise<FallbackCoverage | null>
+  /** The expression and the data as they stand. */
+  work: () => Work
 }
 
 /**
@@ -162,7 +272,9 @@ export interface PlaygroundEditorsHandle {
  * it, with a badge saying whether it's fully covered. Each has its own undo
  * history, with Undo and Redo below it. An Evaluate in the expression
  * reports in a toast at the foot of the window. The editors start from the
- * props, and a new example remounts them.
+ * props, and a new example remounts them. In fragment mode they edit a
+ * fragment instead (`fragmentMode`), keeping the expression and its history
+ * for the switch back.
  */
 export default function PlaygroundEditors(props: PlaygroundEditorsProps) {
   const [toast, setToast] = useState<ToastState | null>(null)
@@ -188,7 +300,9 @@ export default function PlaygroundEditors(props: PlaygroundEditorsProps) {
     customAnalyses,
     props.coverageOptions
   )
-  useImperativeHandle(props.handle, () => ({ refreshCoverage }), [refreshCoverage])
+  useImperativeHandle(props.handle, () => ({ refreshCoverage, work: () => work.current }), [
+    refreshCoverage,
+  ])
   const editor = useRef<FigTreeEditorHandle>(null)
 
   // An Evaluate in the tree: a toast once it has run, and one while it runs
@@ -210,52 +324,76 @@ export default function PlaygroundEditors(props: PlaygroundEditorsProps) {
   }
   useEffect(() => () => clearTimeout(runningTimer.current), [])
 
+  const { fragmentMode } = props
+  const dataPane = (
+    <>
+      <div className="fds-playground-pane">
+        <JsonEditor
+          data={data}
+          setData={(next) => dataHistory.write(next)}
+          rootName="data"
+          collapse={DATA_COLLAPSE}
+          showCollectionCount="when-collapsed"
+          theme={editorStyles}
+          minWidth="100%"
+          maxWidth="100%"
+          {...json5Props}
+        />
+      </div>
+      <HistoryButtons history={dataHistory} />
+    </>
+  )
+  // The body is a fragment definition's, with its own collapse
+  const source = fragmentMode
+    ? fragmentMode.editor.editorProps
+    : { expression, setExpression: expressionHistory.write, collapse: props.collapse }
+
   return (
     <div className="fds-playground-editors not-content" id={props.id}>
-      <section className="fds-widget" aria-label="Data">
-        <div className="fds-playground-pane">
-          <JsonEditor
-            data={data}
-            setData={(next) => dataHistory.write(next)}
-            rootName="data"
-            collapse={DATA_COLLAPSE}
-            showCollectionCount="when-collapsed"
-            theme={editorStyles}
-            minWidth="100%"
-            maxWidth="100%"
-            {...json5Props}
-          />
-        </div>
-        <HistoryButtons history={dataHistory} />
-      </section>
-      <section className="fds-widget" aria-label="Expression">
-        <div className="fds-playground-pane">
-          <CoverageBadge
-            coverage={coverage}
-            onReveal={(path) => editor.current?.reveal({ path })}
-          />
-          <FigTreeEditor
-            figTree={props.figTree}
-            operatorListings={props.operatorListings}
-            expression={expression}
-            setExpression={expressionHistory.write}
-            editorRef={editor}
-            // The data's root can be edited into something other than an
-            // object, which evaluation can't take
-            evaluationData={isRecord(data) ? data : undefined}
-            rootName="expression"
-            collapse={props.collapse}
-            theme={editorStyles}
-            editorTheme={editorColours}
-            onEvaluateStart={onEvaluateStart}
-            onEvaluate={onEvaluate}
-            minWidth="100%"
-            maxWidth="100%"
-            {...json5Props}
-          />
-        </div>
-        <HistoryButtons history={expressionHistory} />
-      </section>
+      {fragmentMode && <FragmentBar {...fragmentMode} />}
+      <div className="fds-playground-panes">
+        <section className="fds-widget" aria-label={fragmentMode ? 'Fragment definition' : 'Data'}>
+          {fragmentMode ? (
+            <DefinitionOrData
+              figTree={props.figTree}
+              editor={fragmentMode.editor}
+              data={dataPane}
+            />
+          ) : (
+            dataPane
+          )}
+        </section>
+        <section className="fds-widget" aria-label={fragmentMode ? 'Fragment body' : 'Expression'}>
+          <div className="fds-playground-pane">
+            {!fragmentMode && (
+              <CoverageBadge
+                coverage={coverage}
+                onReveal={(path) => editor.current?.reveal({ path })}
+              />
+            )}
+            <FigTreeEditor
+              // A switch of mode starts the tree afresh
+              key={fragmentMode ? 'fragment' : 'expression'}
+              figTree={props.figTree}
+              operatorListings={props.operatorListings}
+              {...source}
+              editorRef={editor}
+              // The data's root can be edited into something other than an
+              // object, which evaluation can't take
+              evaluationData={isRecord(data) ? data : undefined}
+              rootName="expression"
+              theme={editorStyles}
+              editorTheme={editorColours}
+              onEvaluateStart={onEvaluateStart}
+              onEvaluate={onEvaluate}
+              minWidth="100%"
+              maxWidth="100%"
+              {...json5Props}
+            />
+          </div>
+          {!fragmentMode && <HistoryButtons history={expressionHistory} />}
+        </section>
+      </div>
       <div className="fds-playground-toasts">
         {props.notice}
         <EvaluationToast toast={toast} onClose={() => setToast(null)} />

@@ -236,6 +236,17 @@ export const applyConfig = (config: PlaygroundConfig) => {
 }
 
 /**
+ * Takes fragments the fragment editor has put on the instance itself
+ * (`useFragmentEditor`, which registers what it saves) into the
+ * configuration, and keeps them. It returns the configuration.
+ */
+export const recordFragments = (fragments: Fragments): PlaygroundConfig => {
+  applied = { ...applied, fragments }
+  keep(FRAGMENTS_KEY, fragments)
+  return applied
+}
+
+/**
  * What was kept, applied to the instance: the fragments, then the options,
  * each only if FigTree still accepts it, so one it refuses doesn't lose the
  * other. What it refuses stays kept until the reader next saves.

@@ -1,12 +1,14 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { JsonData } from 'json-edit-react'
-import { Select } from 'fig-tree-editor-react'
+import { useJsonEditorConfirm } from '@json-edit-react/utils'
+import { Select, useFragmentEditor, type FragmentDraft } from 'fig-tree-editor-react'
 import { parseJson5 } from '../../lib/json5'
 import { readPlaygroundSeed, type PlaygroundSeed } from '../../lib/playgroundLink'
 import { examples } from '../../playground/examples'
 import { operatorListings } from '../../playground/operators'
 import BlurbDialog from './BlurbDialog'
 import ConfigDialog from './ConfigDialog'
+import ConfirmDialog from './ConfirmDialog'
 import { ConfigToast, type ConfigNotice } from './ConfigToast'
 import PlaygroundEditors, {
   type PlaygroundEditorsHandle,
@@ -25,6 +27,7 @@ import {
   applySetup,
   initialConfig,
   playgroundFigTree,
+  recordFragments,
   seedSetup,
   type PlaygroundConfig,
   type PlaygroundSetup,
@@ -79,6 +82,29 @@ const markVisited = (id: string) => {
     // Its blurb opens again next time, then
   }
 }
+
+/** Where the fragment editor's draft is kept, unsaved edits and all. */
+const DRAFT_KEY = 'fds-playground-fragment-draft'
+
+const keptDraft = (): FragmentDraft | undefined => {
+  try {
+    const text = localStorage.getItem(DRAFT_KEY)
+    return text === null ? undefined : JSON.parse(text)
+  } catch {
+    return undefined
+  }
+}
+
+const keepDraft = (draft: FragmentDraft) => {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+  } catch {
+    // Kept until the page closes, then
+  }
+}
+
+/** Plain data, so its serialisation is enough to compare it. */
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
 /**
  * The picker's entry for an expression from an "open in editor" link, and
@@ -164,11 +190,11 @@ const open = (): Opening => {
  * The Playground page: the data and expression editors, which evaluate with
  * the Playground's own instance (playgroundSetup.ts), and a bar fixed to the
  * foot of the window with the example picker, the version, and buttons for
- * the picked example's blurb and the Configuration panel. A blurb opens as a
- * dialog the first time the reader opens its example, and again from Info.
- * Picking an example remounts the editors with its expression and data. An
- * expression from an "open in editor" link has an entry of its own at the
- * top of the picker, so the reader can go back to it.
+ * the picked example's blurb, fragment mode and the Configuration panel. A
+ * blurb opens as a dialog the first time the reader opens its example, and
+ * again from Info. Picking an example remounts the editors with its
+ * expression and data. An expression from an "open in editor" link has an
+ * entry of its own at the top of the picker, so the reader can go back to it.
  *
  * The reader's edits to an example are kept, one set per example, and come
  * back when it's opened again, and the picker marks the examples that have
@@ -178,6 +204,12 @@ const open = (): Opening => {
  *
  * Opening an example, or a link, merges the options and fragments it needs
  * into the configuration, and a toast says what that changed, if anything.
+ *
+ * The bar's Fragments switches the editors to fragment mode, which edits a
+ * fragment's body and declarations. It starts a new fragment from the
+ * expression, unless the draft has unsaved edits, which are kept, as the
+ * draft is, from one visit to the next. Leaving fragment mode with unsaved
+ * edits, or picking an example while in it, asks whether to discard them.
  *
  * Mounted `client:only`, since what it shows depends on the URL and on what
  * the reader last picked.
@@ -212,6 +244,62 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
   const seedWork = useRef<Work | null>(null)
   // Each Reset remounts the editors, with the example as written
   const [resets, setResets] = useState(0)
+
+  const [fragmentMode, setFragmentMode] = useState(false)
+  const { confirm, dialog: confirmDialog } = useJsonEditorConfirm()
+  const [initialDraft] = useState(keptDraft)
+  // It holds the fragments too, and registers on the instance what it saves,
+  // which the configuration takes in. Every other change of the fragments
+  // reaches it through adopt().
+  const fragmentEditor = useFragmentEditor({
+    figTree: playgroundFigTree,
+    initialFragments: config.fragments,
+    initialDraft,
+    onFragmentsChange: (fragments) => {
+      const next = recordFragments(fragments)
+      setConfig(next)
+      editors.current?.refreshCoverage({ options: next.options.coverage })
+    },
+    confirmDiscard: () =>
+      confirm({
+        title: 'Discard changes?',
+        message: "This fragment has changes that haven't been saved.",
+      }),
+  })
+  useEffect(() => keepDraft(fragmentEditor.draft), [fragmentEditor.draft])
+  // The hook as last rendered, for a handler that reads it after waiting for
+  // an answer
+  const latestFragmentEditor = useRef(fragmentEditor)
+  latestFragmentEditor.current = fragmentEditor
+
+  // A configuration now on the instance, with the fragment editor told if its
+  // fragments changed
+  const adopt = (next: PlaygroundConfig) => {
+    setConfig(next)
+    if (!same(next.fragments, fragmentEditor.fragments)) fragmentEditor.setFragments(next.fragments)
+  }
+
+  const enterFragmentMode = () => {
+    fragmentEditor.startFromExpression(editors.current?.work().expression ?? null)
+    setFragmentMode(true)
+  }
+
+  // Unsaved edits are discarded, or kept for the next visit. The discard is
+  // the hook's as rendered since the question, which a change of the
+  // fragments may have changed.
+  const leaveFragmentMode = async () => {
+    if (
+      fragmentEditor.hasUnsavedEdits &&
+      (await confirm({
+        title: 'Discard changes?',
+        message: "This fragment has changes that haven't been saved. Discard them?",
+        confirmLabel: 'Discard',
+        cancelLabel: 'Keep them',
+      }))
+    )
+      latestFragmentEditor.current.discard()
+    setFragmentMode(false)
+  }
 
   // What the editors start from: the reader's edits, else the example
   const original: Work | null = example
@@ -254,7 +342,7 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
     url.hash = ''
     window.history.replaceState(null, '', url)
     const opened = openSetup(seedSetup(open().seed!), 'link')
-    setConfig(opened.config)
+    adopt(opened.config)
     if (opened.notice) setNotice(opened.notice)
     setShowBlurb(false)
     baseline.current = null
@@ -263,7 +351,8 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
 
   // The example's configuration is in place before its editors mount, so
   // they work out its coverage under it
-  const pick = (id: string) => {
+  const pick = async (id: string) => {
+    if (fragmentMode) await leaveFragmentMode()
     if (id === SEED) return pickSeed()
     // The URL names the example in place of whatever it held
     const url = new URL(window.location.href)
@@ -274,7 +363,7 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
       examples.find((example) => example.id === id)!,
       'example'
     )
-    setConfig(opened.config)
+    adopt(opened.config)
     if (opened.notice) setNotice(opened.notice)
     remember(id)
     setShowBlurb(unseen(id))
@@ -283,11 +372,22 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
   }
 
   // The instance changes in place, which the editors can't see, so their
-  // coverage is worked out again here
+  // coverage is worked out again here. A change of the fragments, Reset
+  // Fragments' included, can take away the fragment being edited, so it ends
+  // fragment mode. A draft of a fragment it removed, with no edits to keep,
+  // starts afresh from the expression, as entering fragment mode does: after
+  // adopt(), so it replaces the draft the hook keeps of a removed fragment,
+  // unregistered under its old name. One with edits is asked about, as
+  // leaving always asks.
   const save = (next: PlaygroundConfig) => {
     applyConfig(next)
-    setConfig(next)
+    const { draft, hasUnsavedEdits } = fragmentEditor
+    const removed = draft.registered && draft.name !== undefined && !(draft.name in next.fragments)
+    adopt(next)
     editors.current?.refreshCoverage({ options: next.options.coverage })
+    if (removed && !hasUnsavedEdits)
+      fragmentEditor.startFromExpression(editors.current?.work().expression ?? null)
+    if (fragmentMode && !same(next.fragments, config.fragments)) void leaveFragmentMode()
   }
 
   const blurb = example && blurbs[example.id]
@@ -344,8 +444,13 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
           coverageOptions={config.options.coverage}
           handle={editors}
           onChange={changeWork}
+          fragmentMode={
+            fragmentMode ? { editor: fragmentEditor, onLeave: leaveFragmentMode } : undefined
+          }
         />
       )}
+
+      <ConfirmDialog {...confirmDialog} />
 
       <div className="fds-playground-footer not-content">
         <div className="fds-playground-footer-start">
@@ -361,7 +466,7 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
               options={pickerOptions}
               selected={current}
               highlighted={current}
-              setSelected={({ value }) => pick(value)}
+              setSelected={({ value }) => void pick(value)}
               placeholder="From a docs page"
             />
           </div>
@@ -389,6 +494,16 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
           <span className="fds-playground-version">
             fig-tree-evaluator v{playgroundFigTree.version}
           </span>
+          <button
+            className="fds-widget-action fds-widget-action--accent"
+            aria-pressed={fragmentMode}
+            onClick={() => (fragmentMode ? void leaveFragmentMode() : enterFragmentMode())}
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M6 2.5c-1.4 0-2 .6-2 2v1.6c0 .9-.5 1.6-1.5 1.9 1 .3 1.5 1 1.5 1.9v1.6c0 1.4.6 2 2 2M10 2.5c1.4 0 2 .6 2 2v1.6c0 .9.5 1.6 1.5 1.9-1 .3-1.5 1-1.5 1.9v1.6c0 1.4-.6 2-2 2" />
+            </svg>
+            Fragments
+          </button>
           <button
             className="fds-widget-action fds-widget-action--primary"
             onClick={() => setShowConfig(true)}
