@@ -2226,6 +2226,14 @@
   font-size: var(--sl-text-sm);
 }
 
+/* In the welcome, the title of the example's blurb that follows it */
+.fds-blurb-body .fds-blurb-example-title {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--sl-color-hairline);
+  font-size: var(--sl-text-lg);
+}
+
 .fds-blurb-body img {
   max-width: 100%;
   height: auto;

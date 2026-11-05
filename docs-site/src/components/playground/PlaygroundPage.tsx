@@ -43,6 +43,8 @@ export interface Blurb {
 export interface PlaygroundPageProps {
   /** By example id. */
   blurbs: Record<string, Blurb>
+  /** What a reader's first visit opens with, above the example's blurb. */
+  welcome: Blurb
 }
 
 /** The query parameter naming an example, so a picked example can be linked to. */
@@ -83,6 +85,36 @@ const markVisited = (id: string) => {
     // Its blurb opens again next time, then
   }
 }
+
+/** Where it's remembered that the reader has had the welcome. */
+const WELCOMED_KEY = 'fds-playground-welcomed'
+
+const welcomed = (): boolean => {
+  try {
+    return localStorage.getItem(WELCOMED_KEY) !== null
+  } catch {
+    return false
+  }
+}
+
+const markWelcomed = () => {
+  try {
+    localStorage.setItem(WELCOMED_KEY, 'true')
+  } catch {
+    // It welcomes the reader again next time, then
+  }
+}
+
+const escapeHtml = (text: string) =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+/** The welcome, with the example's blurb after it, under the blurb's own title. */
+const withWelcome = (welcome: Blurb, blurb: Blurb | undefined): Blurb => ({
+  title: welcome.title,
+  html: blurb
+    ? `${welcome.html}<h2 class="fds-blurb-example-title">${escapeHtml(blurb.title)}</h2>${blurb.html}`
+    : welcome.html,
+})
 
 /** Where the fragment editor's draft is kept, unsaved edits and all. */
 const DRAFT_KEY = 'fds-playground-fragment-draft'
@@ -193,10 +225,11 @@ const open = (): Opening => {
  * foot of the window with the example picker, the version, and buttons for
  * the picked example's blurb, fragment mode, the trace and the Configuration
  * panel. A blurb opens as a dialog the first time the reader opens its
- * example, and again from Info. Picking an example remounts the editors with
- * its expression and data. An expression from an "open in editor" link has
- * an entry of its own at the top of the picker, so the reader can go back to
- * it.
+ * example, and again from Info. The reader's first visit opens with a welcome
+ * in its place, the blurb following it, unless they came by an "open in
+ * editor" link. Picking an example remounts the editors with its expression
+ * and data. An expression from an "open in editor" link has an entry of its
+ * own at the top of the picker, so the reader can go back to it.
  *
  * The reader's edits to an example are kept, one set per example, and come
  * back when it's opened again, and the picker marks the examples that have
@@ -220,7 +253,7 @@ const open = (): Opening => {
  * Mounted `client:only`, since what it shows depends on the URL and on what
  * the reader last picked.
  */
-export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
+export default function PlaygroundPage({ blurbs, welcome }: PlaygroundPageProps) {
   const unseen = (id: string | null): boolean => id !== null && !!blurbs[id] && !visited()[id]
 
   const [selected, setSelected] = useState(() => open().selected)
@@ -229,7 +262,9 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
     return seed && fromSeed(seed)
   })
   const example = examples.find(({ id }) => id === selected)
-  const [showBlurb, setShowBlurb] = useState(() => unseen(open().selected))
+  // Not for a reader who came to try an expression from a docs page
+  const [showWelcome, setShowWelcome] = useState(() => open().selected !== null && !welcomed())
+  const [showBlurb, setShowBlurb] = useState(() => !showWelcome && unseen(open().selected))
   const [config, setConfig] = useState(() => open().config)
   const [showConfig, setShowConfig] = useState(false)
   const [notice, setNotice] = useState(() => open().notice)
@@ -444,6 +479,17 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
 
   return (
     <div className="fds-playground-page">
+      {showWelcome && (
+        <BlurbDialog
+          blurb={withWelcome(welcome, blurb)}
+          onClose={() => {
+            markWelcomed()
+            if (example) markVisited(example.id)
+            setShowWelcome(false)
+          }}
+        />
+      )}
+
       {blurb && showBlurb && (
         <BlurbDialog
           key={`blurb-${example.id}`}
