@@ -120,20 +120,62 @@ const optionsFrom = (form: Form): PlaygroundOptions | string => {
   }
 }
 
+/**
+ * A labelled field: the label above it, or, with a `unit`, before it on the
+ * same line, with the unit after it
+ */
 const Field = ({
   label,
   hint,
+  unit,
   children,
 }: {
   label: string
   hint?: string
+  unit?: string
   children: ReactNode
 }) => (
-  <label className="fds-config-field">
+  <label className={`fds-config-field${unit ? ' fds-config-field--inline' : ''}`}>
     <span className="fds-config-label">
       {label} {hint && <span className="fds-config-hint">{hint}</span>}
     </span>
     {children}
+    {unit && <span className="fds-config-hint">{unit}</span>}
+  </label>
+)
+
+/**
+ * The site's tree theme, with less padding round the tree, which sits in a
+ * box of its own here rather than filling a pane
+ */
+const treeTheme = [editorStyles, { container: { padding: '0.1em 0.5em 0.25em 0.75em' } }]
+
+/**
+ * The trees read and write JSON5, as the Playground's editors do, but edit an
+ * object or array as text in json-edit-react's own text box: the site's
+ * JSON5 pane is sized for the Playground's panes, not for these
+ */
+const { TextEditor: _, ...treeJson5Props } = json5Props
+
+/**
+ * A checkbox and its label. The box sits in a span one line of the label
+ * tall, centred in it, so it's level with the label's first line however a
+ * browser draws a checkbox.
+ */
+const Check = ({
+  checked,
+  onChange,
+  children,
+}: {
+  checked: boolean
+  onChange: () => void
+  children: ReactNode
+}) => (
+  <label className="fds-config-check">
+    <span className="fds-config-check-box">
+      <input type="checkbox" checked={checked} onChange={onChange} />
+    </span>
+    <span>{children}</span>
   </label>
 )
 
@@ -155,11 +197,11 @@ const Tree = <Data extends object>({
       rootName={rootName}
       collapse={Object.keys(data).length > 0 ? 1 : 0}
       showCollectionCount="when-collapsed"
-      theme={editorStyles}
+      theme={treeTheme}
       baseFontSize={14}
       minWidth="100%"
       maxWidth="100%"
-      {...json5Props}
+      {...treeJson5Props}
       {...props}
     />
   </div>
@@ -311,19 +353,17 @@ export default function ConfigDialog({ config, onSave, onClose }: ConfigDialogPr
 
           <section className="fds-config-section">
             <h3 className="fds-config-heading">Cache</h3>
-            <label className="fds-config-check">
-              <input
-                type="checkbox"
+            <div className="fds-config-row fds-config-row--check">
+              <Check
                 checked={caching}
                 // A shortcut for the operator defaults' `noCache`
                 onChange={() =>
                   update({ operatorDefaults: setCaching(form.operatorDefaults, !caching) })
                 }
-              />
-              Use the cache
-            </label>
-            <div className="fds-config-row">
-              <Field label="Size" hint="entries">
+              >
+                Use the cache
+              </Check>
+              <Field label="Size" unit="entries">
                 <input
                   inputMode="numeric"
                   placeholder={String(DEFAULT_CACHE_SIZE)}
@@ -331,7 +371,7 @@ export default function ConfigDialog({ config, onSave, onClose }: ConfigDialogPr
                   onChange={(event) => update({ maxCacheSize: event.target.value })}
                 />
               </Field>
-              <Field label="Max time" hint="seconds">
+              <Field label="Max time" unit="seconds">
                 <input
                   inputMode="numeric"
                   placeholder={String(DEFAULT_CACHE_TIME)}
@@ -352,14 +392,12 @@ export default function ConfigDialog({ config, onSave, onClose }: ConfigDialogPr
 
           <section className="fds-config-section">
             <h3 className="fds-config-heading">Evaluation</h3>
-            <label className="fds-config-check">
-              <input
-                type="checkbox"
-                checked={form.strictDataPaths}
-                onChange={() => update({ strictDataPaths: !form.strictDataPaths })}
-              />
+            <Check
+              checked={form.strictDataPaths}
+              onChange={() => update({ strictDataPaths: !form.strictDataPaths })}
+            >
               Strict data paths: a missing path is an error
-            </label>
+            </Check>
             <details className="fds-config-more">
               <summary>Limits, none where empty</summary>
               <div className="fds-config-row">
@@ -390,15 +428,13 @@ export default function ConfigDialog({ config, onSave, onClose }: ConfigDialogPr
 
           <section className="fds-config-section">
             <h3 className="fds-config-heading">Coverage</h3>
-            <label className="fds-config-check">
-              <input
-                type="checkbox"
-                checked={form.strictNumbers}
-                onChange={() => update({ strictNumbers: !form.strictNumbers })}
-              />
+            <Check
+              checked={form.strictNumbers}
+              onChange={() => update({ strictNumbers: !form.strictNumbers })}
+            >
               Strict numbers: a number from the data may be NaN or infinite, and arithmetic may
               overflow
-            </label>
+            </Check>
           </section>
         </div>
 

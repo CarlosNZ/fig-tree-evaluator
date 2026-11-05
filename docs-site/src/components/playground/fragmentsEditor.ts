@@ -38,6 +38,7 @@ const newFragment = (name: string): FragmentDefinition => ({
     displayName: name,
     description: 'Greets someone by name',
     parameterDescriptions: { name: 'Who to greet' },
+    colors: { background: '#e8e0f8', text: '#4b2a8a' },
   },
 })
 
