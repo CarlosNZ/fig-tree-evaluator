@@ -235,6 +235,10 @@ export default function ConfigDialog({ config, onSave, onClose }: ConfigDialogPr
         <div className="fds-config-body">
           <section className="fds-config-section">
             <h3 className="fds-config-heading">HTTP</h3>
+            <p className="fds-config-note">
+              Requests are sent from your browser, so your own API only answers here if it allows
+              requests from other sites (CORS).
+            </p>
             <Field label="Base endpoint">
               <input
                 value={form.baseEndpoint}

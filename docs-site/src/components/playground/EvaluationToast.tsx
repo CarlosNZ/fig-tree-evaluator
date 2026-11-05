@@ -36,6 +36,14 @@ const Icon = ({ path }: { path: string }) => (
   </svg>
 )
 
+/**
+ * Whether a failure is a request that got no answer at all: one the browser
+ * blocked, as it does a cross-origin request the server doesn't allow, or
+ * one to a server it couldn't reach. The browser doesn't say which.
+ */
+const unanswered = ({ error }: NonNullable<Evaluation['failure']>) =>
+  error.code === 'request-failure' && (error.operator === 'http' || error.operator === 'graphQL')
+
 const TICK = 'M3.5 8.5l3 3 6-7'
 const CROSS = 'M4 4l8 8M12 4l-8 8'
 const DASH = 'M4 8h8'
@@ -138,6 +146,12 @@ const Finished = ({
         <strong>{failure.error.code}</strong> {failure.message}
         {failure.path.join() !== path.join() && <> (at {describePath(failure.path)})</>}
       </pre>
+    )}
+    {failure && unanswered(failure) && (
+      <div className="fds-toast-note">
+        The browser couldn't complete this request. If it's to your own API, check that it's
+        reachable and allows requests from other sites (CORS).
+      </div>
     )}
     {fallbacks.map((fallback) => (
       <div className="fds-toast-note" key={fallback.path.join()}>

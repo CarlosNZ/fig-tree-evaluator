@@ -2122,6 +2122,20 @@
   color: var(--sl-color-gray-3);
 }
 
+/*
+ * A note under a section's heading, such as why the reader's own API may not
+ * answer: small, with the accent down its side as a blockquote has, and
+ * closer to what's around it than the section's gap
+ */
+.fds-config-note {
+  margin: -0.3rem 0 0;
+  padding: 0.15rem 0 0.15rem 0.6rem;
+  border-inline-start: 3px solid var(--sl-color-accent);
+  font-size: var(--sl-text-xs);
+  line-height: 1.45;
+  color: var(--sl-color-gray-2);
+}
+
 .fds-config-actions {
   display: flex;
   gap: 0.5rem;
