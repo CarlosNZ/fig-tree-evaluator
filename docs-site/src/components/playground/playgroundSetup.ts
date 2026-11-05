@@ -28,18 +28,23 @@ export type OperatorDefaults = NonNullable<PlaygroundOptions['operatorDefaults']
 
 export type Fragments = Record<string, FragmentDefinition>
 
-/** Everything the Configuration panel sets: the options, and the fragments. */
+/**
+ * Everything the Configuration panel sets, the options and the fragments, and
+ * whether the footer's Trace is on, which an example can ask for too.
+ */
 export interface PlaygroundConfig {
   options: PlaygroundOptions
   fragments: Fragments
+  trace: boolean
 }
 
 /**
- * Where the options and the fragments are kept: apart, so a change to the
- * shape of one never loses the other.
+ * Where the options, the fragments and the Trace switch are kept: apart, so
+ * a change to the shape of one never loses another.
  */
 const OPTIONS_KEY = 'fds-playground-options'
 const FRAGMENTS_KEY = 'fds-playground-fragments'
+const TRACE_KEY = 'fds-playground-trace'
 
 /** The fragments the Playground starts with, and Reset Fragments puts back. */
 export const defaultFragments: Fragments = fragments
@@ -192,11 +197,12 @@ const prepareOptions = (
   maxNodes: options.maxNodes ?? null,
 })
 
-let applied: PlaygroundConfig = { options: {}, fragments: defaultFragments }
+let applied: PlaygroundConfig = { options: {}, fragments: defaultFragments, trace: false }
 
 /**
  * Makes `config` the instance's, in one update: it throws on options or
- * fragments FigTree refuses, leaving the instance as it was.
+ * fragments FigTree refuses, leaving the instance as it was. The Trace switch
+ * is the page's alone.
  */
 const install = (config: PlaygroundConfig) => {
   playgroundFigTree.updateOptions({
@@ -233,6 +239,14 @@ export const applyConfig = (config: PlaygroundConfig) => {
   install(config)
   keep(OPTIONS_KEY, config.options)
   keep(FRAGMENTS_KEY, config.fragments)
+  keep(TRACE_KEY, config.trace)
+}
+
+/** Turns the Trace switch on or off, and keeps it. It returns the configuration. */
+export const setTrace = (trace: boolean): PlaygroundConfig => {
+  applied = { ...applied, trace }
+  keep(TRACE_KEY, trace)
+  return applied
 }
 
 /**
@@ -249,7 +263,8 @@ export const recordFragments = (fragments: Fragments): PlaygroundConfig => {
 /**
  * What was kept, applied to the instance: the fragments, then the options,
  * each only if FigTree still accepts it, so one it refuses doesn't lose the
- * other. What it refuses stays kept until the reader next saves.
+ * other. What it refuses stays kept until the reader next saves. The Trace
+ * switch comes back as it was left.
  */
 export const initialConfig = (): PlaygroundConfig => {
   const tryInstall = (changes: Partial<PlaygroundConfig>) => {
@@ -263,16 +278,21 @@ export const initialConfig = (): PlaygroundConfig => {
   if (fragments) tryInstall({ fragments })
   const options = kept<PlaygroundOptions>(OPTIONS_KEY)
   if (options) tryInstall({ options })
+  applied = { ...applied, trace: kept<boolean>(TRACE_KEY) === true }
   return applied
 }
 
 /** What an example, or an "open in editor" link, asks of the configuration. */
-export type PlaygroundSetup = Pick<PlaygroundExample, 'options' | 'fragments'>
+export type PlaygroundSetup = Pick<PlaygroundExample, 'options' | 'fragments' | 'trace'>
 
-/** What an "open in editor" link asks for: what its docs page's example evaluated with. */
+/**
+ * What an "open in editor" link asks for: what its docs page's example
+ * evaluated with, and the trace if the example showed it.
+ */
 export const seedSetup = (seed: PlaygroundSeed): PlaygroundSetup => ({
   ...(seed.fragments && { fragments: docsFragments }),
   ...(seed.noCache && { options: noCache }),
+  ...(seed.action === 'showTrace' && { trace: true }),
 })
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -299,10 +319,15 @@ const merge = (previous: unknown, change: unknown, levels: number): unknown => {
  * deep, an option, then a block's key, then an operator's default or a
  * header, so a link's `noCache` keeps the reader's other defaults for that
  * operator. A fragment replaces one of the same name, and none is removed.
+ * A setup can turn Trace on, never off.
  */
-const withSetup = ({ options, fragments }: PlaygroundConfig, setup: PlaygroundSetup) => ({
+const withSetup = (
+  { options, fragments, trace }: PlaygroundConfig,
+  setup: PlaygroundSetup
+): PlaygroundConfig => ({
   options: merge(options, setup.options ?? {}, 3) as PlaygroundOptions,
   fragments: { ...fragments, ...setup.fragments },
+  trace: trace || setup.trace === true,
 })
 
 /** Plain data, so its serialisation is enough to compare it. */
@@ -352,6 +377,7 @@ const describeChanges = (before: PlaygroundConfig, after: PlaygroundConfig): str
     changes.push(`${added.length === 1 ? 'fragment' : 'fragments'} ${list(added)} added`)
   if (replaced.length > 0)
     changes.push(`${replaced.length === 1 ? 'fragment' : 'fragments'} ${list(replaced)} replaced`)
+  if (after.trace && !before.trace) changes.push('trace on')
   return changes
 }
 

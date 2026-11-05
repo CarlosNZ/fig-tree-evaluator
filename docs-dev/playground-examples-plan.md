@@ -9,7 +9,7 @@ The set should show a new visitor what FigTree can do, and it should hang togeth
 - **Each example has one main feature.** Others can appear alongside it, but the blurb is about that one.
 - **The reader is always told what to try.** The docs pages do this with comments in the data, like "Change `itemCount` to 3". The Playground should do the same.
 - **Each expression fits on a screen or two** once its tree is collapsed to its starting level.
-- **The widget's existing action buttons get used.** Show trace, Show coverage and Clear cache already work on the docs pages, and they show things a result alone can't: how the expression ran, where it's protected from failure, and what's cached. The Playground has its own editors rather than the widget, though: coverage shows as its badge and Clear cache is in its Configuration panel, but Show trace has to be built for it first ("The Playground page" in [doc-planning.md](doc-planning.md)).
+- **The widget's existing action buttons get used.** Show trace, Show coverage and Clear cache already work on the docs pages, and they show things a result alone can't: how the expression ran, where it's protected from failure, and what's cached. The Playground has its own editors rather than the widget, though: coverage shows as its badge and Clear cache is in its Configuration panel, and Show trace is the Playground's Trace view, which an example turns on with `trace: true` ("The Playground page" in [doc-planning.md](doc-planning.md)).
 
 ## The examples
 
@@ -20,7 +20,7 @@ Ordered roughly from simplest to most advanced:
    - Misspell a data path, which quietly gives `null`.
    - Misspell an operator, which is caught before anything runs, with a "did you mean".
 
-2. **Movie tickets** (_Conditional logic_, kept). The rule stays as it is. Add the **Show trace** action, so the reader can see which side of the `or` decided the answer and that the rest was skipped. That makes lazy evaluation visible, with no explanation needed. The data comments suggest an age of 12 with a parent, then 13 with a parent.
+2. **Movie tickets** (_Conditional logic_, kept). The rule stays as it is. Turn on the **Trace** view (`trace: true`), so the reader can see which side of the `or` decided the answer and that the rest was skipped. That makes lazy evaluation visible, with no explanation needed. The data comments suggest an age of 12 with a parent, then 13 with a parent.
 
 3. **A form, configured** (new; replaces _City list_). A small form definition where `visible`, `required` and `options` are expressions. The city options come from the countriesnow lookup on the chosen country, with a `[]` fallback. A licence field appears only for drivers aged 16 or over, and the postcode is required only in some countries. This is FigTree's main use case ("logic in places that can only hold data") at full size, and the existing form screenshot and the JSON Forms demo link carry over.
 

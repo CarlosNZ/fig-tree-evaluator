@@ -26,6 +26,7 @@ import {
 } from 'fig-tree-editor-react'
 import 'fig-tree-editor-react/style.css'
 import { toJson5 } from '../../lib/json5'
+import { showTrace } from '../../lib/trace'
 import { customAnalyses } from '../../lib/operators'
 import { Json5Editor } from './Json5Editor'
 import { EvaluationToast, type ToastState } from './EvaluationToast'
@@ -176,54 +177,89 @@ const FragmentBar = ({ editor, onLeave }: FragmentMode) => (
   </div>
 )
 
+/** One of the left pane's views. */
+interface PaneView {
+  key: string
+  label: string
+  content: ReactNode
+}
+
 /**
- * The left pane in fragment mode: the fragment's declarations and metadata,
- * or the data, which a body can read too, by the switch above it. It mounts
- * on each switch to fragment mode, so it opens on the definition.
+ * The left pane: its views, with a switch above them where there's more than
+ * one. It shows the chosen one, or the first while none is, or the one chosen
+ * has gone, as the trace does when Trace is turned off.
  */
-const DefinitionOrData = ({
-  figTree,
-  editor,
-  data,
+const SwitchedPane = ({
+  views,
+  chosen,
+  onChoose,
 }: {
-  figTree: FigTree
-  editor: FragmentEditor
-  data: ReactNode
+  views: PaneView[]
+  chosen: string | null
+  onChoose: (key: string) => void
 }) => {
-  const [view, setView] = useState<'definition' | 'data'>('definition')
+  const view = views.find(({ key }) => key === chosen) ?? views[0]
   return (
     <>
-      <div className="fds-widget-toolbar">
-        <div className="fds-segmented" role="group" aria-label="Show">
-          {(['definition', 'data'] as const).map((option) => (
-            <button
-              key={option}
-              className="fds-segmented-option"
-              aria-pressed={view === option}
-              onClick={() => setView(option)}
-            >
-              {option === 'definition' ? 'Definition' : 'Data'}
-            </button>
-          ))}
+      {views.length > 1 && (
+        <div className="fds-widget-toolbar">
+          <div className="fds-segmented" role="group" aria-label="Show">
+            {views.map(({ key, label }) => (
+              <button
+                key={key}
+                className="fds-segmented-option"
+                aria-pressed={view.key === key}
+                onClick={() => onChoose(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
-      {view === 'definition' ? (
-        <div className="fds-playground-pane">
-          <FragmentDefinitionEditor
-            figTree={figTree}
-            {...editor.definitionProps}
-            theme={editorStyles}
-            minWidth="100%"
-            maxWidth="100%"
-            {...json5Props}
-          />
-        </div>
-      ) : (
-        data
       )}
+      {view.content}
     </>
   )
 }
+
+/** The last Evaluate's, and whether an edit since could change its result. */
+interface Traced {
+  evaluation: Evaluation
+  outdated: boolean
+}
+
+/**
+ * The trace of the last Evaluate, with each entry's time, or how to get one,
+ * with a badge in its corner once an edit could have changed its result. A
+ * refused evaluation has none.
+ */
+const TraceView = ({ traced }: { traced: Traced | null }) => (
+  <div className="fds-playground-pane fds-playground-trace">
+    {traced === null ? (
+      <p className="fds-playground-trace-note">Evaluate any node to see its trace here.</p>
+    ) : traced.evaluation.trace ? (
+      <div className="fds-playground-trace-code">
+        <Json5Editor
+          value={showTrace(traced.evaluation.trace, { elapsed: true })}
+          label="Trace (JSON5)"
+          readOnly
+        />
+        {traced.outdated && (
+          <span
+            className="fds-playground-trace-outdated"
+            title="From before your last edit: evaluate again to update it"
+          >
+            Out of date
+          </span>
+        )}
+      </div>
+    ) : (
+      <p className="fds-playground-trace-note">
+        No trace: a static error stops the expression before any of it runs
+      </p>
+    )}
+  </div>
+)
 
 export interface PlaygroundEditorsProps {
   /** The element id, which "open in editor" links target. */
@@ -249,6 +285,11 @@ export interface PlaygroundEditorsProps {
    * a body's failures are its callers' to catch.
    */
   fragmentMode?: FragmentMode
+  /**
+   * Whether the left pane offers the trace of the last Evaluate, by a switch
+   * above it, the footer's Trace being on. Turning it on shows the trace.
+   */
+  trace?: boolean
   /** For a host that changes the instance in place, which the badge can't see. */
   handle?: Ref<PlaygroundEditorsHandle>
   /**
@@ -264,6 +305,8 @@ export interface PlaygroundEditorsHandle {
   refreshCoverage: (refresh?: CoverageRefresh) => Promise<FallbackCoverage | null>
   /** The expression and the data as they stand. */
   work: () => Work
+  /** Marks the trace out of date, as after a change of the instance's options or fragments. */
+  outdateTrace: () => void
 }
 
 /**
@@ -275,9 +318,44 @@ export interface PlaygroundEditorsHandle {
  * props, and a new example remounts them. In fragment mode they edit a
  * fragment instead (`fragmentMode`), keeping the expression and its history
  * for the switch back.
+ *
+ * With `trace`, the left pane can show the trace of the last Evaluate, which
+ * each Evaluate replaces, and does when it's turned on. An edit that could change its result marks it out
+ * of date, and a switch of mode clears it.
  */
 export default function PlaygroundEditors(props: PlaygroundEditorsProps) {
+  const { fragmentMode } = props
   const [toast, setToast] = useState<ToastState | null>(null)
+
+  const mode = fragmentMode ? 'fragment' : 'expression'
+  const [traced, setTraced] = useState<Traced | null>(null)
+  const [tracedMode, setTracedMode] = useState(mode)
+  // The left pane's view, by key, which each mode starts without, so it
+  // opens on its first. Trace turned on shows the trace.
+  const [paneView, setPaneView] = useState<string | null>(null)
+  if (tracedMode !== mode) {
+    setTracedMode(mode)
+    setTraced(null)
+    setPaneView(null)
+  }
+  const [traceOn, setTraceOn] = useState(props.trace)
+  if (traceOn !== props.trace) {
+    setTraceOn(props.trace)
+    if (props.trace) setPaneView('trace')
+  }
+  const outdateTrace = () =>
+    setTraced((current) =>
+      current && !current.outdated ? { ...current, outdated: true } : current
+    )
+  // A write the editor made itself, filling in what it was given, changes no
+  // result
+  const outdating =
+    <Args extends unknown[]>(write: (...args: Args) => void) =>
+    (...args: Args) => {
+      const options = args[1] as WriteOptions | undefined
+      if (!options?.autoUpdate) outdateTrace()
+      write(...args)
+    }
 
   // Both values as they stand, for reporting a change of either
   const work = useRef<Work>({ expression: props.expression, data: props.data })
@@ -300,9 +378,11 @@ export default function PlaygroundEditors(props: PlaygroundEditorsProps) {
     customAnalyses,
     props.coverageOptions
   )
-  useImperativeHandle(props.handle, () => ({ refreshCoverage, work: () => work.current }), [
-    refreshCoverage,
-  ])
+  useImperativeHandle(
+    props.handle,
+    () => ({ refreshCoverage, work: () => work.current, outdateTrace }),
+    [refreshCoverage]
+  )
   const editor = useRef<FigTreeEditorHandle>(null)
 
   // An Evaluate in the tree: a toast once it has run, and one while it runs
@@ -321,16 +401,19 @@ export default function PlaygroundEditors(props: PlaygroundEditorsProps) {
   const onEvaluate = (evaluation: Evaluation) => {
     clearTimeout(runningTimer.current)
     setToast({ id: toastId.current, status: 'finished', evaluation })
+    if (evaluation.status !== 'cancelled') setTraced({ evaluation, outdated: false })
   }
   useEffect(() => () => clearTimeout(runningTimer.current), [])
 
-  const { fragmentMode } = props
   const dataPane = (
     <>
       <div className="fds-playground-pane">
         <JsonEditor
           data={data}
-          setData={(next) => dataHistory.write(next)}
+          setData={(next) => {
+            outdateTrace()
+            dataHistory.write(next)
+          }}
           rootName="data"
           collapse={DATA_COLLAPSE}
           showCollectionCount="when-collapsed"
@@ -344,24 +427,52 @@ export default function PlaygroundEditors(props: PlaygroundEditorsProps) {
     </>
   )
   // The body is a fragment definition's, with its own collapse
-  const source = fragmentMode
-    ? fragmentMode.editor.editorProps
-    : { expression, setExpression: expressionHistory.write, collapse: props.collapse }
+  const fragmentEditor = fragmentMode?.editor
+  const source = fragmentEditor
+    ? {
+        ...fragmentEditor.editorProps,
+        setFragmentDefinition: outdating(fragmentEditor.editorProps.setFragmentDefinition),
+      }
+    : {
+        expression,
+        setExpression: outdating(expressionHistory.write),
+        collapse: props.collapse,
+      }
+
+  const views: PaneView[] = [
+    ...(fragmentEditor
+      ? [
+          {
+            key: 'definition',
+            label: 'Definition',
+            content: (
+              <div className="fds-playground-pane">
+                <FragmentDefinitionEditor
+                  figTree={props.figTree}
+                  {...fragmentEditor.definitionProps}
+                  setDefinition={outdating(fragmentEditor.definitionProps.setDefinition)}
+                  theme={editorStyles}
+                  minWidth="100%"
+                  maxWidth="100%"
+                  {...json5Props}
+                />
+              </div>
+            ),
+          },
+        ]
+      : []),
+    { key: 'data', label: 'Data', content: dataPane },
+    ...(props.trace
+      ? [{ key: 'trace', label: 'Trace', content: <TraceView traced={traced} /> }]
+      : []),
+  ]
 
   return (
     <div className="fds-playground-editors not-content" id={props.id}>
       {fragmentMode && <FragmentBar {...fragmentMode} />}
       <div className="fds-playground-panes">
         <section className="fds-widget" aria-label={fragmentMode ? 'Fragment definition' : 'Data'}>
-          {fragmentMode ? (
-            <DefinitionOrData
-              figTree={props.figTree}
-              editor={fragmentMode.editor}
-              data={dataPane}
-            />
-          ) : (
-            dataPane
-          )}
+          <SwitchedPane views={views} chosen={paneView} onChoose={setPaneView} />
         </section>
         <section className="fds-widget" aria-label={fragmentMode ? 'Fragment body' : 'Expression'}>
           <div className="fds-playground-pane">

@@ -52,6 +52,11 @@ export interface PlaygroundExample {
    * opened, and replacing any of the same name.
    */
   fragments?: Record<string, FragmentDefinition>
+  /**
+   * Whether the example is meant to be seen through its trace: opening it
+   * turns the Playground's Trace on, and it stays on after.
+   */
+  trace?: boolean
 }
 
 export const examples: PlaygroundExample[] = [

@@ -1784,6 +1784,40 @@
   color: var(--sl-color-black);
 }
 
+/* The left pane's Trace view: the trace, or how to get one */
+.fds-playground-trace {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem 0.75rem;
+}
+
+.fds-playground-trace-note {
+  margin: 0;
+  font-size: var(--sl-text-sm);
+  color: var(--sl-color-gray-2);
+}
+
+/* "Out of date", in the trace's top right corner, as the coverage badge sits */
+.fds-playground-trace-code {
+  position: relative;
+}
+
+.fds-playground-trace-outdated {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.5rem;
+  z-index: 1;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid currentColor;
+  border-radius: 0.375rem;
+  background: var(--sl-color-bg);
+  color: var(--fds-toast-fallback);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  cursor: default;
+}
+
 /* Undo and Redo, at the foot of each pane, like a widget's toolbar */
 .fds-playground-history {
   display: flex;
@@ -1914,6 +1948,16 @@
   margin: 0;
   padding-left: 1.1rem;
   font-size: var(--sl-text-sm);
+}
+
+/*
+ * While an object or array is edited as text, the strips down the tree's
+ * left margins that collapse a collection on a click (json-edit-react's
+ * click zones) let clicks through, since they lie over the pane's fold
+ * gutter
+ */
+.jer-editor-container:has(.jer-collection-text-edit-custom) .jer-clickzone {
+  pointer-events: none;
 }
 
 /* An object or array edited as text, in the site's JSON5 pane */
@@ -2056,6 +2100,16 @@
 .fds-playground-version {
   font-size: var(--sl-text-xs);
   color: var(--sl-color-gray-3);
+}
+
+/*
+ * Where the bar's buttons would otherwise wrap onto a second row, the version
+ * makes room, Reset example showing or not
+ */
+@media (max-width: 78rem) {
+  .fds-playground-version {
+    display: none;
+  }
 }
 
 /*

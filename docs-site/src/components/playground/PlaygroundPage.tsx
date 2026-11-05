@@ -29,6 +29,7 @@ import {
   playgroundFigTree,
   recordFragments,
   seedSetup,
+  setTrace,
   type PlaygroundConfig,
   type PlaygroundSetup,
 } from './playgroundSetup'
@@ -190,11 +191,12 @@ const open = (): Opening => {
  * The Playground page: the data and expression editors, which evaluate with
  * the Playground's own instance (playgroundSetup.ts), and a bar fixed to the
  * foot of the window with the example picker, the version, and buttons for
- * the picked example's blurb, fragment mode and the Configuration panel. A
- * blurb opens as a dialog the first time the reader opens its example, and
- * again from Info. Picking an example remounts the editors with its
- * expression and data. An expression from an "open in editor" link has an
- * entry of its own at the top of the picker, so the reader can go back to it.
+ * the picked example's blurb, fragment mode, the trace and the Configuration
+ * panel. A blurb opens as a dialog the first time the reader opens its
+ * example, and again from Info. Picking an example remounts the editors with
+ * its expression and data. An expression from an "open in editor" link has
+ * an entry of its own at the top of the picker, so the reader can go back to
+ * it.
  *
  * The reader's edits to an example are kept, one set per example, and come
  * back when it's opened again, and the picker marks the examples that have
@@ -204,6 +206,10 @@ const open = (): Opening => {
  *
  * Opening an example, or a link, merges the options and fragments it needs
  * into the configuration, and a toast says what that changed, if anything.
+ *
+ * The bar's Trace adds the trace of the last Evaluate to the left pane's
+ * views, and shows it. An example, or a link from a docs page's example that
+ * shows its trace, can turn it on too, which only adds the view.
  *
  * The bar's Fragments switches the editors to fragment mode, which edits a
  * fragment's body and declarations. It starts a new fragment from the
@@ -259,6 +265,7 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
       const next = recordFragments(fragments)
       setConfig(next)
       editors.current?.refreshCoverage({ options: next.options.coverage })
+      editors.current?.outdateTrace()
     },
     confirmDiscard: () =>
       confirm({
@@ -385,6 +392,7 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
     const removed = draft.registered && draft.name !== undefined && !(draft.name in next.fragments)
     adopt(next)
     editors.current?.refreshCoverage({ options: next.options.coverage })
+    editors.current?.outdateTrace()
     if (removed && !hasUnsavedEdits)
       fragmentEditor.startFromExpression(editors.current?.work().expression ?? null)
     if (fragmentMode && !same(next.fragments, config.fragments)) void leaveFragmentMode()
@@ -447,6 +455,7 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
           fragmentMode={
             fragmentMode ? { editor: fragmentEditor, onLeave: leaveFragmentMode } : undefined
           }
+          trace={config.trace}
         />
       )}
 
@@ -503,6 +512,16 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
               <path d="M6 2.5c-1.4 0-2 .6-2 2v1.6c0 .9-.5 1.6-1.5 1.9 1 .3 1.5 1 1.5 1.9v1.6c0 1.4.6 2 2 2M10 2.5c1.4 0 2 .6 2 2v1.6c0 .9.5 1.6 1.5 1.9-1 .3-1.5 1-1.5 1.9v1.6c0 1.4-.6 2-2 2" />
             </svg>
             Fragments
+          </button>
+          <button
+            className="fds-widget-action fds-widget-action--accent"
+            aria-pressed={config.trace}
+            onClick={() => setConfig(setTrace(!config.trace))}
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M3 3.5h10M5.5 8H13M8 12.5h5M3 3.5v9h2.5M3 8h2.5" />
+            </svg>
+            Trace
           </button>
           <button
             className="fds-widget-action fds-widget-action--primary"

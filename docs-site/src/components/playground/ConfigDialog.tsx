@@ -237,7 +237,7 @@ export default function ConfigDialog({ config, onSave, onClose }: ConfigDialogPr
     const options = optionsFrom(form)
     if (typeof options === 'string') return setError(options)
     try {
-      onSave({ options, fragments: form.fragments })
+      onSave({ ...config, options, fragments: form.fragments })
     } catch (refusal) {
       return setError(refusal instanceof Error ? refusal.message : String(refusal))
     }
