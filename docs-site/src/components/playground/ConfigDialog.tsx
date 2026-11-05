@@ -148,7 +148,7 @@ const Field = ({
  * The site's tree theme, with less padding round the tree, which sits in a
  * box of its own here rather than filling a pane
  */
-const treeTheme = [editorStyles, { container: { padding: '0.1em 0.5em 0.25em 0.75em' } }]
+const treeTheme = [editorStyles, { container: { padding: '0.1em 0.5em 0.25em 1.5em' } }]
 
 /**
  * The trees read and write JSON5, as the Playground's editors do, but edit an
