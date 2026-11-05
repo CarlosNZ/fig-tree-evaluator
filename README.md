@@ -13,7 +13,7 @@ FigTree evaluates expressions written as JSON. It lets you put real logic in pla
 <details>
 <summary><strong>Upgrading from v2?</strong></summary>
 
-> v3 is a significant redesign, and there's a converter for your existing expressions. See [Migrating from v2](https://DOCS_URL/migrating/upgrading/). The v2 docs are on the [`v2.x` branch](https://github.com/CarlosNZ/fig-tree-evaluator/tree/v2.x).
+> v3 is a significant redesign, and there's a converter for your existing expressions. See [Migrating from v2](https://carlosnz.github.io/fig-tree-evaluator/migrating/). The v2 docs are on the [`v2.x` branch](https://github.com/CarlosNZ/fig-tree-evaluator/tree/v2.x).
 
 </details>
 
@@ -69,7 +69,7 @@ Everything else is left exactly as it is.
 
 And it's still just JSON. You can store it in a database, send it over the network, or let an admin edit it in a UI, and nothing in it can execute code. An expression can only do what the operators you've registered allow, so it can't even make an HTTP request or query a database unless you've given FigTree a client to do it with.
 
-### [Try it in the Playground](https://DOCS_URL/playground/)
+### [Try it in the Playground](https://carlosnz.github.io/fig-tree-evaluator/playground/)
 
 ## Features
 
@@ -79,7 +79,7 @@ And it's still just JSON. You can store it in a database, send it over the netwo
 - 🛟 **Fallbacks** on any node, for bad responses and bad data
 - ✅ **Checked before it runs**: unknown operators (with "did you mean...") and malformed parameters are caught up front
 - 🧩 **Fragments**: named, reusable expressions that you call like operators and compose into larger ones
-- 🛠️ **[Custom operators](https://DOCS_URL/custom-operators/writing/)**: fully typed, written with `defineOperator`
+- 🛠️ **[Custom operators](https://carlosnz.github.io/fig-tree-evaluator/custom-operators/writing/)**: fully typed, written with `defineOperator`
 - 🎨 **[Visual editor](https://github.com/CarlosNZ/fig-tree-editor-react)**: drop an expression editor into your own app
 
 It's a good fit wherever rules change more often than code:
@@ -200,17 +200,17 @@ const fig = new FigTree({
 
 ## Documentation
 
-The full documentation is at **[DOCS_URL](https://DOCS_URL/)**:
+The full documentation is at **[carlosnz.github.io/fig-tree-evaluator](https://carlosnz.github.io/fig-tree-evaluator/)**:
 
-- **[Concepts](https://DOCS_URL/concepts/expressions/)**: how expressions are built and evaluated, data references and variables, shorthand and canonical forms
-- **[Guides](https://DOCS_URL/guides/setup/)**: setting up, checking expressions, fallbacks and errors, fragments, HTTP and SQL, caching, tracing
-- **[API reference](https://DOCS_URL/api/figtree/)**: the `FigTree` class, its options and methods
-- **[Operator reference](https://DOCS_URL/reference/operators/)**: every built-in operator and its parameters
-- **[Custom operators](https://DOCS_URL/custom-operators/writing/)**: adding your own with `defineOperator`
-- **[Tooling](https://DOCS_URL/tooling/overview/)**: building editors and other tools around FigTree, with form conversion, static analysis and operator metadata for UIs
-- **[Under the hood](https://DOCS_URL/under-the-hood/design/)**: why FigTree is designed the way it is, how an expression is compiled, checked and evaluated, and the guarantees it makes
-- **[Migrating from v2](https://DOCS_URL/migrating/upgrading/)**: what's changed and how to upgrade, the converter that rewrites your expressions, and the few cases it leaves to you
-- **[Playground](https://DOCS_URL/playground/)**: try expressions in your browser
+- **[Concepts](https://carlosnz.github.io/fig-tree-evaluator/concepts/expressions/)**: how expressions are built and evaluated, data references and variables, shorthand and canonical forms
+- **[Guides](https://carlosnz.github.io/fig-tree-evaluator/guides/setup/)**: setting up, checking expressions, fallbacks and errors, fragments, HTTP and SQL, caching, tracing
+- **[API reference](https://carlosnz.github.io/fig-tree-evaluator/api/figtree/)**: the `FigTree` class, its options and methods
+- **[Operator reference](https://carlosnz.github.io/fig-tree-evaluator/reference/operators/)**: every built-in operator and its parameters
+- **[Custom operators](https://carlosnz.github.io/fig-tree-evaluator/custom-operators/writing/)**: adding your own with `defineOperator`
+- **[Tooling](https://carlosnz.github.io/fig-tree-evaluator/tooling/overview/)**: building editors and other tools around FigTree, with form conversion, static analysis and operator metadata for UIs
+- **[Under the hood](https://carlosnz.github.io/fig-tree-evaluator/under-the-hood/design/)**: why FigTree is designed the way it is, how an expression is compiled, checked and evaluated, and the guarantees it makes
+- **[Migrating from v2](https://carlosnz.github.io/fig-tree-evaluator/migrating/)**: what's changed and how to upgrade, the converter that rewrites your expressions, and the few cases it leaves to you
+- **[Playground](https://carlosnz.github.io/fig-tree-evaluator/playground/)**: try expressions in your browser
 
 For a visual editor in your own app, see [fig-tree-editor-react](https://github.com/CarlosNZ/fig-tree-editor-react).
 
