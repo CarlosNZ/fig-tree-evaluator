@@ -168,23 +168,24 @@ The only tricky part is the text pane, because half-typed JSON5 doesn't parse.
 
 **The editor gets a page of its own: "The visual editor", a top-level page below Playground** (sidebar: `{ label: 'Visual editor component', link: '/editor/' }`). Not in Beyond evaluation, which covers the `fig-tree-evaluator` package's own helpers, while the editor is a separate package. The page is the component's showcase, a role the hosted demo used to play: what it is (a React component for editing expressions as a tree, for apps whose configuration authors write expressions), a live instance, installing it and a minimal setup, the main ways to fit it to an app (operators and their listings through `getCatalog()`, fragments and the fragment editor, theming), and a link to the full props reference in the editor's README rather than a copy. The Playground says it's built with the component and links to this page; Beyond evaluation's overview links to it in place of its planned editor section.
 
-What the demo has that the Playground lacks, roughly easiest first:
+What the demo has, and where the Playground stands with each (November 2026, on the branch `docs-playground-improvements`):
 
-- **An example picker**, the demo's preset expressions and data.
-- **Undo/redo, and saving the reader's work** in the browser.
-- **A fallback-coverage badge**, from one `fallbackCoverage()` call on the current expression.
-- **An options panel** for the instance's options. The one piece built from scratch.
-- **A fragment editor.** The editor package exports it (`FragmentDefinitionEditor`, `FragmentSelect`, `useFragmentEditor`), so what's ported is the layout around it, not the editor itself.
+- **An example picker:** built, in a bar fixed to the foot of the window, with the blurb opening as a dialog on an example's first visit and again from Info. The picker marks the examples the reader has edited, and an expression from an "open in editor" link gets an entry of its own.
+- **Undo/redo, and saving the reader's work:** built. Each pane has its own undo history. The reader's edits are kept per example in local storage, and Reset example puts an example back as written (2e76ee0).
+- **A fallback-coverage badge:** built, as "Fully covered" or "N uncovered". Clicking it opens a panel listing each uncaught failure, and clicking a failure shows its node in the tree (83c0da6, 5631de1, 0bfab94).
+- **An options panel:** built, as the Configuration panel, with a Fragments section and the coverage analysis's Strict numbers (f8686b9, fb35390, 83c0da6).
+- **A fragment editor:** still to do, and Carl plans to redesign it first. The editor package exports it (`FragmentDefinitionEditor`, `FragmentSelect`, `useFragmentEditor`), so what's ported is the layout around it, not the editor itself.
+
+Still to do besides the fragment editor:
+
+- **Show trace.** The docs widget's Show trace has no counterpart on the Playground, and the new example set uses it (example 2 in [playground-examples-plan.md](playground-examples-plan.md)). The widget's other two actions are covered: coverage by the badge, and Clear cache in the Configuration panel.
+- **The CORS note** on the Playground page (a `NOTE` in `playground.mdx`): say that a reader's own API only works there if it allows cross-origin requests.
+- **The `plus` coverage finding.** With any data reference among its elements, `plus` reports "may receive something other than array, as constrained", so even the first example shows "1 uncovered". The finding probably comes from its `homogeneous` constraint, under a message naming the type. To check in the library, in a session of its own.
+- **The new example set** (below).
 
 The demo's SQL runs through a local Express and Postgres server, so it never worked on the hosted demo. The Playground's SQL already runs in the browser, on SQLite.
 
-**Keeping the example widget lean.** The extras live in a page-only component that wraps the existing `PlaygroundWidget`, loaded only on `/playground/` as its own chunk, so pages with examples never pay for them. The widget learns nothing about pickers, options or fragments. It gains only general-purpose props:
-
-- **`figTree`**: an instance to evaluate with, in place of the `fragments` / `customOperators` / `noCache` flags. The options panel and the fragment editor build it.
-- **`onExpressionChange`**: reports the current expression, for the coverage badge and for saving.
-- Picking an example needs no prop: the wrapper remounts the widget with a new React `key` and the example's expression and data.
-
-Undo and saving can live in the wrapper. Only undo that covers typing in the text pane would need to reach into the widget.
+**How it's built.** The Playground doesn't wrap the docs pages' `PlaygroundWidget`. It has two editors of its own, side by side, as the demo does: a plain `JsonEditor` for the data and a `FigTreeEditor` for the expression, both editing an object or array as text in the site's JSON5 pane ([docs-site/src/components/playground/](../docs-site/src/components/playground/)). They're loaded only on `/playground/`, so pages with examples never pay for them, and the widget learns nothing about the Playground. The Playground evaluates with an instance of its own (`playgroundFigTree`, in `playgroundSetup.ts`), so the Configuration panel's options never reach the docs pages' examples. The panel changes it in place with `updateOptions()`, so its result cache survives them, and the coverage badge is told to work its coverage out again (`refreshCoverage()`).
 
 The demo's Chakra UI, Emotion and Framer Motion don't come across: the wrapper uses the site's own CSS (the `fds-` classes), so it follows Starlight's look and its light and dark themes.
 
@@ -197,12 +198,12 @@ What's shared:
 - **The example sets**, one entry each: an `id` (a slug, for the Playground's URL and for remembering the reader's last pick, so renaming the menu entry breaks neither), the menu `name`, the blurb, the data, the expression, the tree's starting `collapse`, and any `options` the example needs (below). Blurbs are Markdown files, one per example, rather than strings in a TS file, so they're written and previewed as Markdown.
 - **Blurb images** go beside the blurbs, referenced by relative path. The demo's blurbs point at `carlosnz.github.io/fig-tree-evaluator/img/…`, the URL the docs site takes over, so those links would break anyway. The docs site serves them from its own build; the demo serves the same folder through its Vite config. The Playground renders blurbs with the site's own Markdown at build time and hands the HTML to the island; the demo keeps rendering them itself.
 - **The fragments, custom operators and their listings** the examples use: plain `FragmentDefinition`s, `defineOperator()` calls and a `ListingMap`. Each consumer builds its own instance from them, so the demo keeps its own I/O setup (its Postgres bridge) and the Playground its own (SQLite in the browser).
-- **Settings per example: not yet (Carl, October 2026).** No example needs instance options (the random-user example sets `noCache` on its own node), so examples have no `options` field. When one needs it, the field is added along with the rule for how settings change when a reader picks an example.
+- **Settings per example (Carl, November 2026).** An example can declare `options` and `fragments`. Opening it merges them into the reader's configuration, which keeps them after the example is left: options three levels deep, with `null` putting back FigTree's default, and fragments added or replaced by name, never removed. So an example sets or resets every option it's sensitive to. A toast says what opening it changed, if anything.
 
 What stays out:
 
 - **The demo's data-editor settings** (`objectJsonEditorProps`): json-edit-react props, some of them functions, for the demo's data pane. The Playground edits data as JSON5 text. The demo keeps them in its own overlay, keyed by example `id`.
-- **The site's page examples**: the fragments and custom operators the guide pages use (`docs-site/src/lib/fragments.ts`, `src/lib/operators/`) are chosen for teaching one point each and stay where they are, out of the Playground's set (Carl, October 2026). An "open in editor" link from a page still evaluates with that page's instance.
+- **The site's page examples**: the fragments and custom operators the guide pages use (`docs-site/src/lib/fragments.ts`, `src/lib/operators/`) are chosen for teaching one point each and stay where they are, out of the Playground's set (Carl, October 2026). An "open in editor" link from a page evaluates with the Playground's instance, which always registers the pages' custom operators. The link's `fragments` flag merges the pages' fragments into the reader's, and its `noCache` flag becomes operator defaults (Carl, November 2026).
 - **The demo's welcome blurb**, which introduces the demo app itself. The Playground page has its own introduction.
 
 Moving the demo's data here is the first step of the port, before any of the Playground's features, since every later step reads it. **Done (October 2026):** [docs-site/src/playground/](../docs-site/src/playground/) holds the examples (`examples.ts`), their blurbs and images (`blurbs/`), the fragments, with the fragment editor's starting sample (`fragments.ts`), and the custom operators and their listings (`operators.ts`). The blurbs' links point at the site's pages; their content gets an edit pass later.
