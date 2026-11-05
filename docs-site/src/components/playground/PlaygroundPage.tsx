@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { JsonData } from 'json-edit-react'
 import { Select } from 'fig-tree-editor-react'
 import { parseJson5 } from '../../lib/json5'
@@ -8,7 +8,18 @@ import { operatorListings } from '../../playground/operators'
 import BlurbDialog from './BlurbDialog'
 import ConfigDialog from './ConfigDialog'
 import { ConfigToast, type ConfigNotice } from './ConfigToast'
-import PlaygroundEditors, { type PlaygroundEditorsHandle } from './PlaygroundEditors'
+import PlaygroundEditors, {
+  type PlaygroundEditorsHandle,
+  type WriteOptions,
+} from './PlaygroundEditors'
+import {
+  discardWork,
+  editedExamples,
+  keepWork,
+  sameWork,
+  savedWork,
+  type Work,
+} from './playgroundWork'
 import {
   applyConfig,
   applySetup,
@@ -69,7 +80,11 @@ const markVisited = (id: string) => {
   }
 }
 
-const exampleOptions = examples.map(({ id, name }) => ({ label: name, value: id }))
+/**
+ * The picker's entry for an expression from an "open in editor" link, and
+ * its key among the edited ones. Not an example id, which is a slug.
+ */
+const SEED = '~seed'
 
 const isExample = (id: string | null): id is string =>
   id !== null && examples.some((example) => example.id === id)
@@ -117,6 +132,8 @@ const openSetup = (setup: PlaygroundSetup, source: ConfigNotice['source']) => {
 interface Opening {
   selected: string | null
   seed: PlaygroundSeed | null
+  /** The URL's query that carried the seed, to name it again on going back to it. */
+  seedSearch: string
   config: PlaygroundConfig
   notice: ConfigNotice | null
 }
@@ -139,7 +156,7 @@ const open = (): Opening => {
   if (example) ({ config, notice } = openSetup(example, 'example'))
   else if (seed) ({ config, notice } = openSetup(seedSetup(seed), 'link'))
   if (selected !== null) remember(selected)
-  opening = { selected, seed, config, notice }
+  opening = { selected, seed, seedSearch: window.location.search, config, notice }
   return opening
 }
 
@@ -150,8 +167,14 @@ const open = (): Opening => {
  * the picked example's blurb and the Configuration panel. A blurb opens as a
  * dialog the first time the reader opens its example, and again from Info.
  * Picking an example remounts the editors with its expression and data. An
- * expression from an "open in editor" link has no example picked until the
- * reader picks one.
+ * expression from an "open in editor" link has an entry of its own at the
+ * top of the picker, so the reader can go back to it.
+ *
+ * The reader's edits to an example are kept, one set per example, and come
+ * back when it's opened again, and the picker marks the examples that have
+ * them. While what the editors show differs from the example as written,
+ * Reset puts it back. Edits to an expression from a link are kept only until
+ * the page closes, since the link still carries it.
  *
  * Opening an example, or a link, merges the options and fragments it needs
  * into the configuration, and a toast says what that changed, if anything.
@@ -173,10 +196,75 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
   const [showConfig, setShowConfig] = useState(false)
   const [notice, setNotice] = useState(() => open().notice)
   const editors = useRef<PlaygroundEditorsHandle>(null)
+  // What the editors show: an example, by its id, or the link's expression
+  const current = example?.id ?? SEED
+  // The examples the reader has edits to, and the link's expression if they
+  // have edits to that
+  const [edited, setEdited] = useState(() => new Set(editedExamples()))
+  const markEdited = (key: string, isEdited: boolean) =>
+    setEdited((previous) => {
+      const next = new Set(previous)
+      if (isEdited) next.add(key)
+      else next.delete(key)
+      return next
+    })
+  // The reader's edits to the link's expression, for this page only
+  const seedWork = useRef<Work | null>(null)
+  // Each Reset remounts the editors, with the example as written
+  const [resets, setResets] = useState(0)
+
+  // What the editors start from: the reader's edits, else the example
+  const original: Work | null = example
+    ? { expression: example.expression, data: example.data ?? {} }
+    : seeded
+  const start = useMemo(
+    () => (example ? savedWork(example.id) : seedWork.current) ?? original,
+    [current, resets]
+  )
+
+  // The example as written, as the editor fills it in once it's mounted;
+  // what the reader's edits are compared with
+  const baseline = useRef<Work | null>(null)
+  const changeWork = (work: Work, { autoUpdate }: WriteOptions) => {
+    if (autoUpdate && !edited.has(current)) {
+      baseline.current = work
+      return
+    }
+    const base = (baseline.current ??= original!)
+    const differs = !sameWork(work, base)
+    if (!example) seedWork.current = differs ? work : null
+    else if (differs) keepWork(example.id, work, base)
+    else discardWork(example.id)
+    markEdited(current, differs)
+  }
+
+  const reset = () => {
+    if (example) discardWork(example.id)
+    else seedWork.current = null
+    baseline.current = null
+    markEdited(current, false)
+    setResets((count) => count + 1)
+  }
+
+  // Back to the link's expression: its query in the URL again, and what it
+  // needs merged into the configuration again
+  const pickSeed = () => {
+    const url = new URL(window.location.href)
+    url.search = open().seedSearch
+    url.hash = ''
+    window.history.replaceState(null, '', url)
+    const opened = openSetup(seedSetup(open().seed!), 'link')
+    setConfig(opened.config)
+    if (opened.notice) setNotice(opened.notice)
+    setShowBlurb(false)
+    baseline.current = null
+    setSelected(null)
+  }
 
   // The example's configuration is in place before its editors mount, so
   // they work out its coverage under it
   const pick = (id: string) => {
+    if (id === SEED) return pickSeed()
     // The URL names the example in place of whatever it held
     const url = new URL(window.location.href)
     url.search = new URLSearchParams({ [PARAM]: id }).toString()
@@ -190,6 +278,7 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
     if (opened.notice) setNotice(opened.notice)
     remember(id)
     setShowBlurb(unseen(id))
+    baseline.current = null
     setSelected(id)
   }
 
@@ -202,6 +291,18 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
   }
 
   const blurb = example && blurbs[example.id]
+
+  // An edited one is marked in the list by its hint, and in the closed box
+  // by the picker's `data-edited` (custom.css)
+  const option = (label: string, value: string) => ({
+    label,
+    value,
+    ...(edited.has(value) && { hint: 'edited' }),
+  })
+  const pickerOptions = [
+    ...(seeded ? [option('From a docs page', SEED)] : []),
+    ...examples.map(({ id, name }) => option(name, id)),
+  ]
 
   const configToast = (
     <ConfigToast
@@ -231,32 +332,19 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
         <ConfigDialog config={config} onSave={save} onClose={() => setShowConfig(false)} />
       )}
 
-      {example ? (
+      {start && (
         <PlaygroundEditors
-          key={example.id}
+          key={`${example?.id ?? 'seed'}:${resets}`}
           id="playground"
-          expression={example.expression}
-          data={example.data ?? {}}
-          collapse={example.collapse}
+          {...start}
+          collapse={example?.collapse}
           figTree={playgroundFigTree}
           operatorListings={operatorListings}
           notice={configToast}
           coverageOptions={config.options.coverage}
           handle={editors}
+          onChange={changeWork}
         />
-      ) : (
-        seeded && (
-          <PlaygroundEditors
-            key="seed"
-            id="playground"
-            {...seeded}
-            figTree={playgroundFigTree}
-            operatorListings={operatorListings}
-            notice={configToast}
-            coverageOptions={config.options.coverage}
-            handle={editors}
-          />
-        )
       )}
 
       <div className="fds-playground-footer not-content">
@@ -266,13 +354,13 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
             select's list where it likes, and at the foot of the screen that
             can be far from the box. This one opens upward (custom.css).
           */}
-          <div className="fds-picker">
+          <div className="fds-picker" data-edited={edited.has(current) || undefined}>
             <span className="fds-picker-label">Example</span>
             <Select
               className="fds-example-select"
-              options={exampleOptions}
-              selected={selected}
-              highlighted={selected}
+              options={pickerOptions}
+              selected={current}
+              highlighted={current}
               setSelected={({ value }) => pick(value)}
               placeholder="From a docs page"
             />
@@ -288,6 +376,14 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
             </svg>
             Info
           </button>
+          {edited.has(current) && (
+            <button className="fds-widget-action fds-widget-action--accent" onClick={reset}>
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M3 3.5v3.5h3.5M3.4 7A5 5 0 1 1 4.5 11.5" />
+              </svg>
+              Reset example
+            </button>
+          )}
         </div>
         <div className="fds-playground-footer-end">
           <span className="fds-playground-version">

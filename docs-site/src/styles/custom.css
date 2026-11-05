@@ -1691,6 +1691,20 @@
   background: var(--fds-tree-bg);
 }
 
+/* Undo and Redo, at the foot of each pane, like a widget's toolbar */
+.fds-playground-history {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  border-top: 1px solid var(--sl-color-hairline);
+  background: var(--sl-color-bg-nav);
+}
+
+.fds-playground-history .fds-widget-action {
+  margin-left: 0;
+}
+
 /*
  * Whether the expression is fully covered, in the pane's top right corner,
  * centred in the space between the pane's top edge and the frame of the
@@ -1907,6 +1921,29 @@
   margin-top: 0;
   margin-bottom: 0.25em;
   max-height: min(24em, 70vh);
+}
+
+/*
+ * An example the reader has edits to: "edited" after its name, set apart
+ * from it, in the list (the option's hint) and in the closed box
+ */
+.fds-playground-footer .fds-example-select .ft-select-option-hint,
+.fds-picker[data-edited] .ft-select-trigger-label::after {
+  margin-left: 0.5em;
+  font-size: 0.85em;
+  font-style: italic;
+  font-weight: normal;
+  color: var(--sl-color-gray-3);
+}
+
+.fds-picker[data-edited] .ft-select-trigger-label::after {
+  content: 'edited';
+}
+
+/* On the selected option's background, its own text colour */
+.fds-playground-footer .fds-example-select .ft-select-selected .ft-select-option-hint {
+  color: inherit;
+  opacity: 0.75;
 }
 
 .fds-playground-footer-end {

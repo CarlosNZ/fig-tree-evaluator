@@ -31,6 +31,9 @@ importers:
       '@codemirror/view':
         specifier: ^6.43.14
         version: 6.43.14
+      '@json-edit-react/utils':
+        specifier: ^1.0.0
+        version: 1.0.0(json-edit-react@2.0.4(react@18.3.1))(react@18.3.1)
       '@lezer/common':
         specifier: ^1.2.0
         version: 1.5.3
@@ -768,6 +771,12 @@ packages:
 
   '@jridgewell/sourcemap-codec@1.6.0':
     resolution: {integrity: sha512-T7jf+5zgsZHwNJ4lvQ7/aezbyk0nNX+zJVWpmHA7VYsEx7a7qr5Rg5IbtJFqkgze5Y2sruq1RUY8Q837Od7iFw==}
+
+  '@json-edit-react/utils@1.0.0':
+    resolution: {integrity: sha512-0FqC64plK/SEnNXON8Ivb2QqdsO6fBSebqQNTTUs1Ox6ycRcDb0CgXWwbBKiwhCnJFbqcMA7Dc8uFrhkoKL2rA==}
+    peerDependencies:
+      json-edit-react: ^2.0.0
+      react: '>=18.0.0'
 
   '@keyv/bigmap@1.3.1':
     resolution: {integrity: sha512-WbzE9sdmQtKy8vrNPa9BRnwZh5UF4s1KTmSK0KUVLo3eff5BlQNNWDnFOouNpKfPKDnms9xynJjsMYjMaT/aFQ==}
@@ -3278,6 +3287,11 @@ snapshots:
     optional: true
 
   '@jridgewell/sourcemap-codec@1.6.0': {}
+
+  '@json-edit-react/utils@1.0.0(json-edit-react@2.0.4(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      json-edit-react: 2.0.4(react@18.3.1)
+      react: 18.3.1
 
   '@keyv/bigmap@1.3.1(keyv@5.6.0)':
     dependencies:
