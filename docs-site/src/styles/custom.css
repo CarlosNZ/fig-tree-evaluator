@@ -1955,6 +1955,9 @@
  * left margins that collapse a collection on a click (json-edit-react's
  * click zones) let clicks through, since they lie over the pane's fold
  * gutter
+ *
+ * TO-DO: remove once json-edit-react#427 is released, which stops a
+ * collection's click zone rendering while it's edited as text
  */
 .jer-editor-container:has(.jer-collection-text-edit-custom) .jer-clickzone {
   pointer-events: none;
@@ -1990,15 +1993,18 @@
  * The bar fixed to the foot of the window, across the content beside the
  * sidebar: the example picker and its Info, then the version and the
  * configuration. The page leaves room below the editors to scroll them clear
- * of it. On a phone, it wraps onto two rows.
+ * of it, by the bar's height, which the page sets as the bar wraps onto more
+ * rows (PlaygroundPage.tsx); these are its heights until then. As the window
+ * narrows, the version goes first, then the buttons' labels, then the
+ * picker's, then the picker shrinks.
  */
 :root:has(.fds-playground-footer) {
-  --fds-playground-footer-height: 3.25rem;
+  --fds-playground-footer-height: 3.5rem;
 }
 
 @media (max-width: 50rem) {
   :root:has(.fds-playground-footer) {
-    --fds-playground-footer-height: 5.75rem;
+    --fds-playground-footer-height: 6.5rem;
   }
 }
 
@@ -2016,7 +2022,6 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem 1rem;
-  min-height: var(--fds-playground-footer-height);
   padding: 0.5rem var(--sl-content-pad-x);
   border-top: 1px solid var(--sl-color-hairline-shade);
   background: var(--sl-color-bg-nav);
@@ -2109,6 +2114,52 @@
 @media (max-width: 78rem) {
   .fds-playground-version {
     display: none;
+  }
+}
+
+/* Then the buttons show only their icons, their labels left to their titles */
+@media (max-width: 62rem) {
+  .fds-playground-footer .fds-widget-action {
+    justify-content: center;
+    width: 2.5rem;
+    padding-inline: 0;
+  }
+
+  .fds-playground-footer .fds-widget-action svg {
+    width: 1.1em;
+    height: 1.1em;
+  }
+
+  .fds-playground-footer .fds-action-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/*
+ * Then the picker loses its label, and shrinks to fit, its name ending in
+ * "…"
+ */
+@media (max-width: 40rem) {
+  .fds-playground-footer .fds-picker-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .fds-playground-footer .fds-example-select {
+    max-width: 100%;
+  }
+
+  .fds-playground-footer .fds-example-select .ft-select-trigger {
+    min-width: 0;
   }
 }
 

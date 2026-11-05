@@ -400,6 +400,25 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
 
   const blurb = example && blurbs[example.id]
 
+  // The room the page leaves below the editors, and where the toasts sit,
+  // follow the bar's height, which is however many rows its buttons wrap
+  // onto (custom.css)
+  const footer = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const root = document.documentElement
+    const observer = new ResizeObserver(([entry]) =>
+      root.style.setProperty(
+        '--fds-playground-footer-height',
+        `${entry.borderBoxSize[0].blockSize}px`
+      )
+    )
+    observer.observe(footer.current!)
+    return () => {
+      observer.disconnect()
+      root.style.removeProperty('--fds-playground-footer-height')
+    }
+  }, [])
+
   // An edited one is marked in the list by its hint, and in the closed box
   // by the picker's `data-edited` (custom.css)
   const option = (label: string, value: string) => ({
@@ -461,7 +480,7 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
 
       <ConfirmDialog {...confirmDialog} />
 
-      <div className="fds-playground-footer not-content">
+      <div className="fds-playground-footer not-content" ref={footer}>
         <div className="fds-playground-footer-start">
           {/*
             The editor's select, not a native one: a browser places a native
@@ -481,6 +500,7 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
           </div>
           <button
             className="fds-widget-action fds-widget-action--accent"
+            title="Info"
             disabled={!blurb}
             onClick={() => setShowBlurb(true)}
           >
@@ -488,14 +508,18 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
               <circle cx="8" cy="8" r="6.5" />
               <path d="M8 7.5v3.5M8 5h.01" />
             </svg>
-            Info
+            <span className="fds-action-label">Info</span>
           </button>
           {edited.has(current) && (
-            <button className="fds-widget-action fds-widget-action--accent" onClick={reset}>
+            <button
+              className="fds-widget-action fds-widget-action--accent"
+              title="Reset example"
+              onClick={reset}
+            >
               <svg viewBox="0 0 16 16" aria-hidden="true">
                 <path d="M3 3.5v3.5h3.5M3.4 7A5 5 0 1 1 4.5 11.5" />
               </svg>
-              Reset example
+              <span className="fds-action-label">Reset example</span>
             </button>
           )}
         </div>
@@ -505,26 +529,29 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
           </span>
           <button
             className="fds-widget-action fds-widget-action--accent"
+            title="Fragments"
             aria-pressed={fragmentMode}
             onClick={() => (fragmentMode ? void leaveFragmentMode() : enterFragmentMode())}
           >
             <svg viewBox="0 0 16 16" aria-hidden="true">
               <path d="M6 2.5c-1.4 0-2 .6-2 2v1.6c0 .9-.5 1.6-1.5 1.9 1 .3 1.5 1 1.5 1.9v1.6c0 1.4.6 2 2 2M10 2.5c1.4 0 2 .6 2 2v1.6c0 .9.5 1.6 1.5 1.9-1 .3-1.5 1-1.5 1.9v1.6c0 1.4-.6 2-2 2" />
             </svg>
-            Fragments
+            <span className="fds-action-label">Fragments</span>
           </button>
           <button
             className="fds-widget-action fds-widget-action--accent"
+            title="Trace"
             aria-pressed={config.trace}
             onClick={() => setConfig(setTrace(!config.trace))}
           >
             <svg viewBox="0 0 16 16" aria-hidden="true">
               <path d="M3 3.5h10M5.5 8H13M8 12.5h5M3 3.5v9h2.5M3 8h2.5" />
             </svg>
-            Trace
+            <span className="fds-action-label">Trace</span>
           </button>
           <button
             className="fds-widget-action fds-widget-action--primary"
+            title="Configuration"
             onClick={() => setShowConfig(true)}
           >
             <svg viewBox="0 0 16 16" aria-hidden="true">
@@ -532,7 +559,7 @@ export default function PlaygroundPage({ blurbs }: PlaygroundPageProps) {
               <circle cx="8" cy="4.5" r="1.5" />
               <circle cx="10" cy="11.5" r="1.5" />
             </svg>
-            Configuration
+            <span className="fds-action-label">Configuration</span>
           </button>
         </div>
       </div>
