@@ -31,7 +31,7 @@
     "codemirror-json5": "^1.0.3",
     "fig-tree-editor-react": "link:../../fig-tree-editor-react",
     "fig-tree-evaluator": "link:..",
-    "json-edit-react": "^2.0.4",
+    "json-edit-react": "^2.0.5",
     "json5": "^2.2.3",
     "lezer-json5": "^2.0.2",
     "react": "^18.3.1",

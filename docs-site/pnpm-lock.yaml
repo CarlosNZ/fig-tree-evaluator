@@ -33,7 +33,7 @@ importers:
         version: 6.43.14
       '@json-edit-react/utils':
         specifier: ^1.0.0
-        version: 1.0.0(json-edit-react@2.0.4(react@18.3.1))(react@18.3.1)
+        version: 1.0.0(json-edit-react@2.0.5(react@18.3.1))(react@18.3.1)
       '@lezer/common':
         specifier: ^1.2.0
         version: 1.5.3
@@ -56,8 +56,8 @@ importers:
         specifier: link:..
         version: link:..
       json-edit-react:
-        specifier: ^2.0.4
-        version: 2.0.4(react@18.3.1)
+        specifier: ^2.0.5
+        version: 2.0.5(react@18.3.1)
       json5:
         specifier: ^2.2.3
         version: 2.2.3
@@ -1701,8 +1701,8 @@ packages:
     resolution: {integrity: sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA==}
     hasBin: true
 
-  json-edit-react@2.0.4:
-    resolution: {integrity: sha512-RqppTbjeV9+0o4UegI5mGTHhoC7P5KQJhDR2+8Dfg8IjK1AtLZhw4iTRaDM4RRZuL+/uIaeWFT3n1mf2ZiIXiQ==}
+  json-edit-react@2.0.5:
+    resolution: {integrity: sha512-9uWmd8zZ/K26S3gsNy5/sWxWMi7qYr/Lmv0rD/t5eCpzykiWm07Z8EuxCkuWUJFSpoGptjlVbLKeyGnbJuNlwQ==}
     peerDependencies:
       react: '>=18.0.0'
 
@@ -3288,9 +3288,9 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.6.0': {}
 
-  '@json-edit-react/utils@1.0.0(json-edit-react@2.0.4(react@18.3.1))(react@18.3.1)':
+  '@json-edit-react/utils@1.0.0(json-edit-react@2.0.5(react@18.3.1))(react@18.3.1)':
     dependencies:
-      json-edit-react: 2.0.4(react@18.3.1)
+      json-edit-react: 2.0.5(react@18.3.1)
       react: 18.3.1
 
   '@keyv/bigmap@1.3.1(keyv@5.6.0)':
@@ -4346,7 +4346,7 @@ snapshots:
     dependencies:
       argparse: 2.0.1
 
-  json-edit-react@2.0.4(react@18.3.1):
+  json-edit-react@2.0.5(react@18.3.1):
     dependencies:
       react: 18.3.1
 
