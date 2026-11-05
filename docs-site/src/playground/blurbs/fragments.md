@@ -1,10 +1,20 @@
-# Fragments
+# Your app's vocabulary
 
-If you expect your configurations to re-use a lot of common expressions (for example, looking up your app's database), you pre-define some [Fragments](/guides/fragments/), making subsequent expressions simpler.
+**Fragments** are pieces of expression registered with FigTree under a name, and called just like operators. An app can build up a vocabulary of them, so expression authors write `$money` rather than the logic behind it every time.
 
-In this case, two Fragments are defined, and can be explored in the "Configuration" panel:
+This order confirmation uses five, which the Playground registers:
 
-- `getCapital`
-- `getFlag`
+- **`greeting`:** "Hi, Ana!", or "Good day, Ana!" with `formal: true`. `formal` has a default, `false`, so a call can leave it out.
+- **`plural`:** "1 item" or "3 items".
+- **`money`:** an amount, with its currency symbol.
+- **`orderLine`:** one line of the order, which calls `money` itself. A fragment can call other fragments.
+- **`destination`:** a country's name and flag, from its two-letter code, looked up with a [GraphQL API](https://countries.trevorblades.com/).
 
-They both take a `country` parameter, which the fragment reads as `"$params.country"`. `getFlag` gives it a default, so it's optional there.
+A fragment call is checked before anything runs, like an operator's, and the fragments are listed in the editor's menu of operators, with their descriptions.
+
+Things to try:
+
+- Misspell `amount` in the `$money` call, and the editor flags it.
+- Add `formal: true` to the `$greeting` call.
+- Change `shipTo` to another country's code, such as `'FR'`.
+- Press **Fragments**, at the bottom of the page, to edit the fragments themselves. Change `money`'s default `symbol` to `'£'`, save it, and every amount in the message follows.

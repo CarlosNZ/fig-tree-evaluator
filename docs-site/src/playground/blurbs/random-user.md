@@ -1,7 +1,8 @@
-# Fetch and display a random user
+# Random user
 
-This expression fetches a random user object by making an HTTP request to [https://randomuser.me/api/](https://randomuser.me/api/), and keeps it in a var. We then use this data to populate a templated string.
+This expression fetches a random user from [randomuser.me](https://randomuser.me/), and fills a template with their details.
 
-FigTree [caches](/guides/caching/) every request, so the request has `noCache: true`, otherwise we'd get the same user every time it's run.
+FigTree [caches](/guides/caching/) results, such as the responses to requests, so evaluating it again gives the same user. The cache is in the **Configuration** panel:
 
-Try removing `noCache` to see the difference.
+- **Clear cache** empties it, so the next evaluation gets a new user.
+- Unticking **Use the cache** turns it off, as does adding `noCache: true` to the `$http` node. Then every evaluation gets a new user.

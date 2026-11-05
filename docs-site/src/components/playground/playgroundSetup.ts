@@ -29,22 +29,49 @@ export type OperatorDefaults = NonNullable<PlaygroundOptions['operatorDefaults']
 export type Fragments = Record<string, FragmentDefinition>
 
 /**
- * Everything the Configuration panel sets, the options and the fragments, and
- * whether the footer's Trace is on, which an example can ask for too.
+ * A view the reader can turn on for every example, and an example can turn
+ * on for itself: on if either has. Only the reader's is kept.
  */
+export interface Switch {
+  pinned: boolean
+  fromExample: boolean
+}
+
+/** The footer's Trace, and the coverage badge, which the panel turns on. */
+export type SwitchName = 'trace' | 'coverage'
+
+export const isOn = ({ pinned, fromExample }: Switch) => pinned || fromExample
+
+/**
+ * A switch turned on, which pins it, or off, which clears both, since one an
+ * example turned on would otherwise stay on.
+ */
+export const turned = (current: Switch, on: boolean): Switch =>
+  on ? { ...current, pinned: true } : { pinned: false, fromExample: false }
+
+/** Everything the Configuration panel sets, and the switches. */
 export interface PlaygroundConfig {
   options: PlaygroundOptions
   fragments: Fragments
-  trace: boolean
+  switches: Record<SwitchName, Switch>
 }
 
 /**
- * Where the options, the fragments and the Trace switch are kept: apart, so
- * a change to the shape of one never loses another.
+ * Where the options, the fragments and each switch's `pinned` are kept:
+ * apart, so a change to the shape of one never loses another.
  */
 const OPTIONS_KEY = 'fds-playground-options'
 const FRAGMENTS_KEY = 'fds-playground-fragments'
-const TRACE_KEY = 'fds-playground-trace'
+const SWITCH_KEYS: Record<SwitchName, string> = {
+  trace: 'fds-playground-trace',
+  coverage: 'fds-playground-coverage',
+}
+
+const switchNames = Object.keys(SWITCH_KEYS) as SwitchName[]
+
+/** Each switch made by `make`, from its name. */
+const eachSwitch = (make: (name: SwitchName) => Switch) =>
+  Object.fromEntries(switchNames.map((name) => [name, make(name)])) as PlaygroundConfig['switches']
 
 /** The fragments the Playground starts with, and Reset Fragments puts back. */
 export const defaultFragments: Fragments = fragments
@@ -197,12 +224,18 @@ const prepareOptions = (
   maxNodes: options.maxNodes ?? null,
 })
 
-let applied: PlaygroundConfig = { options: {}, fragments: defaultFragments, trace: false }
+const off: Switch = { pinned: false, fromExample: false }
+
+let applied: PlaygroundConfig = {
+  options: {},
+  fragments: defaultFragments,
+  switches: { trace: off, coverage: off },
+}
 
 /**
  * Makes `config` the instance's, in one update: it throws on options or
- * fragments FigTree refuses, leaving the instance as it was. The Trace switch
- * is the page's alone.
+ * fragments FigTree refuses, leaving the instance as it was. The switches are
+ * the page's alone.
  */
 const install = (config: PlaygroundConfig) => {
   playgroundFigTree.updateOptions({
@@ -239,13 +272,14 @@ export const applyConfig = (config: PlaygroundConfig) => {
   install(config)
   keep(OPTIONS_KEY, config.options)
   keep(FRAGMENTS_KEY, config.fragments)
-  keep(TRACE_KEY, config.trace)
+  for (const name of switchNames) keep(SWITCH_KEYS[name], config.switches[name].pinned)
 }
 
-/** Turns the Trace switch on or off, and keeps it. It returns the configuration. */
-export const setTrace = (trace: boolean): PlaygroundConfig => {
-  applied = { ...applied, trace }
-  keep(TRACE_KEY, trace)
+/** Turns a switch on or off, and keeps it. It returns the configuration. */
+export const setSwitch = (name: SwitchName, on: boolean): PlaygroundConfig => {
+  const switches = { ...applied.switches, [name]: turned(applied.switches[name], on) }
+  applied = { ...applied, switches }
+  keep(SWITCH_KEYS[name], switches[name].pinned)
   return applied
 }
 
@@ -263,8 +297,8 @@ export const recordFragments = (fragments: Fragments): PlaygroundConfig => {
 /**
  * What was kept, applied to the instance: the fragments, then the options,
  * each only if FigTree still accepts it, so one it refuses doesn't lose the
- * other. What it refuses stays kept until the reader next saves. The Trace
- * switch comes back as it was left.
+ * other. What it refuses stays kept until the reader next saves. The
+ * switches come back pinned as the reader left them.
  */
 export const initialConfig = (): PlaygroundConfig => {
   const tryInstall = (changes: Partial<PlaygroundConfig>) => {
@@ -278,21 +312,23 @@ export const initialConfig = (): PlaygroundConfig => {
   if (fragments) tryInstall({ fragments })
   const options = kept<PlaygroundOptions>(OPTIONS_KEY)
   if (options) tryInstall({ options })
-  applied = { ...applied, trace: kept<boolean>(TRACE_KEY) === true }
+  const switches = eachSwitch((name) => ({ ...off, pinned: kept(SWITCH_KEYS[name]) === true }))
+  applied = { ...applied, switches }
   return applied
 }
 
 /** What an example, or an "open in editor" link, asks of the configuration. */
-export type PlaygroundSetup = Pick<PlaygroundExample, 'options' | 'fragments' | 'trace'>
+export type PlaygroundSetup = Pick<PlaygroundExample, 'options' | 'fragments' | SwitchName>
 
 /**
  * What an "open in editor" link asks for: what its docs page's example
- * evaluated with, and the trace if the example showed it.
+ * evaluated with, and the trace or the coverage if the example showed it.
  */
 export const seedSetup = (seed: PlaygroundSeed): PlaygroundSetup => ({
   ...(seed.fragments && { fragments: docsFragments }),
   ...(seed.noCache && { options: noCache }),
   ...(seed.action === 'showTrace' && { trace: true }),
+  ...(seed.action === 'showCoverage' && { coverage: true }),
 })
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -319,15 +355,16 @@ const merge = (previous: unknown, change: unknown, levels: number): unknown => {
  * deep, an option, then a block's key, then an operator's default or a
  * header, so a link's `noCache` keeps the reader's other defaults for that
  * operator. A fragment replaces one of the same name, and none is removed.
- * A setup can turn Trace on, never off.
+ * Each switch is on for the setup if it asks for it, and otherwise only if
+ * the reader pinned it.
  */
 const withSetup = (
-  { options, fragments, trace }: PlaygroundConfig,
+  { options, fragments, switches }: PlaygroundConfig,
   setup: PlaygroundSetup
 ): PlaygroundConfig => ({
   options: merge(options, setup.options ?? {}, 3) as PlaygroundOptions,
   fragments: { ...fragments, ...setup.fragments },
-  trace: trace || setup.trace === true,
+  switches: eachSwitch((name) => ({ ...switches[name], fromExample: setup[name] === true })),
 })
 
 /** Plain data, so its serialisation is enough to compare it. */
@@ -345,6 +382,8 @@ const LIMITS = [
   ['maxDepth', 'max depth', ''],
   ['maxNodes', 'max nodes', ''],
 ] as const
+
+const SWITCH_LABELS: Record<SwitchName, string> = { trace: 'trace', coverage: 'coverage badge' }
 
 const BLOCKS = [
   ['http', 'HTTP settings'],
@@ -377,7 +416,10 @@ const describeChanges = (before: PlaygroundConfig, after: PlaygroundConfig): str
     changes.push(`${added.length === 1 ? 'fragment' : 'fragments'} ${list(added)} added`)
   if (replaced.length > 0)
     changes.push(`${replaced.length === 1 ? 'fragment' : 'fragments'} ${list(replaced)} replaced`)
-  if (after.trace && !before.trace) changes.push('trace on')
+  // Only what the setup turns on: one it turns off was the last example's
+  for (const name of switchNames)
+    if (isOn(after.switches[name]) && !isOn(before.switches[name]))
+      changes.push(`${SWITCH_LABELS[name]} on`)
   return changes
 }
 

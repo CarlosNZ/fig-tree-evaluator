@@ -37,7 +37,7 @@ import { editorColours, editorStyles } from './editorTheme'
 
 /** An Evaluate in the tree that takes longer than this shows a running toast. */
 const RUNNING_TOAST_DELAY = 300
-/** How many levels of the data start open. */
+/** How many levels of the data start open, unless the example says. */
 const DATA_COLLAPSE = 2
 
 /**
@@ -274,6 +274,8 @@ export interface PlaygroundEditorsProps {
    * collapsed. The editor's own default if not given.
    */
   collapse?: number
+  /** How many levels of the data start open; 2 if not given. */
+  dataCollapse?: number
   /** A toast of the page's own, stacked above the evaluation toast. */
   notice?: ReactNode
   /** The options of the analysis behind the "Fully covered" badge. */
@@ -290,6 +292,11 @@ export interface PlaygroundEditorsProps {
    * above it, the footer's Trace being on. Turning it on shows the trace.
    */
   trace?: boolean
+  /**
+   * Whether the expression pane shows the coverage badge. Its coverage is
+   * worked out either way, so it's current the moment the badge shows.
+   */
+  coverage?: boolean
   /** For a host that changes the instance in place, which the badge can't see. */
   handle?: Ref<PlaygroundEditorsHandle>
   /**
@@ -415,7 +422,7 @@ export default function PlaygroundEditors(props: PlaygroundEditorsProps) {
             dataHistory.write(next)
           }}
           rootName="data"
-          collapse={DATA_COLLAPSE}
+          collapse={props.dataCollapse ?? DATA_COLLAPSE}
           showCollectionCount="when-collapsed"
           theme={editorStyles}
           minWidth="100%"
@@ -476,7 +483,7 @@ export default function PlaygroundEditors(props: PlaygroundEditorsProps) {
         </section>
         <section className="fds-widget" aria-label={fragmentMode ? 'Fragment body' : 'Expression'}>
           <div className="fds-playground-pane">
-            {!fragmentMode && (
+            {props.coverage && !fragmentMode && (
               <CoverageBadge
                 coverage={coverage}
                 onReveal={(path) => editor.current?.reveal({ path })}

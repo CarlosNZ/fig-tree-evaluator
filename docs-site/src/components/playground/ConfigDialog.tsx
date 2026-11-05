@@ -9,13 +9,16 @@ import {
   DEFAULT_CACHE_TIME,
   cacheStore,
   defaultFragments,
+  isOn,
   playgroundFigTree,
   setCaching,
+  turned,
   usesCache,
   type Fragments,
   type OperatorDefaults,
   type PlaygroundConfig,
   type PlaygroundOptions,
+  type Switch,
 } from './playgroundSetup'
 
 type Headers = NonNullable<NonNullable<PlaygroundOptions['http']>['headers']>
@@ -40,6 +43,7 @@ interface Form {
   maxDepth: string
   maxNodes: string
   strictNumbers: boolean
+  coverageBadge: Switch
 }
 
 const text = (value: unknown) => (value === undefined || value === null ? '' : String(value))
@@ -47,7 +51,7 @@ const text = (value: unknown) => (value === undefined || value === null ? '' : S
 /** Headers without their Authorization, which the panel has a field of its own for. */
 const otherHeaders = ({ Authorization: _, ...rest }: Headers = {}) => rest
 
-const toForm = ({ options, fragments }: PlaygroundConfig): Form => ({
+const toForm = ({ options, fragments, switches }: PlaygroundConfig): Form => ({
   baseEndpoint: text(options.http?.baseEndpoint),
   authorization: text(options.http?.headers?.Authorization),
   headers: otherHeaders(options.http?.headers),
@@ -63,6 +67,7 @@ const toForm = ({ options, fragments }: PlaygroundConfig): Form => ({
   maxDepth: text(options.maxDepth),
   maxNodes: text(options.maxNodes),
   strictNumbers: options.coverage?.strictNumbers ?? false,
+  coverageBadge: switches.coverage,
 })
 
 /** A field's text, with nothing in it as no value. */
@@ -237,7 +242,12 @@ export default function ConfigDialog({ config, onSave, onClose }: ConfigDialogPr
     const options = optionsFrom(form)
     if (typeof options === 'string') return setError(options)
     try {
-      onSave({ ...config, options, fragments: form.fragments })
+      onSave({
+        ...config,
+        options,
+        fragments: form.fragments,
+        switches: { ...config.switches, coverage: form.coverageBadge },
+      })
     } catch (refusal) {
       return setError(refusal instanceof Error ? refusal.message : String(refusal))
     }
@@ -428,6 +438,17 @@ export default function ConfigDialog({ config, onSave, onClose }: ConfigDialogPr
 
           <section className="fds-config-section">
             <h3 className="fds-config-heading">Coverage</h3>
+            <Check
+              checked={isOn(form.coverageBadge)}
+              onChange={() =>
+                update({ coverageBadge: turned(form.coverageBadge, !isOn(form.coverageBadge)) })
+              }
+            >
+              Coverage badge: the failures no fallback catches{' '}
+              {!form.coverageBadge.pinned && form.coverageBadge.fromExample && (
+                <span className="fds-config-hint">(on for this example)</span>
+              )}
+            </Check>
             <Check
               checked={form.strictNumbers}
               onChange={() => update({ strictNumbers: !form.strictNumbers })}

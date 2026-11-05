@@ -26,10 +26,11 @@ import {
   applyConfig,
   applySetup,
   initialConfig,
+  isOn,
   playgroundFigTree,
   recordFragments,
   seedSetup,
-  setTrace,
+  setSwitch,
   type PlaygroundConfig,
   type PlaygroundSetup,
 } from './playgroundSetup'
@@ -242,7 +243,9 @@ const open = (): Opening => {
  *
  * The bar's Trace adds the trace of the last Evaluate to the left pane's
  * views, and shows it. An example, or a link from a docs page's example that
- * shows its trace, can turn it on too, which only adds the view.
+ * shows its trace, can turn it on for itself, which only adds the view; the
+ * reader turning it on turns it on for every one. The coverage badge, which
+ * the Configuration panel turns on, works the same way.
  *
  * The bar's Fragments switches the editors to fragment mode, which edits a
  * fragment's body and declarations. It starts a new fragment from the
@@ -385,7 +388,7 @@ export default function PlaygroundPage({ blurbs, welcome }: PlaygroundPageProps)
     window.history.replaceState(null, '', url)
     const opened = openSetup(seedSetup(open().seed!), 'link')
     adopt(opened.config)
-    if (opened.notice) setNotice(opened.notice)
+    setNotice(opened.notice)
     setShowBlurb(false)
     baseline.current = null
     setSelected(null)
@@ -406,7 +409,8 @@ export default function PlaygroundPage({ blurbs, welcome }: PlaygroundPageProps)
       'example'
     )
     adopt(opened.config)
-    if (opened.notice) setNotice(opened.notice)
+    // The last example's notice, if still up, goes, since it's about that one
+    setNotice(opened.notice)
     remember(id)
     setShowBlurb(unseen(id))
     baseline.current = null
@@ -511,6 +515,7 @@ export default function PlaygroundPage({ blurbs, welcome }: PlaygroundPageProps)
           id="playground"
           {...start}
           collapse={example?.collapse}
+          dataCollapse={example?.dataCollapse}
           figTree={playgroundFigTree}
           operatorListings={operatorListings}
           notice={configToast}
@@ -520,7 +525,8 @@ export default function PlaygroundPage({ blurbs, welcome }: PlaygroundPageProps)
           fragmentMode={
             fragmentMode ? { editor: fragmentEditor, onLeave: leaveFragmentMode } : undefined
           }
-          trace={config.trace}
+          trace={isOn(config.switches.trace)}
+          coverage={isOn(config.switches.coverage)}
         />
       )}
 
@@ -586,9 +592,13 @@ export default function PlaygroundPage({ blurbs, welcome }: PlaygroundPageProps)
           </button>
           <button
             className="fds-widget-action fds-widget-action--accent"
-            title="Trace"
-            aria-pressed={config.trace}
-            onClick={() => setConfig(setTrace(!config.trace))}
+            title={
+              config.switches.trace.pinned || !config.switches.trace.fromExample
+                ? 'Trace'
+                : 'Trace: on for this example'
+            }
+            aria-pressed={isOn(config.switches.trace)}
+            onClick={() => setConfig(setSwitch('trace', !isOn(config.switches.trace)))}
           >
             <svg viewBox="0 0 16 16" aria-hidden="true">
               <path d="M3 3.5h10M5.5 8H13M8 12.5h5M3 3.5v9h2.5M3 8h2.5" />

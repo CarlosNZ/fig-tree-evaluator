@@ -1,12 +1,14 @@
 # Complex string substitution
 
-This expression features a much more complex templated string, intended to showcase the capabilities of the [String Substitution](/reference/operators/#op-buildString) operator.
+`buildString` fills in a template's `{{…}}` tokens. The tokens in this one come from several places:
 
-The values substituted into the output string are based on several different factors:
+- **The data,** read straight into the template, such as `{{$data.user.name.first}}`.
+- **An HTTP request,** which looks up the capital city of the user's country.
+- **A `match`,** which words the friend count differently depending on how many there are.
+- **A variable,** `pronoun`, which holds the wording for the user's pronouns. `{{$vars.pronoun.lives}}` reads a path into the variable's value: the object for `'she'`, for `'he'`, or for anything else.
 
-- Data references written straight into the template (e.g. `{{$data.user.name.first}}`)
-- An HTTP request to look up the country's capital city
-- Counting the number of friends, and choosing different text depending on the count
-- Different wording in several places depending on the gender of the `user`, utilising the [Match](/reference/operators/#op-match) operator
+Things to try:
 
-Try changing all these values and see the output differences.
+- Change `pronouns` to `'they'`.
+- Add or remove friends.
+- Change `country`.
