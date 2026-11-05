@@ -131,10 +131,18 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
       declared.elementNullPolicy !== undefined
     )
     if (answer === 'yes') return
+    // Where every value has the type, only a constraint can refuse one
+    const { type, constraints } = declared
+    const misfit =
+      constraints === undefined
+        ? `something other than ${describe(type)}`
+        : fits(known, type) === 'yes'
+          ? `an array its constraints refuse (${Object.keys(constraints).join(', ')})`
+          : `something other than ${describe(type)}, as constrained`
     const failure: Failure = {
       path: node.path,
       code: 'type-check',
-      message: `${node.name} – parameter '${name}': may receive something other than ${describe(declared.type)}${declared.constraints !== undefined ? ', as constrained' : ''}`,
+      message: `${node.name} – parameter '${name}': may receive ${misfit}`,
       certainty: answer === 'no' && certain ? 'always' : 'may',
       operator: node.name,
       parameter: name,

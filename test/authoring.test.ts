@@ -508,6 +508,22 @@ describe('type checks between nodes', () => {
     expect((await checks({ $not: '$data.x' })).uncovered).toEqual([])
   })
 
+  test('a message names the constraints where only they can refuse a value', async () => {
+    /** The root node's type-check messages. */
+    const messages = async (expression: unknown) =>
+      (await fallbackCoverage(fig, expression)).uncovered
+        .filter(({ path, code }) => path.length === 0 && code === ErrorCodes.typeCheck)
+        .map((finding) => finding.message)
+    // Every value is an array, so only `homogeneous` can refuse one
+    expect(await messages({ $plus: ['$data.first', ' ', '$data.last'] })).toEqual([
+      "plus – parameter 'values': may receive an array its constraints refuse (homogeneous)",
+    ])
+    // The value may not be an array at all
+    expect(await messages({ $lessThan: { values: '$data.pair' } })).toEqual([
+      "lessThan – parameter 'values': may receive something other than array, as constrained",
+    ])
+  })
+
   test("a child's declared returns that fit pass, and a fallback widens them", async () => {
     expect((await checks({ $upper: { $trim: 'x' } })).uncovered).toEqual([])
     expect(
