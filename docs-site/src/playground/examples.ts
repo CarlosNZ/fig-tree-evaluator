@@ -62,6 +62,12 @@ export interface PlaygroundExample {
   trace?: boolean
   /** Whether the example shows the coverage badge, in the same way as `trace`. */
   coverage?: boolean
+  /**
+   * A live view of the result beside the data, which the Playground opens
+   * on: `'form'` draws the form the result configures, and filling it in
+   * edits the data. The demo app has none.
+   */
+  preview?: 'form'
 }
 
 export const examples: PlaygroundExample[] = [
@@ -111,6 +117,7 @@ export const examples: PlaygroundExample[] = [
         {
           name: 'city',
           label: 'City',
+          comment: 'Options looked up from an API, for the selected country',
           type: 'select',
           options: {
             '//': "With no country yet, or one the lookup doesn't know, there are no cities to offer",
@@ -126,6 +133,7 @@ export const examples: PlaygroundExample[] = [
         {
           name: 'postcode',
           label: 'Postcode',
+          comment: 'Only required for countries that use postcodes',
           type: 'text',
           required: {
             '//': "These countries don't use postcodes",
@@ -140,12 +148,14 @@ export const examples: PlaygroundExample[] = [
         {
           name: 'licenceNumber',
           label: "Driver's licence number",
+          comment: 'Only appears when age is 16 or over',
           type: 'text',
           visible: { $greaterThanOrEqual: ['$data.age', 16] },
         },
       ],
     },
     collapse: 4,
+    preview: 'form',
   },
   {
     id: 'movie-tickets',

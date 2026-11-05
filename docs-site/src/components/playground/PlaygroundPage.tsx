@@ -516,6 +516,7 @@ export default function PlaygroundPage({ blurbs, welcome }: PlaygroundPageProps)
           {...start}
           collapse={example?.collapse}
           dataCollapse={example?.dataCollapse}
+          preview={example?.preview}
           figTree={playgroundFigTree}
           operatorListings={operatorListings}
           notice={configToast}

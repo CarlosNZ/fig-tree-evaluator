@@ -31,6 +31,7 @@ import { customAnalyses } from '../../lib/operators'
 import { Json5Editor } from './Json5Editor'
 import { EvaluationToast, type ToastState } from './EvaluationToast'
 import CoverageBadge from './CoverageBadge'
+import { FormPreview } from './FormPreview'
 import { useFallbackCoverage, type CoverageRefresh } from './useFallbackCoverage'
 import type { Work } from './playgroundWork'
 import { editorColours, editorStyles } from './editorTheme'
@@ -297,6 +298,12 @@ export interface PlaygroundEditorsProps {
    * worked out either way, so it's current the moment the badge shows.
    */
   coverage?: boolean
+  /**
+   * A live view of the expression's result, as the left pane's first view,
+   * outside fragment mode: `'form'` draws the form it configures, which
+   * edits the data.
+   */
+  preview?: 'form'
   /** For a host that changes the instance in place, which the badge can't see. */
   handle?: Ref<PlaygroundEditorsHandle>
   /**
@@ -412,15 +419,16 @@ export default function PlaygroundEditors(props: PlaygroundEditorsProps) {
   }
   useEffect(() => () => clearTimeout(runningTimer.current), [])
 
+  const setData = (next: JsonData) => {
+    outdateTrace()
+    dataHistory.write(next)
+  }
   const dataPane = (
     <>
       <div className="fds-playground-pane">
         <JsonEditor
           data={data}
-          setData={(next) => {
-            outdateTrace()
-            dataHistory.write(next)
-          }}
+          setData={setData}
           rootName="data"
           collapse={props.dataCollapse ?? DATA_COLLAPSE}
           showCollectionCount="when-collapsed"
@@ -447,6 +455,27 @@ export default function PlaygroundEditors(props: PlaygroundEditorsProps) {
       }
 
   const views: PaneView[] = [
+    ...(props.preview === 'form' && !fragmentMode
+      ? [
+          {
+            key: 'form',
+            label: 'Form',
+            content: (
+              <>
+                <FormPreview
+                  figTree={props.figTree}
+                  expression={expression}
+                  // As for the tree's Evaluate, a root that isn't an object
+                  // can't be evaluated against
+                  data={isRecord(data) ? data : {}}
+                  setData={setData}
+                />
+                <HistoryButtons history={dataHistory} />
+              </>
+            ),
+          },
+        ]
+      : []),
     ...(fragmentEditor
       ? [
           {
