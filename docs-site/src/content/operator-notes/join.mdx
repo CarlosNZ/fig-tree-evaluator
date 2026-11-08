@@ -1,0 +1,21 @@
+A `null` fills in as empty text but keeps its place, so `{ $join: { values: ['Rata St', null, 'Nelson'], delimiter: ', ' } }` returns `'Rata St, , Nelson'`. That keeps each value in its column, as a row of a CSV file needs. To leave nulls out instead, [`filter`](#op-filter) them first:
+
+<Expression
+  title="An address from the lines it has"
+  code={`
+    {
+      $join: {
+        values: {
+          $filter: ['$data.addressLines', { $notEqual: ['$element', null] }],
+        },
+        delimiter: ', ',
+      },
+    }
+  `}
+  data={`
+    {
+      // Replace null with a suburb to make the middle value render
+      addressLines: ['12 Rata St', null, 'Nelson'],
+    }
+  `}
+/>

@@ -1,0 +1,90 @@
+---
+/**
+ * A table of what imports cost a consumer, measured when the site is built
+ * from the library's build/ (src/lib/importCost.ts), so the figures are never
+ * typed by hand. Each row is its import on its own, then what it adds to the
+ * `baseline`, since the subpaths share code with it. The baseline itself
+ * comes first.
+ *
+ * Each row shows its import statement, broken before `from` so the cells
+ * stay narrow. A row without `names` imports everything its entry point
+ * exports, read from the build, and shows as a namespace import.
+ */
+import { exportsOf, measureImports, roundedKb } from '../lib/importCost'
+import type { Imports } from '../lib/importCost'
+
+interface Props {
+  baseline: Imports
+  rows: { entry: string; names?: string[] }[]
+}
+
+const { baseline, rows } = Astro.props
+
+/** An import statement, as its two lines: `import { a, b }`, `from 'entry'`. */
+const statement = (entry: string, names?: string[]) => ({
+  clause: 'import ' + (names ? '{ ' + names.join(', ') + ' }' : '* as ' + entry.split('/').pop()),
+  from: "from '" + entry + "'",
+})
+
+const baselineStatement = statement(baseline.entry, baseline.names)
+const base = await measureImports([baseline])
+const measuredRows = await Promise.all(
+  rows.map(async ({ entry, names }) => {
+    const imports = { entry, names: names ?? (await exportsOf(entry)) }
+    const [alone, withBaseline] = await Promise.all([
+      measureImports([imports]),
+      measureImports([baseline, imports]),
+    ])
+    return {
+      label: statement(entry, names),
+      alone,
+      added: {
+        gzip: withBaseline.gzip - base.gzip,
+        brotli: withBaseline.brotli - base.brotli,
+      },
+    }
+  })
+)
+---
+
+<table>
+  <thead>
+    <tr>
+      <th>Import statement</th>
+      <th>On its own</th>
+      <th>Added to <code>{baseline.names.join(', ')}</code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code class="fds-import">
+          {baselineStatement.clause}<span>{baselineStatement.from}</span>
+        </code>
+      </td>
+      <td class="fds-size">{roundedKb(base.gzip)} gzip<br />{roundedKb(base.brotli)} brotli</td>
+      <td></td>
+    </tr>
+    {
+      measuredRows.map(({ label, alone, added }) => (
+        <tr>
+          <td>
+            <code class="fds-import">
+              {label.clause}
+              <span>{label.from}</span>
+            </code>
+          </td>
+          <td class="fds-size">
+            {roundedKb(alone.gzip)} gzip
+            <br />
+            {roundedKb(alone.brotli)} brotli
+          </td>
+          <td class="fds-size">
+            +{roundedKb(added.gzip)} gzip
+            <br />+{roundedKb(added.brotli)} brotli
+          </td>
+        </tr>
+      ))
+    }
+  </tbody>
+</table>

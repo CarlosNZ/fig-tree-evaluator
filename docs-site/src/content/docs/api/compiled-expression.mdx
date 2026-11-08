@@ -1,0 +1,116 @@
+---
+title: CompiledExpression
+description: 'What compile() returns: an expression compiled and checked, ready to evaluate'
+sidebar:
+  order: 3
+---
+
+import Callout from '../../../components/Callout.astro'
+
+{/* TO-DO: the types in this page's signature blocks aren't syntax-coloured. The highlighter sees only the lines between the cut markers, and a bare signature written as class members inside a hidden `declare class CompiledExpression {` reads to it as a call, not a declaration, so its type positions get the plain text colour (twoslash still type-checks the whole block, so hovers work). Standalone functions are fixed by a hidden `declare namespace x {` with a visible `function name(…)`, as on api/exports and custom-operators/validate, but `function` is wrong for a method or property. Find a form that colours the types without changing what the signature reads as, perhaps by having Expressive Code highlight with the hidden context included (ec.config.mjs). */}
+
+A `CompiledExpression` is what [`fig.compile()`](/api/figtree/#compile) returns: an expression that's been checked and built into a structure much like its [canonical form](/concepts/forms/#the-canonical-form), with each node mapped to its operator alongside its named parameters. It also holds what the compiler learned _about_ the expression, such as which parts need evaluating and which are fixed, so it's primed for evaluation, along with the validation issues it found.
+
+It keeps the instance's options, operators and fragments as they were when it was compiled, and shares its result cache ([Lifetime](#lifetime)).
+
+| Member                                  | Returns        | What it does                                      |
+| --------------------------------------- | -------------- | ------------------------------------------------- |
+| [`expression`](#expression)             | `unknown`      | The original expression it was compiled from      |
+| [`issues`](#issues)                     | `Issue[]`      | The expression's static errors and warnings       |
+| [`hasErrors`](#haserrors)               | `boolean`      | Whether `issues` holds an error                   |
+| [`evaluate()`](#evaluate)               | `Promise`      | Evaluates the compiled expression                 |
+| [`getDependencies()`](#getdependencies) | `Dependencies` | Lists what it reads and uses                      |
+
+Every member except `evaluate()` is synchronous.
+
+## `expression`
+
+```ts
+declare class CompiledExpression {
+// ---cut---
+readonly expression: unknown
+// ---cut-after---
+}
+```
+
+The expression it was compiled from: the object passed to `compile()`, not a copy.
+
+## `issues`
+
+```ts
+import type { Issue } from 'fig-tree-evaluator'
+declare class CompiledExpression {
+// ---cut---
+readonly issues: readonly Issue[]
+// ---cut-after---
+}
+```
+
+The expression's static errors and warnings, each an [`Issue`](/api/errors/#issue-and-validationresult): the size-limit errors, `max-depth` and `max-nodes`, first, then the expression's own issues, in the order they appear in it.
+
+**Details:** it's the list [`validate()`](/api/figtree/#validate) gives for the same expression, without the warnings from checking `data`.
+
+**See also:** [Issues](/guides/validation/#issues)
+
+## `hasErrors`
+
+```ts
+declare class CompiledExpression {
+// ---cut---
+readonly hasErrors: boolean
+// ---cut-after---
+}
+```
+
+`true` when `issues` holds at least one issue with severity `'error'` (a [static error](/guides/validation/#static-errors)), and `false` otherwise.
+
+**Details:** when it's `true`, `evaluate()` will throw.
+
+## `evaluate()`
+
+```ts
+import type { CallOptions, EvaluationResult } from 'fig-tree-evaluator'
+declare class CompiledExpression {
+// ---cut---
+evaluate(options?: CallOptions): Promise<unknown>
+// With trace in effect
+evaluate(options?: CallOptions): Promise<EvaluationResult>
+// ---cut-after---
+}
+```
+
+Evaluates the compiled expression, and returns its result.
+
+It works as [`fig.evaluate()`](/api/figtree/#evaluate) does, with the same per-call options, return values and errors, but with the options, operators and fragments the expression was compiled with ([Lifetime](#lifetime)).
+
+**See also:** [Compiling once](/guides/caching/#compiling-once), [Options for a single evaluation](/guides/setup/#options-for-a-single-evaluation)
+
+## `getDependencies()`
+
+```ts
+import type { Dependencies } from 'fig-tree-evaluator'
+declare class CompiledExpression {
+// ---cut---
+getDependencies(): Dependencies
+// ---cut-after---
+}
+```
+
+Lists the data the compiled expression reads, and the operators and fragments it uses.
+
+It works as [`fig.getDependencies()`](/api/figtree/#getdependencies) does, and returns the same `Dependencies`, but with the fragments the expression was compiled with ([Lifetime](#lifetime)).
+
+**See also:** [What an expression reads](/guides/validation/#what-an-expression-reads)
+
+## Lifetime
+
+A compiled expression belongs to the instance that compiled it, and keeps some parts of it and shares others:
+
+- **Options, operators and fragments:** kept as they were when it was compiled, `data`, `timeout`, `trace` and the size limits included. Calling [`updateOptions()`](/api/figtree/#updateoptions) on the instance afterwards doesn't affect the compiled expression.
+- **The result cache:** shared with the instance, so a result either one caches is there for both, and the instance's [`clearCache()`](/api/figtree/#clearcache) empties it for both. But if `updateOptions()` redefines an operator or fragment, the instance and the compiled expression each get only the results cached under their own definition of it.
+
+<Callout kind="caution" title="Don't mutate an expression after compiling it">
+  The compiled expression keeps running the expression as it was, and a later `compile()` or `evaluate()` of the same object gets that same compiled form from the compile cache ([Compiling once](/guides/caching/#compiling-once)).
+</Callout>
+
+**See also:** [`inspect()`](/api/exports/#inspect), which shows how FigTree read a compiled expression

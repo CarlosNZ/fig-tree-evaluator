@@ -1,0 +1,19 @@
+This is modulo as mathematics defines it, which JavaScript's `%` isn't: its result takes the sign of the number being divided, so `-7 % 3` gives `-1`, where `{ $modulo: [-7, 3] }` returns `2`. So a count that goes below zero still wraps around, as the days of the week do here:
+
+<Expression
+  title="Counting back through the week"
+  code={`
+    {
+      $modulo: [{ $plus: ['$data.today', '$data.daysFromToday'] }, 7],
+    }
+  `}
+  data={`
+    // 0 is Sunday, so today is Monday, and 3 days ago was Friday (5)
+    {
+      today: 1,
+      daysFromToday: -3,
+    }
+  `}
+/>
+
+Dividing by zero fails, as with [`divide`](#op-divide).

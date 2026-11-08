@@ -1,0 +1,236 @@
+# v3 public docs: planning
+
+_Status: **Draft**, from a discussion between Carl and Claude, October 2026. Agreed so far: a docs site plus a short README, Starlight as the tooling, and JSON5 for the widget's text pane. Everything else is a proposal, and the open questions are listed at the end._
+
+## Direction
+
+v3 gets a docs site with multiple linked pages, plus a short README that points into it. The v2 approach, one README that holds everything (2,222 lines), doesn't scale to v3.
+
+### Why not one README
+
+- **Too many audiences.** v2 was written for roughly one kind of reader. v3 has at least five:
+  - authors writing expressions
+  - hosts integrating the evaluator (options, fallbacks, HTTP/SQL clients, `compile` / `inspect` / trace)
+  - developers writing custom operators with `defineOperator`
+  - tool builders using `./format`, `./authoring` and `./catalog`
+  - users migrating from v2
+
+  In one file, each reader scrolls past everything the others need. A v3 README written that way would likely pass 3,500 lines.
+
+- **Reference and guide are different kinds of reading.** The operator reference is looked up, so it wants search and quick navigation. Fallbacks or null policy are read in order. A single page serves both badly.
+- **The migration guide is temporary.** It matters for about a year and then rarely. On its own page it doesn't take up permanent space in the main doc.
+
+## Shape
+
+### README
+
+About 150 lines. It is also the npm page, so it covers basic usage completely in short form, and everything deeper lives on the site:
+
+- what FigTree is
+- install
+- one worked example
+- links into the site's main sections
+
+The v2 docs stay where they are, as the README on the `v2.x` branch. The site doesn't need built-in versioning.
+
+### Site chapters
+
+- **Getting started:** one page, first in the sidebar and the home page's "Get started" target: the docs' two audiences (expression authors and developers), what the app decides, and where each audience goes next. See "Splitting the main path by audience" below.
+- **Concepts:** nodes, evaluation, data references, variables, iteration, the shorthand forms
+- **Guides:** setting up, checking expressions, fallbacks and errors, fragments, I/O clients, caching, tracing
+- **API reference:** the `FigTree` class: constructor options and methods (`evaluate`, `validate`, `compile`, `inspect`, `updateOptions`, …)
+- **Operator reference:** one generated page, by category (see "Generated operator reference" below)
+- **Syntax at a glance:** the whole expression language on one page (references, nodes, reserved keys, shorthand, null or failure), then one complete config followed from authoring to a hostile run. It lives in `reference/` beside the operator page, linked straight from the sidebar, and may become a top-level reference chapter; the whole-config walkthrough may split off into a guide. Built from "The grammar in one screen" and "Run a whole config, safely" in the "FigTree v3 by Example" artifact, checked against the code.
+- **Custom operators:** `defineOperator` and the operator contract
+- **Beyond evaluation:** the helper subpaths, `fig-tree-evaluator/catalog`, `/format` and `/authoring`, and the instance's introspection methods
+- **Under the hood:** the model rather than the code: why FigTree is shaped the way it is, the compile / check / evaluate stages and what each knows, and the guarantees. Kept out of the main path, which links into it wherever a "why" would interrupt. It names no files or types, so refactors don't stale it; code-level detail belongs in `docs-dev/`. Agreed November 2026: "Why FigTree is shaped this way" is a derivation, starting from a twenty-line evaluator and adding each mechanism only once a problem forces it (problem, idea, cost), in the order of the "FigTree From First Principles" artifact; "Compile, check, evaluate" is the model put together, with its end-to-end walkthrough produced from the real compiler at build time; "Guarantees" phrases each promise so a conformance case could test it. The artifact supplies the order and the arguments, not the prose, and its facts are checked against the code. The three pages are one argument and share several points (compiling once, absence and failure, the input never modified, checking never throwing), so they're written in three steps rather than one page at a time: write-page's stage 1 for the whole chapter at once, deciding which page owns each shared point and which only links to it; then the design page through all six stages, so its edit pass sets the chapter's voice; then model and guarantees drafted together, with one edit pass over both.
+- **Migrating from v2:** one page, linked straight from the sidebar, since few readers need it: the upgrade guide (what changed and how to update), the converter, `migrateV2Expression`, and what it can't do mechanically
+- **Playground:** try expressions in the browser ("The Playground page", below)
+- **Visual editor component:** the `fig-tree-editor-react` component, and how to fit it to an app
+
+A chapter is what Starlight calls a sidebar group; "section" is kept for the headings within a page. Chapters have no landing pages. Each one is a sidebar group autogenerated from its folder under `docs-site/src/content/docs/`, ordered by `sidebar.order` frontmatter. The exceptions are the one-page chapters (Getting started, Operator reference, Migrating from v2, Playground and Visual editor component), which the sidebar links to directly. The groups after the Operator reference start collapsed, and Starlight opens one when the current page is in it. The README links to the first page of each chapter, at the site's address (open question 2). Starlight's previous/next links follow the sidebar order across chapter boundaries, which suits a site read front to back, and a page that needs different links overrides them in frontmatter.
+
+### Splitting the main path by audience
+
+Proposed and rejected in November 2026: splitting Concepts and Guides into a chapter for expression authors and one for developers. The line between the two runs through features rather than pages (the app registers fragments and the expression author calls them; the app provides validation and the expression author reads its errors), so a split would cut each feature in two, repeat material, and break up the build-up for a reader going front to back. Instead, Getting started orients both audiences, Concepts stays the expression author's walkthrough, and each mixed page puts the expression author's material first. The decisions and their reasons are in [author-path-plan.md](author-path-plan.md).
+
+### Writing the pages
+
+Pages are written from scratch, in the site's own voice and order, rather than adapted from earlier material.
+
+Each page follows the `/write-page` workflow ([.claude/skills/write-page/SKILL.md](../.claude/skills/write-page/SKILL.md)): skeleton and facts agreed in chat, Carl writes the intro, Claude drafts and tidies the body, Carl leads a paragraph-by-paragraph edit pass, and his rewrites are distilled into [docs-voice.md](docs-voice.md).
+
+- **Before writing a page,** list the facts it has to get right from the specs in [v3-specs/](v3-specs/). Their rulings are scattered and sometimes revised later, so the code has the final say: check a fact against it wherever a ruling may have moved. Expression examples need no such check, since the build evaluates them.
+- **After writing it,** the three published pages in [docs-artifacts/](../docs-artifacts/) (see [artifacts.md](artifacts.md)) can be skimmed for a good example or diagram the page lacks. They predate parts of the specs and the code, so nothing is taken from them unchecked.
+- **Order:** Concepts first, since everything else links back to it and it sets the site's voice; then Guides; then Custom operators, Tooling and Under the hood; the API reference last.
+- **Placement:** Concepts hold what anyone reading or writing an expression needs, and read in order they're the expression author's walkthrough; Guides are task-shaped and mostly about the host's side. A page with both puts the expression author's sections first and the developer's last.
+- **Shorthand is the default form.** Examples and explanations use shorthand throughout, so a reader can use FigTree without ever meeting the canonical form. Where a parameter's name matters, the example uses named shorthand rather than canonical. Canonical is an alternative, presented on Shorthand and canonical forms and in Tooling, for the cases that need it: a program building expressions, storage where `$` keys can't go, and tools that read an expression without its `FigTree` instance.
+
+## Tooling: Starlight
+
+[Starlight](https://starlight.astro.build) is an Astro theme made for docs. It has these built in:
+
+- sidebar, contents list, previous/next and "edit this page" links
+- Pagefind search
+- dark mode
+- Expressive Code for code blocks (titles, tabs, line highlighting)
+- MDX
+
+It runs on Node and pnpm, as this repo already does.
+
+Its main advantage for this project is that **Astro runs TypeScript at build time, and pages can include React islands.** That makes three things straightforward:
+
+- examples evaluated by the library itself when the site is built
+- a reference rendered directly from `coreDefinitions`
+- `fig-tree-editor-react` embedded in pages
+
+### Compared with Zola
+
+[Zola](https://www.getzola.org) is a single Rust binary: no dependencies, very fast builds and Tera templates. It is a general static site generator, though:
+
+- the docs features (sidebar, search UI, page navigation) come from a third-party theme or have to be built by hand
+- it can't run JavaScript, so the generated reference would need a separate Node script writing JSON for Tera's `load_data`
+- the editor would have to be bundled separately and added through a shortcode
+
+Its main advantage, not needing Node, doesn't help here, because the repo already uses Node. Its main gap, no JS at build time, is exactly where the site's most useful features are. Zola would be the better choice for purely written docs with static examples that need little upkeep.
+
+**Starlight's costs:**
+
+- a heavy `node_modules`
+- Astro moves quickly, so major-version upgrades come up every so often
+- builds take seconds rather than milliseconds, which doesn't matter at this size
+
+### Prior art: Biome
+
+[biomejs.dev](https://biomejs.dev) ([source](https://github.com/biomejs/website)) is the closest existing match. It is Starlight with `@astrojs/react` and MDX:
+
+- **Reference generated from source.** Each lint-rule page (for example `src/content/docs/en/linter/rules/no-access-key/javascript.mdx`) is generated from the rule's own metadata in the main repo, and starts with a "don't edit by hand" header.
+- **A React playground in the same site.** `src/playground/Playground.tsx` is a CodeMirror editor running Biome compiled to WebAssembly, mounted at `src/pages/playground.astro`. FigTree is already TypeScript, so its playground can import the library directly, with no WASM step.
+- **Reference linked to the playground.** `RulePlaygroundLink.astro` encodes an example's code and settings into a playground URL, so any example on a rule page opens in the playground with that rule turned on.
+
+Biome's rule-page examples are static code blocks with an "open in playground" link, not editors on the page.
+
+## Generated operator reference
+
+Names, aliases, descriptions, parameters, types and null policies are all on each definition in `coreDefinitions`, so the reference is rendered from them and can't drift from the code. `pnpm generate:operators` already does this for the _FigTree v3 Operators_ artifact, so the site's version is the same data with a different renderer. Built (October 2026) as described here.
+
+**One page, every operator, by category** (`/reference/operators/`). Forty operators fit one page, and one page keeps the browser's find working across every name, alias and description. Rejected: a page per category, which splits that search and adds a click to every lookup.
+
+- **An index first:** each category with its operators' names as links, a one-screen view of the whole vocabulary.
+- **A section per category,** whose heading stays pinned below the site's header while its operators scroll beneath it, then gives way to the next one's. It is CSS only (`position: sticky` within the section), with no script.
+- **The page's contents list holds the categories,** not the operators, which would make it too long. Starlight builds that list from a page's Markdown headings, and these come from a component, so a route middleware (`src/routeData.ts`) adds them from the same catalog the page renders.
+- **The category colour marks each section** (its heading's stripe, the index's dots). Entries carry no category pill there; the short lists other pages show (`<OperatorReference names={…} showCategory />`) can.
+
+**Docs notes beside the catalog.** The catalog's descriptions are written short, for an editor's UI. An optional notes file per operator (`docs-site/src/content/operator-notes/<operator>.mdx`) adds a sentence to a description or a parameter's, or replaces it, and its MDX body adds longer notes, examples included. A replacement records a hash of the text it replaced, so the build stops when that text changes and the replacement is checked again. The notes stay in the docs site: the listings ship in consumers' bundles, where their brevity is the point.
+
+## Examples
+
+### Host code: code blocks
+
+Code that runs in the host goes in ordinary code blocks with Expressive Code titles and tabs. That covers constructing a `FigTree`, options, `defineOperator`, the subpaths and the converter.
+
+### Expressions: two tiers
+
+1. **Static expression block** (the default). Syntax-highlighted, with its result **evaluated at build time** and shown underneath, plus an "open in editor" link. Because the output is computed rather than typed, a documented result can't be wrong. This is Biome's pattern.
+2. **Interactive widget** (where interaction teaches something). Fallbacks, the shorthand forms and null handling are the obvious candidates. These are kept to the examples that earn them, since each one is a React island to load.
+
+[astro-live-code](https://github.com/mattjennings/astro-live-code), which renders MDX code blocks as live components and works with Starlight, is an option to evaluate for tier 1 or tier 2.
+
+### The two-pane widget
+
+- **Left:** a CodeMirror JSON5 editor. JSON5 lets examples carry comments and unquoted keys, and since it's a superset of JSON, any stored expression pastes straight in.
+- **Right:** `<FigTreeEditor expression={expr} setExpression={setExpr} />`. The editor is already a controlled component.
+- **Below:** the evaluated result.
+
+Both panes read and write the same React state.
+
+#### Keeping the panes in sync
+
+The only tricky part is the text pane, because half-typed JSON5 doesn't parse.
+
+- The left pane keeps its own text. On each edit, if the text parses, it updates the shared state. If it doesn't, the pane shows the parse error and leaves the state alone.
+- When the state changes from the right, the left pane re-renders its text only if its current text doesn't already parse to the same value. That avoids update loops, and avoids resetting the cursor while someone is typing on the left.
+- Evaluation runs on the shared state, debounced.
+- Comments live only in the text. When the left pane re-renders from the shared state (after an edit on the right), the text is regenerated from the value and its comments are lost. Comments are mainly for the examples as authored, so this is acceptable, but the widget could warn before an action that would drop them.
+
+#### Extras
+
+- **Form toggle: dropped (October 2026).** A "shorthand / full" switch on the left pane, rewriting the whole expression through `toShorthand` / `toCanonical`, was built and then removed. Shorthand is the docs' default form ("Writing the pages", above), and a switch on every widget put canonical form in front of every reader. The tree editor's own per-node conversion buttons cover it, in the expanded editor.
+- **Data pane.** Most real examples read `$data.…`, so the widget takes an optional data input, perhaps as a tab beside the result. The MDX provides its starting value along with the expression.
+- **Narrow screens.** The panes collapse into tabs when there isn't room for both side by side.
+- **Lazy loading.** Each widget is mounted with `client:visible`, so a page with several widgets loads the editor only when a reader scrolls to one.
+
+### The Playground page
+
+**Decided (Carl, October 2026): the Playground page replaces the hosted demo.** The demo app in fig-tree-editor-react's `demo/`, live at `carlosnz.github.io/fig-tree-evaluator`, and the docs Playground both embed the same `FigTreeEditor`, so two hosted playgrounds would be twice the upkeep for the same thing. The Playground page becomes the one place to try FigTree, with the demo's useful features ported into it. The docs site takes over the demo's URL (open question 2).
+
+**The demo stays, as Carl's development tool for the editor,** just no longer deployed. It does what the Playground can't: it runs the editor, fig-tree-evaluator and json-edit-react from local source with hot reloading (`VITE_FIG_SOURCE=local` and the like), where the docs site uses the editor's built `build/`; it can carry examples that exercise the editor rather than teach readers; and it follows the editor's branch rather than FigTree's releases. Being private, it needn't be polished or keep pace with the Playground's UI. Only its data is kept in step (below).
+
+**The editor gets a page of its own: "The visual editor", a top-level page below Playground** (sidebar: `{ label: 'Visual editor component', link: '/editor/' }`). Not in Beyond evaluation, which covers the `fig-tree-evaluator` package's own helpers, while the editor is a separate package. The page is the component's showcase, a role the hosted demo used to play: what it is (a React component for editing expressions as a tree, for apps whose configuration authors write expressions), a live instance, installing it and a minimal setup, the main ways to fit it to an app (operators and their listings through `getCatalog()`, fragments and the fragment editor, theming), and a link to the full props reference in the editor's README rather than a copy. The Playground says it's built with the component and links to this page; Beyond evaluation's overview links to it in place of its planned editor section.
+
+What the demo has, and where the Playground stands with each (November 2026, on the branch `docs-playground-improvements`):
+
+- **An example picker:** built, in a bar fixed to the foot of the window, with the blurb opening as a dialog on an example's first visit and again from Info. The picker marks the examples the reader has edited, and an expression from an "open in editor" link gets an entry of its own.
+- **Undo/redo, and saving the reader's work:** built. Each pane has its own undo history. The reader's edits are kept per example in local storage, and Reset example puts an example back as written (2e76ee0).
+- **A fallback-coverage badge:** built, as "Fully covered" or "N uncovered". Clicking it opens a panel listing each uncaught failure, and clicking a failure shows its node in the tree (83c0da6, 5631de1, 0bfab94).
+- **An options panel:** built, as the Configuration panel, with a Fragments section and the coverage analysis's Strict numbers (f8686b9, fb35390, 83c0da6).
+- **A fragment editor:** built, as fragment mode (November 2026, e1c65b6). The editor package exports the editor itself (`FragmentDefinitionEditor`, `FragmentSelect`, `useFragmentEditor`), so what's ported is the layout around it. A quiet Fragments button in the footer switches modes. In fragment mode, a bar across both panes holds the fragment picker, the definition's one Undo/Redo, Save and Back to expression. The expression pane edits the body, and the left pane shows the definition's declarations and metadata, with a Definition | Data switch, since a body can read `$data` too. The coverage badge is hidden there, since a body's failures are its callers' to catch, and the caller's coverage already reports them. `useFragmentEditor` holds the fragments and registers what it saves. The configuration takes those in (`recordFragments`), and every other change of the fragments (the Configuration panel, an example's setup) reaches the hook through `setFragments`. The draft is kept in local storage. A Configuration save that changes the fragments, Reset fragments included, ends fragment mode, since it can take away the fragment being edited.
+- **Show trace:** built, as the footer's Trace (November 2026). Turning it on adds a Trace view to the left pane (Data | Trace, or Definition | Data | Trace in fragment mode) and switches to it. The view shows the trace of the last Evaluate as JSON5, through the docs widget's formatter but with each entry's `elapsed`, and each Evaluate replaces it. An edit to the expression, the data or the configuration puts an "Out of date" badge in its top right corner, and a new example, a Reset or a switch of mode clears it. An example turns it on for itself with `trace: true`, as does an "open in editor" link from a docs example whose action is Show trace, adding the view without switching to it, and the configuration toast says so. As the window narrows, the footer drops the version (below 78rem), then its buttons' labels, leaving their icons and titles (below 62rem), then the picker's label, and the picker shrinks with "…" (below 40rem), so it stays on one row down to about 500px. Below that it wraps, and the page measures its height, so the room below the editors and the toasts' place follow however many rows it takes. The widget's other two actions were covered already: coverage by the badge, and Clear cache in the Configuration panel.
+- **The coverage badge as a setting:** built (November 2026), as a switch in the Configuration panel's Coverage section, off by default, which an example turns on for itself with `coverage: true`, as does an "open in editor" link from a docs example whose action is Show coverage. Nearly any expression that reads `$data` has uncovered failures, so the badge is noise to a first-time reader until an example explains it. Trace and the badge each follow the examples unless the reader turns them on, which pins them on for every example; turning one off goes back to following the examples. Only the pin is kept in local storage; what the open example asks for is worked out each time it opens (`Switch` in `playgroundSetup.ts`). While one is on only for the example, Trace's title and the panel say so.
+
+- **The new example set:** built (November 2026), twelve examples in place of the ported nine ([playground-examples-plan.md](playground-examples-plan.md), which notes where each departs from its plan). Their blurbs are first drafts, awaiting an edit pass.
+
+The demo's SQL runs through a local Express and Postgres server, so it never worked on the hosted demo. The Playground's SQL already runs in the browser, on SQLite.
+
+**How it's built.** The Playground doesn't wrap the docs pages' `PlaygroundWidget`. It has two editors of its own, side by side, as the demo does: a plain `JsonEditor` for the data and a `FigTreeEditor` for the expression, both editing an object or array as text in the site's JSON5 pane ([docs-site/src/components/playground/](../docs-site/src/components/playground/)). They're loaded only on `/playground/`, so pages with examples never pay for them, and the widget learns nothing about the Playground. The Playground evaluates with an instance of its own (`playgroundFigTree`, in `playgroundSetup.ts`), so the Configuration panel's options never reach the docs pages' examples. The panel changes it in place with `updateOptions()`, so its result cache survives them, and the coverage badge is told to work its coverage out again (`refreshCoverage()`).
+
+The demo's Chakra UI, Emotion and Framer Motion don't come across: the wrapper uses the site's own CSS (the `fds-` classes), so it follows Starlight's look and its light and dark themes.
+
+#### One set of playground data, shared with the demo
+
+The Playground and the demo read the same data from one place, so an example, a fragment or a setting is written once. The data lives in this repo, with the docs site, since the Playground is the published one and its content is reviewed in docs PRs: a folder such as `docs-site/src/playground/`. The demo imports it through a Vite alias to the sibling clone (`../fig-tree-evaluator/docs-site/src/playground/`), as it already reaches the evaluator's local source; as a local-only tool it can depend on that checkout.
+
+What's shared:
+
+- **The example sets**, one entry each: an `id` (a slug, for the Playground's URL and for remembering the reader's last pick, so renaming the menu entry breaks neither), the menu `name`, the blurb, the data, the expression, the tree's starting `collapse`, and any `options` the example needs (below). Blurbs are Markdown files, one per example, rather than strings in a TS file, so they're written and previewed as Markdown.
+- **Blurb images** go beside the blurbs, referenced by relative path. The demo's blurbs point at `carlosnz.github.io/fig-tree-evaluator/img/…`, the URL the docs site takes over, so those links would break anyway. The docs site serves them from its own build; the demo serves the same folder through its Vite config. The Playground renders blurbs with the site's own Markdown at build time and hands the HTML to the island; the demo keeps rendering them itself.
+- **The fragments, custom operators and their listings** the examples use: plain `FragmentDefinition`s, `defineOperator()` calls and a `ListingMap`. Each consumer builds its own instance from them, so the demo keeps its own I/O setup (its Postgres bridge) and the Playground its own (SQLite in the browser).
+- **Settings per example (Carl, November 2026).** An example can declare `options` and `fragments`. Opening it merges them into the reader's configuration, which keeps them after the example is left: options three levels deep, with `null` putting back FigTree's default, and fragments added or replaced by name, never removed. So an example sets or resets every option it's sensitive to. A toast says what opening it changed, if anything.
+
+What stays out:
+
+- **The demo's data-editor settings** (`objectJsonEditorProps`): json-edit-react props, some of them functions, for the demo's data pane. The Playground edits data as JSON5 text. The demo keeps them in its own overlay, keyed by example `id`.
+- **The site's page examples**: the fragments and custom operators the guide pages use (`docs-site/src/lib/fragments.ts`, `src/lib/operators/`) are chosen for teaching one point each and stay where they are, out of the Playground's set (Carl, October 2026). An "open in editor" link from a page evaluates with the Playground's instance, which always registers the pages' custom operators. The link's `fragments` flag merges the pages' fragments into the reader's, and its `noCache` flag becomes operator defaults (Carl, November 2026).
+- **The demo's welcome blurb**, which introduces the demo app itself. The Playground page has its own welcome (November 2026), adapted from it: a couple of sentences in `docs-site/src/playground/welcome.md`, shown once, on a reader's first visit, with the blurb of the example it opens on following it under its own title. It isn't shown to a reader who arrives by an "open in editor" link, who gets it on their first ordinary visit instead, and there's no way back to it, since it says little the example blurbs don't. It's also where the Playground links to the editor's page.
+
+Moving the demo's data here is the first step of the port, before any of the Playground's features, since every later step reads it. **Done (October 2026):** [docs-site/src/playground/](../docs-site/src/playground/) holds the examples (`examples.ts`), their blurbs and images (`blurbs/`), the fragments, with the fragment editor's starting sample (`fragments.ts`), and the custom operators and their listings (`operators.ts`). The blurbs' links point at the site's pages; their content gets an edit pass later.
+
+**A new set of examples.** The ported examples are the v2 demo's with only their syntax updated, and several don't show their feature at its best. The set is for visitors new to FigTree, so its job is to show off the library, not what changed since v2. The replacement set is in [playground-examples-plan.md](playground-examples-plan.md) (November 2026, built).
+
+## Dependencies
+
+- **The v3 editor.** `fig-tree-editor-react`'s `main` branch, and its only published release (1.0.1), depend on `fig-tree-evaluator ^2.23.2`. Its `v3.0-dev` branch tracks the v3 previews (`^3.0.0-preview.9`), but has no published release, so the docs site uses it through a local link (`link:` to a local clone, `~/GitHub/fig-tree-editor-react` on Carl's machine) until a v3 editor preview is on npm.
+
+## Open questions
+
+1. **Where the site lives: resolved.** In [docs-site/](../docs-site/), as a self-contained package with its own `package.json` and lockfile. It is not a pnpm workspace, so its dependencies stay out of the library's install and CI. In-repo keeps docs changes in the same PRs as the code they describe.
+2. **Hosting and URL: resolved (Carl, November 2026): `https://carlosnz.github.io/fig-tree-evaluator/`,** through GitHub Pages deployed by a GitHub Action. The site takes over the v2 demo's address, which is being retired in favour of the Playground page ("The Playground page", above), so the v2 README's playground link and any other link to the demo land on the docs site, whose home page points v2 readers to the README on the `v2.x` branch. Serving from a sub-path needs Astro's `base` and a rehype plugin that adds it to the content's root-relative links. A custom domain stays possible later, and GitHub would redirect the github.io links to it. The setup and the switch-over are in "1.1 The site's address" and stages 5 and 7 of [v3-release-plan.md](v3-release-plan.md).
+3. **Type-checking host-code examples: resolved, yes (October 2026).** Expression examples are checked by build-time evaluation. Host-code snippets are plain text and go stale silently when an option is renamed, a return shape changes or an export moves. Renames such as `missingPathDefault` → `default` (#195) and `useCache` → `noCache` (#204) are this kind of change.
+   - **Proposed mechanism:** twoslash, through Expressive Code's community twoslash plugin. The build compiles each TS snippet against the library's real types and fails on errors. Setup that a snippet needs but shouldn't display (imports, a sample `expression`) goes above a `// ---cut---` marker.
+   - **Bonus:** hover types in the rendered docs.
+   - **Scope:** type-check rather than run. Much host code depends on HTTP clients, a database or the user's data, which the build doesn't have. A few self-contained snippets could also be run.
+   - **Cost:** every snippet must compile, so writing one takes slightly more care.
+   - **The trial:** the plugin (`expressive-code-twoslash`) declares support for Expressive Code 0.41 and works with the 0.44 that Starlight bundles; its version is pinned so an update can't change that unnoticed. Snippets compile in well under a second of build time, and an error names the snippet, the line and TypeScript's own message.
+   - **How it's used:** every `ts` and `tsx` block is compiled, so a forgotten marker can't let one drift; a fragment that can't compile opts out with `nocheck`. Snippets can use `fig`, an instance with the default options, without setting it up (`docs-site/twoslash/globals.d.ts`), so the cut markers are rarely needed.
+   - **Run in CI** by `.github/workflows/docs.yml`, on any change to the library's source or the site, so a change that breaks a snippet fails in its own PR. A workflow of its own, so the library's CI and install stay free of the site's dependencies (question 1).
+4. **Repo docs to update when this lands:** `CLAUDE.md` calls the README "the authoritative reference for every operator", and `package.json`'s `homepage` points to the README.
+
+## To-do
+
+- **Keep a language-neutral standard in view.** Someone re-implementing FigTree in another language, such as Rust, would need an official standard: what an expression means, independent of this implementation. Not needed for v3.0, but the docs should be written so they can grow into one. Under the hood describes the model in implementation-free terms; its stage rules and guarantees, the shorthand grammar, the reference namespaces, null policy, truthiness, ordering, text rendering, path grammar, error codes and each operator's semantics are what a standard would have to pin down. The most useful single piece would be a conformance suite: the test cases as language-neutral data (expression, data, options, and the expected result or error code) that any implementation can run.
+
+## Next step
+
+A prototype: a bare Starlight skeleton with one page holding the two-pane widget, linked to the editor's `v3.0-dev` branch, and one reference page rendered from `coreDefinitions`. The same prototype can host the twoslash trial (open question 3), on a small sample of host-code snippets.
+
+**Built, October 2026:** [docs-site/](../docs-site/) ([README](../docs-site/README.md)). It is one page with an overview and an example of each element: host code blocks, build-time expression blocks with "open in editor" links, two widgets, a sample of reference entries rendered from `getOperators()`, and three twoslash snippets.

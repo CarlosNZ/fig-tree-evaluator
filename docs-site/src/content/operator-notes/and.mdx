@@ -1,0 +1,20 @@
+If a value fails, `and` still returns `false` when another value is falsy, since that settles the answer anyway: `{ $and: [false, { $divide: [1, 0] }] }` returns `false`. If no other value is falsy, the node fails, as `{ $and: [true, { $divide: [1, 0] }] }` does. An empty list returns `true`.
+
+<Expression
+  title="Free shipping for members on bigger orders"
+  code={`
+    {
+      $and: [
+        '$data.isMember',
+        { $greaterThan: ['$data.orderTotal', 100] },
+      ],
+    }
+  `}
+  data={`
+    // Set orderTotal under 100, and the answer is false
+    {
+      isMember: true,
+      orderTotal: 120,
+    }
+  `}
+/>

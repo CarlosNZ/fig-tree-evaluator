@@ -1,0 +1,22 @@
+For example, a member's price:
+
+<Expression
+  code={`
+    {
+      $if: {
+        condition: '$data.isMember',
+        then: { $multiply: ['$data.price', 0.9] },
+        else: '$data.price',
+      },
+    }
+  `}
+  data={`
+    // Set isMember to false to pay the full price
+    {
+      price: 80,
+      isMember: true,
+    }
+  `}
+/>
+
+For more than two branches, use [`match`](#op-match).

@@ -1,0 +1,48 @@
+---
+title: Getting started
+description: Who these docs are written for, and where each of them should go next
+---
+
+New to FigTree? Start with the [Concepts chapter](/concepts/expressions/) — it's a solid walkthrough of the key ideas that need to be understood by developers and expression authors alike.
+
+These docs in general, though, target two different but overlapping audiences:
+- **Expression authors** — whoever _configures_ your system, such as admins, implementers or the developers themselves, constructing the FigTree expressions that define its rules.
+- **Developers** — the ones _implementing_ FigTree in an app. They decide where FigTree is used (which parts of the app have dynamic rules), which options and operators are available, and provide the tools expression authors work with, such as UI editors, validation procedures and fragment authoring capabilities.
+
+This page clarifies the difference and points you in the right direction for your use case. But seriously, everyone should start with [Concepts](/concepts/expressions/).
+
+{/* Plan: docs-dev/author-path-plan.md. No code blocks on this page, only inline snippets: it orients, and the pages it links to teach. */}
+
+## What your app decides
+
+A FigTree expression is only half the picture: the app that evaluates it decides what it can do. Say you're writing a rule for when a particular form field shows up. Whether that rule can read the user's age, look something up in a database, or call a common discount calculation depends on how the app's developers have set FigTree up.
+
+Here's some of what they decide, and where each is explained:
+
+- **Which operators you can use:** the [core operators](/reference/operators/) by default, though an app can offer fewer. The `http`, `graphQL` and `sql` operators, and any custom operators of the app's own, are there only if the app adds them ([Choosing operators](/guides/setup/#choosing-operators)).
+- **What `$data` holds:** the values your expression reads, such as a form's answers or the current user's details ([The data object](/concepts/data/#the-data-object)). The app also decides whether a missing value gives `null` or is an [error](/concepts/data/#when-missing-is-a-mistake).
+- **Which fragments you can call:** named expressions the app registers, which you call just like operators ([Calling a fragment](/guides/fragments/#calling-a-fragment)). (And whether you can create your own.)
+- **Defaults for an operator:** settings that apply everywhere an operator is used, unless you set them yourself in an expression. For example, the app might have every failed `http` request return `null` rather than an error ([Defaults for an operator](/guides/setup/#defaults-for-an-operator)).
+- **Limits:** when a slow request should time out, and how large an expression can be ([Limits](/guides/setup/#limits)).
+- **How your work gets checked:** FigTree can find the mistakes in an expression before it ever runs ([Checking expressions](/guides/validation/)), and show where fallbacks should be applied ([`/authoring`](/tooling/authoring/)). Developers build these checks into the tools you use, such as a visual editor, or a validation check when you save.
+
+## Writing an expression
+
+The [Concepts](/concepts/expressions/) chapter teaches the language, and is written to be read in order. Alongside it:
+
+- **[Fragments](/guides/fragments/):** calling the app's named expressions, and writing their bodies, where your app lets you.
+- **[Checking expressions](/guides/validation/):** every mistake FigTree can find before an expression runs, such as a misspelt operator, and how to check paths against sample data.
+- **[Fallbacks and errors](/guides/fallbacks/):** giving a value in place of anything that fails, such as a request to a server that's down.
+- **[Missing values](/concepts/data/#missing-values):** a value that isn't in the data comes through as `null`, and the expression carries on; how to give something else instead.
+- **[Syntax at a glance](/reference/syntax/):** the whole language on one page, for when you know what you want and need the exact form.
+- **[Operator reference](/reference/operators/):** every operator, with its parameters and examples.
+
+## If you're the developer
+
+Everything under [What your app decides](#what-your-app-decides) is up to you to implement, and each link there shows how. After [Concepts](/concepts/expressions/), these are your pages:
+
+- **[Guides](/guides/setup/):** setting up an instance, checking expressions, fallbacks and errors, fragments, HTTP and SQL, caching and tracing.
+- **[Custom operators](/custom-operators/writing/):** operators of your own, for what the core ones can't do.
+- **[API reference](/api/figtree/):** the `FigTree` class and its options.
+- **[Beyond evaluation](/tooling/overview/):** converting expressions, presenting operators in a tool, and analyses such as which failures an expression's fallbacks cover.
+- **[Visual editor component](/editor/):** a React component to give expression authors a visual editor in your app.

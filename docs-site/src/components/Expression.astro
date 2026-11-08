@@ -1,0 +1,225 @@
+---
+/**
+ * A static expression example (tier 1): the expression, its data if any, and
+ * the result FigTree gives for them, computed when the site is built. The
+ * result is never typed by hand, so it can't be wrong.
+ *
+ * An example that evaluates without error is the normal case. One meant to
+ * show a failure sets `throws`, and then shows the error instead; the build
+ * fails if an example's outcome doesn't match what it says, either way.
+ *
+ * An example that sets `trace` is evaluated with tracing on, and shows the
+ * trace below its result or error (lib/trace.ts), computed at build time
+ * like the result. Its editor has a Show trace button, unless the example
+ * names another action. One that sets `coverage` shows the expression's
+ * fallbackCoverage() report the same way, with a Show coverage button.
+ *
+ * "Open in editor" opens the example in a full-size editor over the page
+ * (ExpressionEditor.tsx), with `caption` at its foot if given. Its address
+ * loads the example into the Playground page instead, for a new tab or a
+ * shared link. An example that doesn't suit an editor sets `editor={false}`,
+ * and has neither the link nor its island.
+ */
+import { Code } from '@astrojs/starlight/components'
+import JSON5 from 'json5'
+import { isFigTreeError } from 'fig-tree-evaluator'
+import { exampleCoverage, exampleFigTree } from '../lib/figTree'
+import { trackMissing } from '../lib/httpReplay'
+import { dedent } from '../lib/dedent'
+import { toJson5 } from '../lib/json5'
+import { showTrace } from '../lib/trace'
+import { playgroundHref } from '../lib/playgroundLink'
+import ExpressionEditor from './playground/ExpressionEditor.tsx'
+import type { ExampleActionName } from './playground/exampleActions'
+
+interface Props {
+  /** The expression, as JSON5 source. Comments are kept in the display. */
+  code: string
+  /** The evaluation data, as JSON5 source. */
+  data?: string
+  /** Evaluate with the Fragments page's fragments registered (lib/fragments.ts). */
+  fragments?: boolean
+  /** Evaluate with the Custom operators pages' operators registered (lib/operators/). */
+  customOperators?: boolean
+  /** Evaluate with nothing cached, so every run sends its requests. */
+  noCache?: boolean
+  /** An extra button in the editor's toolbar (playground/exampleActions.tsx). */
+  action?: ExampleActionName
+  /** A label for the expression's code block. */
+  title?: string
+  /** The example demonstrates an error rather than a result. */
+  throws?: boolean
+  /** Evaluate with tracing on, and show the trace, with a Show trace button in its editor. */
+  trace?: boolean
+  /** Show the expression's fallbackCoverage() report, with a Show coverage button in its editor. */
+  coverage?: boolean
+  /** `false` for no "Open in editor" at all. */
+  editor?: boolean
+  /** What to do or notice in the editor, at the foot of its overlay. */
+  caption?: string
+}
+
+const {
+  title = 'Expression',
+  throws = false,
+  trace = false,
+  coverage = false,
+  editor = true,
+  fragments,
+  customOperators,
+  noCache,
+  caption,
+} = Astro.props
+const action: ExampleActionName | undefined =
+  Astro.props.action ?? (trace ? 'showTrace' : coverage ? 'showCoverage' : undefined)
+const figTree = exampleFigTree({ fragments, customOperators, noCache })
+const code = dedent(Astro.props.code)
+const dataSource = Astro.props.data === undefined ? undefined : dedent(Astro.props.data)
+
+const where = `<Expression> in ${Astro.url.pathname}:\n${code}`
+const parse = (source: string, what: string) => {
+  try {
+    return JSON5.parse(source)
+  } catch (error) {
+    throw new Error(`${where}\n\nIts ${what} isn't valid JSON5: ${(error as Error).message}`)
+  }
+}
+const expression = parse(code, 'expression')
+const data = dataSource === undefined ? undefined : parse(dataSource, 'data')
+
+/**
+ * A failed example says which kind of error it shows: a static error is
+ * thrown with the validation issues that found it, before anything runs; a
+ * runtime error, thrown while the expression runs, has none.
+ */
+type Stage = 'static' | 'runtime'
+const stages: Record<Stage, { label: string; gloss: string }> = {
+  static: { label: 'Static error', gloss: 'found before anything ran' },
+  runtime: { label: 'Runtime error', gloss: 'failed while running' },
+}
+
+let outcome:
+  | { ok: true; result: unknown }
+  | { ok: false; stage: Stage; code: string; message: string }
+// The trace, where the example asks for one and the evaluation left one: a
+// static error has none, since nothing ran
+let traced: string | undefined
+const options: { data?: Record<string, unknown> } = data ? { data } : {}
+try {
+  if (trace) {
+    const evaluation = await trackMissing(() =>
+      figTree.evaluate(expression, { ...options, trace: true })
+    )
+    outcome = { ok: true, result: evaluation.result }
+    traced = showTrace(evaluation.trace)
+  } else {
+    outcome = { ok: true, result: await trackMissing(() => figTree.evaluate(expression, options)) }
+  }
+} catch (error) {
+  if (!isFigTreeError(error))
+    throw new Error(`${where}\n\n${(error as Error).message}`, { cause: error })
+  const stage = error.issues === undefined ? 'runtime' : 'static'
+  outcome = { ok: false, stage, code: error.code, message: error.message }
+  if (trace && error.trace !== undefined) traced = showTrace(error.trace)
+}
+if (outcome.ok && throws)
+  throw new Error(`${where}\n\nThis example says it throws, but it evaluated to:\n${toJson5(outcome.result)}`)
+if (!outcome.ok && !throws)
+  throw new Error(`${where}\n\nThis example threw ${outcome.code}: ${outcome.message}`)
+
+const report = coverage ? toJson5(await exampleCoverage(figTree, expression)) : undefined
+
+const href = editor ? playgroundHref({
+      expression: code,
+      data: dataSource,
+      fragments,
+      customOperators,
+      noCache,
+      action,
+    }) : null
+---
+
+<div class="fds-editable not-content">
+  <figure class="fds-expression">
+    <Code code={code} lang="json5" title={title} />
+    {dataSource !== undefined && <Code code={dataSource} lang="json5" title="Data" />}
+    {
+      outcome.ok ? (
+        <Code code={toJson5(outcome.result)} lang="json5" title="Result" />
+      ) : (
+        <div class={`fds-expression-error fds-expression-error--${outcome.stage}`} role="note">
+          <span class="fds-expression-error-badge" title={stages[outcome.stage].gloss}>
+            {stages[outcome.stage].label}
+          </span>
+          <span class="fds-expression-error-code">{outcome.code}</span>
+          <span>{outcome.message}</span>
+        </div>
+      )
+    }
+    <figcaption>
+      <span>Evaluated by fig-tree-evaluator {figTree.version} when this page was built</span>
+      {href && <a class="fds-editor-link" href={href}>Open in editor</a>}
+    </figcaption>
+  </figure>
+  {
+    href && (
+      <ExpressionEditor
+        client:visible
+        title={title}
+        expression={code}
+        data={dataSource}
+        fragments={fragments}
+        customOperators={customOperators}
+        noCache={noCache}
+        action={action}
+        caption={caption}
+      />
+    )
+  }
+  {
+    // After the island, which hydrates when it comes into view: below a long
+    // trace, it wouldn't have by the time its link above was clicked
+    traced !== undefined && (
+      <div class="fds-expression-report" data-collapsed>
+        <Code code={traced} lang="json5" title="Trace" />
+        <button class="fds-report-toggle" type="button" aria-expanded="false" hidden>
+          Show full trace
+        </button>
+      </div>
+    )
+  }
+  {
+    report !== undefined && (
+      <div class="fds-expression-report" data-collapsed>
+        <Code code={report} lang="json5" title="Coverage" />
+        <button class="fds-report-toggle" type="button" aria-expanded="false" hidden>
+          Show full report
+        </button>
+      </div>
+    )
+  }
+</div>
+
+<script>
+  // A trace or report starts cut down to a few lines, fading out, with a
+  // button to show it all. One short enough to fit shows whole, with no
+  // button.
+  for (const block of document.querySelectorAll<HTMLElement>('.fds-expression-report')) {
+    const code = block.querySelector('pre')!
+    const button = block.querySelector<HTMLButtonElement>('.fds-report-toggle')!
+    const showLabel = button.textContent!.trim()
+    // A pixel's grace, for rounding
+    if (code.scrollHeight <= code.clientHeight + 1) {
+      block.removeAttribute('data-collapsed')
+      continue
+    }
+    button.hidden = false
+    button.addEventListener('click', () => {
+      const collapsed = block.toggleAttribute('data-collapsed')
+      button.textContent = collapsed ? showLabel : 'Collapse'
+      button.setAttribute('aria-expanded', String(!collapsed))
+      // Collapsing a long block leaves the reader below it, so bring it back
+      if (collapsed) block.scrollIntoView({ block: 'nearest' })
+    })
+  }
+</script>

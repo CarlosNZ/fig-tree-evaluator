@@ -1,0 +1,57 @@
+---
+/**
+ * What FigTree compiles an expression into, printed when the site is built
+ * from the library's own `inspect()` report, so it can't disagree with the
+ * compiler: one line per compiled piece, indented under the piece it belongs
+ * to (lib/compiled.ts). Below the tree, the facts compiling worked out about
+ * the whole expression: the data it reads, and whether a timeout is
+ * shielded.
+ *
+ * `paths` adds each piece's location in the expression as it was written.
+ */
+import { Code } from '@astrojs/starlight/components'
+import JSON5 from 'json5'
+import { inspect } from 'fig-tree-evaluator'
+import { exampleFigTree } from '../lib/figTree'
+import { dedent } from '../lib/dedent'
+import { showCompiled } from '../lib/compiled'
+
+interface Props {
+  /** The expression, as JSON5 source. */
+  code: string
+  /** Show each piece's path in the expression as written. */
+  paths?: boolean
+  /** Show the expression's source above its compiled form. */
+  source?: boolean
+  /** A label for the compiled form's block. */
+  title?: string
+}
+
+const { paths = false, source = false, title = 'Compiled' } = Astro.props
+const figTree = exampleFigTree()
+const code = dedent(Astro.props.code)
+
+const where = `<Compiled> in ${Astro.url.pathname}:\n${code}`
+let expression: unknown
+try {
+  expression = JSON5.parse(code)
+} catch (error) {
+  throw new Error(`${where}\n\nIt isn't valid JSON5: ${(error as Error).message}`)
+}
+
+const report = inspect(figTree.compile(expression))
+const tree = showCompiled(report, { paths })
+const reads = report.dependencies.dataPaths
+const facts = [
+  `Reads from the data: ${reads.length === 0 ? 'nothing' : reads.join(', ')}`,
+  `Shielded from a timeout: ${report.timeoutShielded ? 'yes' : 'no'}`,
+].join('\n')
+---
+
+<figure class="fds-expression not-content">
+  {source && <Code code={code} lang="json5" title="Expression" />}
+  <Code code={`${tree}\n\n${facts}`} lang="txt" title={title} />
+  <figcaption>
+    <span>Compiled by fig-tree-evaluator {figTree.version} when this page was built</span>
+  </figcaption>
+</figure>

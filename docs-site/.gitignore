@@ -1,5 +1,9 @@
 # build output
 dist/
+# copied from images/logo/ by scripts/copyLogo.mjs
+public/favicon.svg
+public/apple-touch-icon.png
+public/social.png
 # generated types
 .astro/
 

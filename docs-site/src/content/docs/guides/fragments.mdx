@@ -1,0 +1,388 @@
+---
+title: Fragments
+description: Reusable named expressions, registered once and called by name
+sidebar:
+  order: 4
+---
+
+import Callout from '../../../components/Callout.astro'
+import Expression from '../../../components/Expression.astro'
+import FragmentSetup from '../../../components/FragmentSetup.astro'
+
+You may find that the expressions you are building for your application often use very similar sub-expressions (but perhaps with only some input values that differ). For example, a repetitive "Price with tax" calculation:
+
+<Expression
+  title="Without a fragment"
+  code={`
+    {
+      price: {
+        $round: [
+          {
+            $multiply: [
+              '$data.price',
+              { $plus: [1, { $divide: ['$data.taxRate', 100] }] },
+            ],
+          },
+          2,
+        ],
+      },
+      shipping: {
+        $round: [
+          {
+            $multiply: [
+              '$data.shipping',
+              { $plus: [1, { $divide: ['$data.taxRate', 100] }] },
+            ],
+          },
+          2,
+        ],
+      },
+      giftWrap: {
+        $round: [
+          {
+            $multiply: [
+              '$data.giftWrap',
+              { $plus: [1, { $divide: ['$data.taxRate', 100] }] },
+            ],
+          },
+          2,
+        ],
+      },
+    }
+  `}
+  data={`
+    { price: 80.49, shipping: 12.5, giftWrap: 4, taxRate: 15 }
+  `}
+/>
+
+In such cases, you can define a Fragment, give it a name, then use that name in all future expressions, just like you would an operator.
+
+<Expression
+  fragments
+  title="With a fragment"
+  code={`
+    {
+      price: { $priceWithTax: { amount: '$data.price', rate: 15 } },
+      // rate defaults to 15%, so it can be left out
+      shipping: { $priceWithTax: { amount: '$data.shipping' } },
+      giftWrap: { $priceWithTax: { amount: '$data.giftWrap' } },
+    }
+  `}
+  data={`
+    { price: 80.49, shipping: 12.5, giftWrap: 4 }
+  `}
+/>
+
+## Calling a fragment
+
+A fragment is called just like an operator, with its name as a key prefixed with `$`. Its arguments are always given by name, though: a fragment has no positional or single-value form.
+
+Which fragments you can call is up to your app, which registers them ([Registering fragments](#registering-fragments)).
+
+A fragment with no parameters is called with an empty object, as in `{ $refreshRates: {} }`.
+
+A call is checked against the fragment's parameters the way an operator's node is checked against the operator's. A missing required parameter, an argument the fragment doesn't declare, or a fixed value of the wrong type is a [static error](/guides/validation/#static-errors), found before anything runs:
+
+<Expression
+  fragments
+  throws
+  code={`
+    { $priceWithTax: { amount: 80.49, rat: 10 } }
+  `}
+/>
+
+A value worked out as the expression runs, such as `'$data.price'`, is checked when it arrives, and a wrong one is a runtime error, which a fallback can catch.
+
+Each argument is evaluated when the body first reads it, and only once, so an argument the body doesn't use, such as one read only in a branch of an `if` that isn't taken, is never evaluated at all.
+
+### Passing the arguments as one object
+
+Sometimes the arguments already exist as one object, such as a form response or a row from a database. To pass that object as the arguments, write the call in [canonical form](/concepts/forms/#the-canonical-form), which names the fragment with a `fragment` key and puts the arguments in `parameters`:
+
+<Expression
+  fragments
+  code={`
+    { fragment: 'priceWithTax', parameters: '$data.lineItem' }
+  `}
+  data={`
+    {
+      lineItem: {
+        sku: 'TEA-01', // Not one of its parameters, so it's ignored
+        amount: 80.49,
+        rate: 10,
+      },
+    }
+  `}
+/>
+
+In this case, the arguments can't be checked until the object exists, so any error will be a runtime error.
+
+### Fragments vs variables
+
+Fragments and [variables](/concepts/variables/) both save you repeating yourself, but in different ways. A variable holds a _value_, worked out once and read anywhere in the one expression that declares it. A fragment holds _logic_, which any expression can call, each time with its own arguments.
+
+They work well together. This fragment looks up a country's currency, and gives `null` for a country the lookup doesn't know:
+
+<FragmentSetup plain names={['countryCurrency']} />
+
+Here we define two variables which each call a fragment, so the `if` doesn't repeat them across its `condition`, `then` and `else`:
+
+<Expression
+  fragments
+  title="Price label"
+  code={`
+    {
+      vars: {
+        price: { $priceWithTax: { amount: '$data.price' } },
+        currency: { $countryCurrency: { country: '$data.country' } },
+      },
+      $if: {
+        condition: '$vars.currency',
+        then: { $buildString: '{{$vars.price}} ({{$vars.currency}})' },
+        else: { $buildString: '{{$vars.price}}' },
+      },
+    }
+  `}
+  data={`
+    {
+      price: 80.49,
+      // Try 'Japan', or a country that doesn't exist
+      country: 'New Zealand',
+    }
+  `}
+/>
+
+## When a fragment fails
+
+A failure inside a fragment body bubbles up like any other, to the nearest [fallback](/guides/fallbacks/).
+
+In `$error`, a failure inside a body has two extra fields: `fragment`, the fragment it happened in, and `fragmentPath`, where it happened in that fragment's definition. Its `path` points at the call. In this example, a fragment averages a list of orders:
+
+<FragmentSetup plain names={['averageOrder']} />
+
+With no orders, there's nothing to add up, so its `plus` fails:
+
+<Expression
+  fragments
+  code={`
+    {
+      $averageOrder: { orders: '$data.orders' },
+      fallback: '$error',
+    }
+  `}
+  data={`
+    {
+      orders: [
+        // Uncomment these to see the average
+        // { id: 'A-1041', amount: 120 },
+        // { id: 'A-1042', amount: 80.5 },
+        // { id: 'A-1043', amount: 42.25 },
+      ],
+    }
+  `}
+/>
+
+A failed argument, such as a string passed as `amount`, belongs to the calling expression, so its `$error` has neither field.
+
+## Writing a fragment
+
+A fragment is defined once, and your app registers it under the name it's called by. Your app may let you write fragments of your own, or only call the ones it provides. Here's the definition of `priceWithTax`:
+
+<FragmentSetup plain names={['priceWithTax']} />
+
+A definition holds:
+
+- **`expression`:** the fragment's body, which can be any expression, including calls to other fragments. It reads its arguments with `$params` references, such as `$params.amount`.
+- **`parameters`:** what the fragment is called with, keyed by name. A fragment that needs none leaves it out.
+- **`listing`:** how editors and other tools present the fragment, such as its description and its parameters' ([Fragments in an editor](#fragments-in-an-editor)).
+- **`metadata`:** anything your own tools need. FigTree never reads it.
+
+### Declaring parameters
+
+Each parameter can declare:
+
+- **`type`:** what it accepts, such as `'number'` or `['string', 'null']`, in the same terms as an operator's parameters ([Parameters](/custom-operators/parameters/)). If it's left out, any value is accepted.
+- **`default`:** the value used when a call leaves the parameter out. It's a fixed value, never an expression.
+- **`required`:** a parameter is required unless it has a `default` or sets `required: false`.
+- **`constraints`:** further checks on an array, such as its exact `length`, or the shape each of its elements must have ([Types and constraints](/custom-operators/parameters/#types-and-constraints)).
+
+Passing `null` counts as leaving a parameter out, unless its `type` includes `null`:
+
+<Expression
+  fragments
+  code={`
+    {
+      // Left out, so the default 15% applies
+      nz: { $priceWithTax: { amount: 80.49 } },
+      au: { $priceWithTax: { amount: 80.49, rate: 10 } },
+      custom: { $priceWithTax: { amount: 80.49, rate: '$data.customRate' } },
+    }
+  `}
+  data={`
+    {
+      // A form field left blank. Give it a rate, such as 20, to see it used
+      customRate: null,
+    }
+  `}
+/>
+
+<Callout kind="tip" title="A computed default">
+  A parameter's `default` is always a fixed value. When the default has to be computed, such as a tax rate from the region's settings, set `required: false` and leave `default` out. The parameter is then `null` in the body whenever a call leaves it out, so the body can fill the gap itself: `{ $firstNonNull: ['$params.rate', '$data.region.taxRate'] }`.
+</Callout>
+
+### What a fragment body can see
+
+A fragment body is sealed off from the expression that calls it, so it means the same thing wherever it's called. It can read the evaluation's `$data`, its own `$params`, and the variables and iterators inside it. It can't see the caller's variables, or the `$element` and `$index` of an iterator the call is inside. An attempt to do so is a static error, on registration.
+
+To use one of those in a fragment, pass it in as an argument:
+
+<Expression
+  fragments
+  code={`
+    {
+      $map: {
+        input: '$data.cart',
+        each: { $priceWithTax: { amount: '$element.price' } },
+      },
+    }
+  `}
+  data={`
+    {
+      cart: [
+        { item: 'Teapot', price: 80.49 },
+        { item: 'Tea towel', price: 12.5 },
+      ],
+    }
+  `}
+/>
+
+## Registering fragments
+
+Fragments are registered on your FigTree instance, in the `fragments` option, each under the name it's called by:
+
+<FragmentSetup names={['priceWithTax']} />
+
+### Checked when registered
+
+`new FigTree()` checks every fragment it's given, and throws a `FigTreeError` if anything's wrong, with the code `'invalid-options'` and every problem in its `issues`. Registration runs all the checks [`validate()`](/guides/validation/#static-errors) runs on an expression, as well as some of its own, such as that each `$params` reference names a declared parameter, that each `default` matches its parameter's type, and that the fragment's name doesn't clash with an operator's name or alias.
+
+### Adding, replacing and removing fragments
+
+[`updateOptions()`](/guides/setup/#changing-options) can change the registered fragments, merging what it's given with what's there:
+
+```ts title="update.ts"
+fig.updateOptions({
+  fragments: {
+    // A new name is added, beside the fragments already registered
+    fullName: {
+      expression: { $buildString: '{{$params.first}} {{$params.last}}' },
+      parameters: { first: { type: 'string' }, last: { type: 'string' } },
+    },
+    // A name already registered is replaced, as a whole
+    shippingCost: {
+      expression: { $multiply: ['$params.weightKg', 4.5] },
+      parameters: { weightKg: { type: 'number' } },
+    },
+    // null removes one
+    legacyDiscount: null,
+  },
+})
+```
+
+The whole set is checked again, as `new FigTree()` checks it, and an update that fails the check throws and changes nothing. That includes one that leaves a fragment calling another that's no longer there, whether it was removed, or its operator was taken out of `operators`. Fragments given together can call each other in any order, but a fragment can't call one that hasn't been registered yet, so register the two together, or the one being called first.
+
+### Validating a fragment during authoring
+
+Like with normal expressions, a fragment body can be checked using `validate()`. The only difference is that you must provide a second argument, listing the parameters expected:
+
+```ts title="checkBody.ts"
+const fragmentBody = {
+  $round: [{ $multiply: ['$params.amount', { $plus: [1, { $divide: ['$params.rat', 100] }] }] }, 2],
+}
+
+fig.validate(fragmentBody, { params: ['amount', 'rate'] })
+// => { valid: false, issues: [{ code: 'unresolved-param', suggestion: 'rate', … }] }
+```
+
+The `getDependencies()` method lists the parameters a body reads (the reverse of the above), so an editor can offer to declare them. The `dynamic` value is `true` when the body reads `$params` as a whole, where the list can't be known from the expression:
+
+```ts title="checkBody.ts"
+declare const fragmentBody: object
+// ---cut---
+fig.getDependencies(fragmentBody).params
+// => { names: ['amount', 'rat'], dynamic: false }
+```
+
+### Fragments in an editor
+
+A fragment definition can carry two more keys, intended primarily for external tools such as a visual editor: a `listing`, with what an editor needs to present the fragment, and `metadata`, for anything of your own. FigTree itself never uses either:
+
+```ts title="Types"
+import type { FragmentParameterDeclaration } from 'fig-tree-evaluator'
+// ---cut---
+interface FragmentDefinition {
+  // These two are covered above
+  expression: unknown
+  parameters?: Record<string, FragmentParameterDeclaration>
+  // How the fragment is presented
+  listing?: Listing
+  // Anything your own tools need
+  metadata?: Record<string, unknown>
+}
+
+// The same type an operator's listing is
+interface Listing {
+  displayName?: string
+  description?: string
+  // Each parameter's description, by parameter name
+  parameterDescriptions?: { [parameter: string]: string }
+  docUrl?: string
+  // CSS colours to draw the fragment's nodes in
+  colors?: { background: string; text: string }
+  // What a new call's arguments start with, by parameter name
+  seeds?: { [parameter: string]: unknown }
+  // Realistic arguments, by parameter name, for trying the body out
+  samples?: { [parameter: string]: unknown }
+  // Merged over the definition's metadata in the catalog
+  metadata?: Record<string, unknown>
+}
+```
+
+[`getCatalog()`](/tooling/catalog/#fragments) shows how an editor retrieves them.
+
+```ts title="fragments.ts"
+import { FigTree } from 'fig-tree-evaluator'
+
+const fig = new FigTree({
+  fragments: {
+    averageOrder: {
+      expression: {
+        $round: [
+          { $divide: [{ $plus: '$params.orders[*].amount' }, { $length: '$params.orders' }] },
+          2,
+        ],
+      },
+      parameters: {
+        orders: {
+          type: 'array',
+          constraints: { elementShape: { amount: { type: 'number' } } },
+        },
+      },
+      listing: {
+        displayName: 'Average order',
+        description: "The average of a list of orders' amounts, rounded to the cent",
+        parameterDescriptions: { orders: 'The orders, each with a numeric amount' },
+        docUrl: 'https://wiki.example.com/fragments/average-order',
+        colors: { background: '#1F5F8B', text: '#FFFFFF' },
+        // A new call starts with one empty order, to show the shape
+        seeds: { orders: [{ amount: 0 }] },
+        samples: { orders: [{ amount: 120 }, { amount: 80.5 }, { amount: 42.25 }] },
+        metadata: { version: "1.0" },
+      },
+      metadata: { owner: 'finance-team', author: "Carl" },
+    },
+  },
+})
+```
+
+[Beyond evaluation](/tooling/overview/) covers the rest of what FigTree offers an editor.

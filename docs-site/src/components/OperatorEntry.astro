@@ -1,0 +1,309 @@
+---
+/**
+ * One operator's reference entry (OperatorReference.astro): its names, its
+ * description and any notes, its parameters, its positional form and what it
+ * returns. Every fact is the catalog's; the docs' own notes add to or replace
+ * its descriptions (src/lib/operatorNotes.ts).
+ */
+import type { CollectionEntry, render } from 'astro:content'
+import {
+  EvaluationData,
+  type CatalogOperatorParameter,
+  type ConditionalNullBehavior,
+  type ExpectedType,
+  type NullBehavior,
+  type NullPolicyValue,
+  type ParameterInfo,
+} from 'fig-tree-evaluator'
+import type { CatalogCategory, CatalogOperator } from '../lib/operatorCatalog'
+import { toJson5 } from '../lib/json5'
+import { applyNote } from '../lib/operatorNotes'
+import Expression from './Expression.astro'
+
+interface Props {
+  op: CatalogOperator
+  category: CatalogCategory
+  /** The docs' note on the operator, if it has one. */
+  note?: CollectionEntry<'operatorNotes'>['data']
+  /** The note's longer text, rendered, if it has any. */
+  Notes?: Awaited<ReturnType<typeof render>>['Content'] | null
+  /** Show the category as a pill, for a list that mixes categories. */
+  showCategory?: boolean
+}
+
+const { op, category, note, Notes, showCategory = false } = Astro.props
+
+/** Metadata type → the reference's notation; literal unions keep quotes. */
+const formatType = (type: ExpectedType): string => {
+  if (Array.isArray(type)) return type.map(formatType).join(' | ')
+  if (typeof type === 'object' && type !== null && 'literal' in type)
+    return type.literal.map((m) => (typeof m === 'string' ? `'${m}'` : String(m))).join(' | ')
+  return String(type)
+}
+
+/**
+ * The parameter's type as the reference shows it. Where a `null`
+ * propagates, the type's `null` only lets it through to propagate, so it's
+ * left out: the Null behaviour column already says what a `null` does.
+ */
+const paramType = (p: CatalogOperatorParameter): string => {
+  const type = formatType(
+    p.nullBehavior === 'propagate' && Array.isArray(p.type)
+      ? p.type.filter((member) => member !== 'null')
+      : p.type
+  )
+  const homogeneous = p.constraints?.homogeneous
+  return homogeneous?.length && type === 'array'
+    ? `array[${homogeneous.map(formatType).join(' | ')}]`
+    : type
+}
+
+/**
+ * A single space reads as an empty string at the column's size, so it's
+ * named as well.
+ */
+const presence = (p: ParameterInfo): string => {
+  if (p.required) return 'required'
+  if (!('default' in p)) return 'optional'
+  if (p.default === ' ') return `default ' ' (space)`
+  return `default ${p.default === EvaluationData ? '$data' : toJson5(p.default)}`
+}
+
+interface NullTag {
+  label: string
+  title: string
+  before?: string
+  after?: string
+}
+
+/**
+ * What a `null` at a parameter does (the catalog's `nullBehavior`), as the
+ * reference words it, and the fuller explanation its tooltip gives.
+ */
+const nullBehaviors: Record<NullBehavior, NullTag> = {
+  propagate: {
+    label: 'propagate',
+    title: 'A null here makes the whole node null, and the operator doesn’t run',
+  },
+  accept: { label: 'accept', title: 'The operator receives the null and decides what it means' },
+  omit: {
+    label: 'omit',
+    title: 'A null here counts as leaving the parameter out, so its default applies',
+  },
+  error: { label: 'error', title: 'A null here is a type error' },
+}
+
+/** The same for each element or entry of a list or object. */
+const elementBehaviors: Record<
+  NonNullable<CatalogOperatorParameter['elementNullBehavior']>,
+  NullTag
+> = {
+  propagate: {
+    label: 'propagate (each)',
+    title: 'A null element makes the whole node null, and the operator doesn’t run',
+  },
+  accept: { label: 'accept (each)', title: 'The operator receives a null element as it is' },
+  error: { label: 'error (each)', title: 'A null element is a type error' },
+}
+
+/**
+ * A behaviour that depends on another parameter: the one most of its
+ * values share reads as "otherwise", and the rest name their values.
+ */
+const conditionalTags = ({ selector, table }: ConditionalNullBehavior): NullTag[] => {
+  const byBehavior = new Map<NullPolicyValue, string[]>()
+  for (const { value, behavior } of table)
+    byBehavior.set(behavior, [...(byBehavior.get(behavior) ?? []), toJson5(value)])
+  const [[otherwise], ...exceptions] = [...byBehavior].sort((a, b) => b[1].length - a[1].length)
+  if (exceptions.length === 0) return [nullBehaviors[otherwise]]
+  return [
+    ...exceptions.map(([behavior, values]) => ({
+      ...nullBehaviors[behavior],
+      after: ` if ${selector} is ${values.join(' or ')}`,
+    })),
+    { ...nullBehaviors[otherwise], before: 'otherwise ' },
+  ]
+}
+
+/**
+ * The parameter's Null behaviour cell, a line per tag: a list's or
+ * object's elements first, then the whole value's behaviour, marked as
+ * such beside them. Where the two are the same, one tag says it for both.
+ */
+const nullTags = (p: CatalogOperatorParameter): NullTag[] => {
+  const whole =
+    typeof p.nullBehavior === 'string'
+      ? [nullBehaviors[p.nullBehavior]]
+      : conditionalTags(p.nullBehavior)
+  if (p.elementNullBehavior === undefined || p.elementNullBehavior === p.nullBehavior) return whole
+  return [
+    elementBehaviors[p.elementNullBehavior],
+    ...whole.map((tag) => ({ ...tag, after: ' (whole)' })),
+  ]
+}
+
+/**
+ * The tag shown beside a parameter that isn't evaluated up front, and the
+ * fuller explanation its tooltip gives, as the operators page's key defines
+ * them. Eager parameters have none.
+ */
+const evaluationTags: Record<
+  Exclude<NonNullable<ParameterInfo['evaluationMode']>, 'eager'>,
+  { label: string; title: string }
+> = {
+  lazy: { label: 'lazy', title: 'Evaluated only if needed, and at most once' },
+  lazyEntries: { label: 'lazy per entry', title: 'Only the entry chosen is evaluated' },
+  lazyElements: {
+    label: 'lazy in order',
+    title: 'Evaluated one element at a time, each only if reached',
+  },
+  perElement: {
+    label: 'per element',
+    title: 'Evaluated once for each element of the input: maybe many times, maybe none',
+  },
+  race: {
+    label: 'stops early',
+    title: 'All start together; as soon as one decides the answer, the rest are stopped',
+  },
+  literal: { label: 'literal only', title: 'Never evaluated: must be written as a literal' },
+}
+
+/** The positional shorthand, e.g. `{ $plus: [...values] }`, where there is one. */
+const positionalForm = (() => {
+  if (!op.positionalParams?.length) return null
+  const args = op.positionalParams.map((p) => (p === op.restParam ? `...${p}` : p))
+  return `{ $${op.name}: [${args.join(', ')}] }`
+})()
+
+/**
+ * The single-value shorthand, e.g. `{ $round: value }`, where one value
+ * makes a complete call: every parameter after the first is optional. An
+ * operator whose positional form is only a list has none here, since its
+ * single value is that whole list, which the page's key explains once.
+ */
+const singleValueForm = (() => {
+  const first = op.positionalParams?.[0]
+  if (first === undefined || first === op.restParam) return null
+  const complete = Object.entries(op.parameters).every(([name, p]) => name === first || !p.required)
+  return complete ? `{ $${op.name}: ${first} }` : null
+})()
+---
+
+<section class="fds-op" id={`op-${op.name}`}>
+  <header class="fds-op-header">
+    <h3>
+      <code>{op.name}</code>
+    </h3>
+    {
+      op.alias && (
+        <code class="fds-op-alias" title="Alias">
+          {op.alias}
+        </code>
+      )
+    }
+    {
+      showCategory && (
+        <span
+          class="fds-op-category"
+          style={`background:${category.colors.background};color:${category.colors.text}`}
+        >
+          {category.displayName}
+        </span>
+      )
+    }
+  </header>
+  <p class="fds-op-description" set:html={applyNote(op.description, note?.description)} />
+  {
+    Notes && (
+      <div class="fds-op-notes">
+        <Notes components={{ Expression }} />
+      </div>
+    )
+  }
+  <div class="fds-op-params-scroll">
+    <table class="fds-op-params">
+      <thead>
+        <tr>
+          <th>
+            Parameter<a
+              class="fds-op-key"
+              href="/reference/operators/#how-to-read-this-page"
+              title="What the tags mean">?</a
+            >
+          </th>
+          <th>Type</th>
+          <th>Presence</th>
+          <th>
+            Null behaviour<a
+              class="fds-op-key"
+              href="/reference/operators/#what-a-null-does"
+              title="What the Null behaviour labels mean">?</a
+            >
+          </th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          Object.entries(op.parameters).map(([name, p]) => (
+            <tr>
+              <td>
+                <span class="fds-op-param">
+                  <code>{name}</code>
+                  {p.evaluationMode && p.evaluationMode !== 'eager' && (
+                    <span class="fds-op-tag" title={evaluationTags[p.evaluationMode].title}>
+                      {evaluationTags[p.evaluationMode].label}
+                    </span>
+                  )}
+                </span>
+              </td>
+              <td>
+                <code>{paramType(p)}</code>
+              </td>
+              <td>{presence(p)}</td>
+              <td>
+                {nullTags(p).map((tag, i) => (
+                  <>
+                    {i > 0 && <br />}
+                    {tag.before}
+                    <span class="fds-op-null" title={tag.title}>
+                      {tag.label}
+                    </span>
+                    {tag.after}
+                  </>
+                ))}
+              </td>
+              <td set:html={applyNote(p.description, note?.parameters?.[name])} />
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+  <div class="fds-op-meta">
+    {
+      positionalForm && (
+        <p>
+          <span class="fds-op-meta-label">Positional form:</span>{' '}
+          <code>{positionalForm}</code>
+        </p>
+      )
+    }
+    {
+      singleValueForm && (
+        <p>
+          <span class="fds-op-meta-label">Single value:</span>{' '}
+          <code>{singleValueForm}</code>
+        </p>
+      )
+    }
+    <p>
+      <span class="fds-op-meta-label">Returns:</span> <code>{formatType(op.returns)}</code>
+    </p>
+  </div>
+  {
+    op.displayName !== op.name && (
+      <p class="fds-op-hint">Shown in the editor as “{op.displayName}”</p>
+    )
+  }
+</section>

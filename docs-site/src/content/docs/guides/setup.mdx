@@ -1,0 +1,265 @@
+---
+title: Setting up FigTree
+description: Creating an instance, giving it data and operators, and the options that shape every evaluation
+sidebar:
+  order: 1
+---
+
+import Callout from '../../../components/Callout.astro'
+
+Expressions are evaluated by a **FigTree instance**, configured with your preferred [options](/api/options/), and called with `evaluate()`. Usually, a single global instance is adequate for the whole application.
+
+## Creating an instance
+
+`new FigTree()` gives an instance with the core operators (all the [Operators](/reference/operators/) except the I/O ones) and nothing else, which is enough for every example in the Concepts pages. Anything more goes in its options:
+
+```ts title="fig.ts"
+import { FigTree } from 'fig-tree-evaluator'
+
+export const fig = new FigTree({
+  // Values every evaluation can read
+  data: { currency: 'NZD', gstRate: 0.15 },
+  // A value for every use of an operator
+  operatorDefaults: { divide: { fallback: null } },
+  // Give up on any evaluation that takes longer than 5 seconds
+  timeout: 5000,
+})
+
+// A price of 80, plus GST
+const expression = { $multiply: [80, { $plus: [1, '$data.gstRate'] }] }
+
+await fig.evaluate(expression) // => 92
+```
+
+## Options for a single evaluation
+
+On a single instance, most of its options stay the same from one evaluation to the next. However, there are a handful of options that can be passed in to `evaluate()` for a single evaluation: `data`, `signal`, `timeout` and `trace`. Each replaces the instance's value for that call, leaving the instance as it was, with multiple simultaneous evaluations never interfering with each other's options. Of these, `data` is the one you'd reach for most, as application state you evaluate against usually changes frequently (form responses, for example). [Data references](/concepts/data/#the-data-object) has more on the data an expression reads.
+
+```ts title="form.ts"
+import { FigTree } from 'fig-tree-evaluator'
+declare const expression: object
+declare const formData: Record<string, unknown>
+// ---cut---
+const fig = new FigTree({ timeout: 5000 })
+
+// Each evaluation reads the form as it is right now
+const visible = await fig.evaluate(expression, { data: formData })
+```
+
+Data on the instance suits values that _stay the same_, such as app settings or a lookup table; data passed with an evaluation suits what _changes_ every time, such as a form's answers.
+
+Data passed with an evaluation replaces the instance's data for that evaluation — the two are never merged. When an expression needs both, pass one object holding both:
+
+```ts title="data.ts"
+import { FigTree } from 'fig-tree-evaluator'
+const settings = { currency: 'NZD', gstRate: 0.15 }
+const fig = new FigTree({ data: settings })
+const data = { order: { id: 'A-1042', subtotal: 80.49 } }
+// ---cut---
+await fig.evaluate('$data.gstRate', { data }) // => null
+await fig.evaluate('$data.gstRate', { data: { ...settings, ...data } }) // => 0.15
+```
+
+<Callout kind="caution" title="Treat a result as read-only">
+
+A result can share objects with the expression, with the data and with cached results, rather than copying them. Changing one changes the other, and can change what later evaluations return:
+
+```ts title="page.ts"
+declare const pageConfig: object
+declare const data: Record<string, unknown>
+declare const extraField: string
+type Page = { fields: string[] }
+// ---cut---
+const page = (await fig.evaluate(pageConfig, { data })) as Page
+
+// ❌️ Wrong: page.fields can be pageConfig's own array
+page.fields.push(extraField)
+
+// ✅️ Right: make a new array of your own
+const fields = [...page.fields, extraField]
+```
+
+</Callout>
+
+## Changing options
+
+`updateOptions()` changes the instance's options, any of them, `operators` included. Each option you give replaces the one it had, except for the options that hold a set of entries, such as `http`, whose entries are merged in one at a time. `null` removes an option:
+
+```ts title="update.ts"
+import { FigTree } from 'fig-tree-evaluator'
+// ---cut---
+const fig = new FigTree({
+  data: { currency: 'NZD', gstRate: 0.15 },
+  http: { baseEndpoint: 'https://api.example.com', headers: { 'X-App': 'shop' } },
+  timeout: 5000,
+})
+
+fig.updateOptions({
+  // Merged into http, so the headers stay
+  http: { baseEndpoint: 'https://staging.example.com' },
+  // A missing data path is an error from now on
+  strictDataPaths: true,
+})
+
+// Replaced whole, so currency is gone
+fig.updateOptions({ data: { gstRate: 0.1 } })
+
+// No timeout from now on
+fig.updateOptions({ timeout: null })
+
+fig.getOptions()
+// => {
+//      data: { gstRate: 0.1 },
+//      http: {
+//        baseEndpoint: 'https://staging.example.com',
+//        headers: { 'X-App': 'shop' },
+//      },
+//      strictDataPaths: true,
+//    }
+```
+
+To keep the original as it is, `with()` makes a new instance with the update applied. It shares the original's operators and compiled expressions, so it costs almost nothing, which makes it a good fit for a variant you need beside the original, such as the strict copy in [Data references](/concepts/data/#when-missing-is-a-mistake), or an instance whose requests are made as a separate service account rather than as the signed-in user:
+
+```ts title="admin.ts"
+import { FigTree } from 'fig-tree-evaluator'
+declare const fig: FigTree
+declare const serviceToken: string
+// ---cut---
+// Requests from this instance are made as the service account
+const adminFig = fig.with({
+  http: { headers: { Authorization: `Bearer ${serviceToken}` } },
+})
+```
+
+<Callout kind="caution" title="Options change existing expressions">
+
+An instance's options apply to every expression it evaluates, including ones already stored and in use. So changing one on a system that's already running, whether with `updateOptions()` or in your setup code, can change what those expressions give.
+
+</Callout>
+
+## Choosing operators
+
+The core operators are included by default. The package also has these, which you can add:
+
+- **`httpOperators`**: `http` and `graphQL`, which send requests through a client you provide ([HTTP and SQL](/guides/http-and-sql/)).
+- **`sqlOperators`**: `sql`, which runs queries through a database connection you provide ([HTTP and SQL](/guides/http-and-sql/)).
+- **Your own:** any [custom operators](/custom-operators/writing/) you define.
+
+To add them, list them in the `operators` option, along with `coreOperators`:
+
+```ts title="operators.ts"
+// @filename: operators/formatNumber.ts
+import type { ValidatedOperatorDefinition } from 'fig-tree-evaluator'
+export declare const formatNumber: ValidatedOperatorDefinition
+// @filename: fig.ts
+// ---cut---
+import { FigTree, coreOperators, httpOperators, FetchClient } from 'fig-tree-evaluator'
+// A custom operator, written with defineOperator()
+import { formatNumber } from './operators/formatNumber'
+
+const fig = new FigTree({
+  operators: [coreOperators, httpOperators(new FetchClient()), formatNumber],
+})
+```
+
+To replace a core operator with a version of your own, such as an `upper` that follows the user's locale, use `operatorSet()`. Give it your operators, as you'd list them in the `operators` option, and then what to change:
+
+```ts title="operators.ts"
+// @filename: operators/localeUpper.ts
+import type { ValidatedOperatorDefinition } from 'fig-tree-evaluator'
+export declare const localeUpper: ValidatedOperatorDefinition
+// @filename: fig.ts
+// ---cut---
+import { FigTree, coreOperators, operatorSet } from 'fig-tree-evaluator'
+// Your own upper, written with defineOperator()
+import { localeUpper } from './operators/localeUpper'
+
+const fig = new FigTree({
+  operators: operatorSet(coreOperators, { replace: localeUpper }),
+})
+```
+
+`operatorSet()` can also choose which operators to keep: `only` keeps just the ones it names, and `except` leaves out the ones it names. Each takes an operator's name, or a whole category, such as `{ category: 'math' }`:
+
+```ts
+import { coreOperators, operatorSet } from 'fig-tree-evaluator'
+
+// A small calculator: the maths and comparison operators, and if
+operatorSet(coreOperators, {
+  only: [{ category: 'math' }, { category: 'comparison' }, 'if'],
+})
+
+// No regex, and no string operators except buildString
+operatorSet(coreOperators, {
+  except: ['regex', { category: 'string', except: 'buildString' }],
+})
+```
+
+Every name is checked, so a misspelt `'uper'` is an error rather than an operator quietly left in.
+
+Fragments, the reusable named expressions you call just like operators, are registered on the instance too, in the `fragments` option ([Fragments](/guides/fragments/)).
+
+## Defaults for an operator
+
+Operator parameters (and modifiers) can have instance-wide defaults, if that makes sense for your system, defined in the `operatorDefaults` option. Examples include:
+
+- setting a `fallback` for an operator, so a failure gives a value instead of an error
+- setting what an operator uses in place of a `null`, through parameters such as `nullInputDefault` and `nullValueDefault`
+
+```ts title="defaults.ts"
+import { FigTree } from 'fig-tree-evaluator'
+// ---cut---
+const fig = new FigTree({
+  operatorDefaults: {
+    // An array operator given null works on [] instead
+    map: { nullInputDefault: [] },
+    filter: { nullInputDefault: [] },
+    // Dividing by zero gives null, wherever it happens
+    divide: { fallback: null },
+  },
+})
+```
+
+<Callout kind="note" title="Two important things to remember">
+
+- **Plain values only:** an operator default is never an expression, though a `fallback` can read `$error` to say what went wrong.
+- **The node comes first:** a node that sets its own value, for a parameter or a `fallback`, uses that instead.
+
+</Callout>
+
+## Limits
+
+You can set limits on the resources an expression can use, so that one made too large or too slow by mistake can't hold things up ([Evaluation is bounded](/under-the-hood/guarantees/#evaluation-is-bounded)). There are two kinds:
+
+- **Size:** `maxDepth` limits how deep an expression tree can go, and `maxNodes` limits the total number of evaluable nodes in the expression. Both are checked before anything runs, so an expression that exceeds either never starts.
+- **Time:** `timeout` gives up on an evaluation that takes longer than that many milliseconds, fallbacks included.
+
+```ts title="limits.ts"
+import { FigTree } from 'fig-tree-evaluator'
+// ---cut---
+const fig = new FigTree({ maxDepth: 30, maxNodes: 500, timeout: 5000 })
+```
+
+Going over a limit makes the evaluation throw, and a `fallback` doesn't catch it[^shielding].
+
+<Callout kind="caution" title="No limits by default">
+
+None of the limits has a default, and Axios and node-postgres don't time out on their own either, so an expression that makes requests can wait forever. If yours use the network, set a `timeout` here, on the client, or both ([HTTP and SQL](/guides/http-and-sql/#timeouts-and-cancellation)).
+
+</Callout>
+
+## Cancelling an evaluation
+
+To stop an evaluation that's already running, pass a `signal` from an `AbortController`, and abort it when your app no longer needs the result, such as when the user navigates away. Any requests the expression has in progress are cancelled, and `evaluate()` throws:
+
+```ts title="cancel.ts"
+declare const expression: object
+// ---cut---
+const controller = new AbortController()
+const pending = fig.evaluate(expression, { signal: controller.signal })
+
+// When it's time to cancel
+controller.abort()
+```
+
+[^shielding]: With one exception: an expression can give a plain-value `fallback` in place of whatever a `timeout` cut off, rather than throwing. [Timeout shielding](/guides/fallbacks/#timeout-shielding) has the details.

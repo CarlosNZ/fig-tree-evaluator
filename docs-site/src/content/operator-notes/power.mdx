@@ -1,0 +1,27 @@
+To take a root, use a fractional `exponent`, such as `0.5` for a square root.
+
+<Expression
+  title="A deposit growing with compound interest"
+  code={`
+    {
+      $round: [
+        {
+          $multiply: [
+            '$data.deposit',
+            { $power: [{ $plus: [1, '$data.interestRate'] }, '$data.years'] },
+          ],
+        },
+        2,
+      ],
+    }
+  `}
+  data={`
+    {
+      deposit: 1000,
+      interestRate: 0.05,
+      years: 10,
+    }
+  `}
+/>
+
+A negative `base` with a fractional `exponent` fails even where the answer is a real number, such as the cube root of `-8`.

@@ -1,0 +1,29 @@
+---
+description: 'Every FigTree instance understands it, whatever its operators.'
+---
+
+Use `literal` for any part of an expression that FigTree would otherwise read as expression syntax:
+
+- **Keys prefixed with `$`:** read as operators, so a stored database query's `$in` is an error.
+- **An `operator` or `fragment` key:** marks a node in its [canonical form](/concepts/forms/#the-canonical-form).
+- **A `vars` or `//` key:** read as a block of variables, or a comment, and left out of the result.
+- **A string starting with a reference:** read as the reference, so `'$data.price'` gives the price, not the text.
+
+<Expression
+  title="Data that looks like FigTree syntax, kept as written"
+  code={`
+    {
+      // A stored database query, for the database rather than FigTree
+      filter: { $literal: { status: { $in: ['open', 'pending'] } } },
+      // A phone plan, whose provider happens to be called operator
+      phone: { $literal: { operator: 'Kōwhai Mobile', plan: 'Prepay' } },
+      // Help text that shows a reference, rather than reading it
+      hint: { $literal: '$data.price' },
+    }
+  `}
+  data={`
+    {
+      price: 9.5,
+    }
+  `}
+/>

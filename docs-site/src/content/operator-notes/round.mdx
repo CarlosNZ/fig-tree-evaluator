@@ -1,0 +1,17 @@
+So `2.5` rounds to `3`, and `-2.5` to `-3`, where JavaScript's `Math.round` gives `-2`.
+<Expression
+  title="Rounding to cents, and to the nearest thousand"
+  code={`
+    {
+      price: { $round: ['$data.price', 2] },
+      // Negative decimals round to the left of the point
+      visitors: { $round: ['$data.visitors', -3] },
+    }
+  `}
+  data={`
+    {
+      price: 92.555,
+      visitors: 12480,
+    }
+  `}
+/>

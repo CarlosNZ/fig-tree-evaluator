@@ -96,19 +96,19 @@ export const operatorListings: ListingMap = {
   // ── Logic & control ────────────────────────────────────────────────────
   and: {
     displayName: 'Logical AND',
-    description: 'True when every value is truthy — operands run in parallel',
+    description: 'True when every value is truthy',
     docUrl: DOCS,
     colors: { background: '#d6d0f0', text: '#26183f' },
     seeds: { values: [true, true] },
-    parameterDescriptions: { values: 'Operands, judged by FigTree truthiness; null is falsy' },
+    parameterDescriptions: { values: 'The values to test, by FigTree truthiness' },
   },
   or: {
     displayName: 'Logical OR',
-    description: 'True when any value is truthy — operands run in parallel',
+    description: 'True when any value is truthy',
     docUrl: DOCS,
     colors: { background: '#cabfeb', text: '#26183f' },
     seeds: { values: [true, false] },
-    parameterDescriptions: { values: 'Operands, judged by FigTree truthiness; null is falsy' },
+    parameterDescriptions: { values: 'The values to test, by FigTree truthiness' },
   },
   not: {
     displayName: 'Logical NOT (!)',
@@ -116,9 +116,7 @@ export const operatorListings: ListingMap = {
     docUrl: DOCS,
     colors: { background: '#c0aee5', text: '#26183f' },
     seeds: { value: true },
-    parameterDescriptions: {
-      value: 'Judged by FigTree truthiness; null is falsy, so not(null) is true',
-    },
+    parameterDescriptions: { value: 'The value to test, by FigTree truthiness' },
   },
   if: {
     displayName: 'Conditional (?)',
@@ -131,14 +129,14 @@ export const operatorListings: ListingMap = {
       else: 'The condition is false',
     },
     parameterDescriptions: {
-      condition: 'Judged by FigTree truthiness; null is falsy',
+      condition: 'The value to test, by FigTree truthiness',
       then: 'The value when the condition holds',
-      else: 'The value when it does not; omitted means null',
+      else: 'The value when it does not',
     },
   },
   match: {
     displayName: 'Match',
-    description: 'Dispatch on a value — only the matching branch evaluates',
+    description: 'Choose a branch by a value — only the matching branch evaluates',
     docUrl: DOCS,
     colors: { background: '#d4bfeb', text: '#26183f' },
     seeds: {
@@ -147,9 +145,9 @@ export const operatorListings: ListingMap = {
       default: 'No match',
     },
     parameterDescriptions: {
-      value: 'Matched against branch keys by its canonical string form',
-      branches: 'A literal map of branches, or an expression computing one',
-      default: 'The branch taken when none matches; absent means failure',
+      value: 'The value to look up among the branch keys, compared as text',
+      branches: 'The branches, each keyed by a value to match',
+      default: 'The branch taken when none matches; without one, the node fails',
     },
   },
   firstNonNull: {
@@ -166,68 +164,70 @@ export const operatorListings: ListingMap = {
   equal: {
     displayName: 'Equal (=)',
     description:
-      'Are all the values equal? Deep, structural, key-order-insensitive; a cross-type comparison is false',
+      'True when all the values are equal, comparing arrays and objects by their contents',
     docUrl: DOCS,
     colors: { background: '#d2efe9', text: '#183f3e' },
     seeds: { values: ['These are equal', 'These are equal'] },
     parameterDescriptions: {
-      values: 'The values compared; null is comparable (null equals null)',
-      caseInsensitive: 'Fold string operands to one case before comparing (shallow)',
+      values: 'The values to compare, any number of them',
+      caseInsensitive:
+        'Ignore case when comparing strings, though not strings inside arrays or objects',
     },
   },
   notEqual: {
     displayName: 'Not equal (!=)',
-    description: 'Are the values NOT all equal? The exact negation of equal (never "all distinct")',
+    description: "True when the values aren't all equal — the opposite of equal",
     docUrl: DOCS,
     colors: { background: '#c1e9e3', text: '#183f3e' },
     seeds: { values: ['These items', "don't match"] },
     parameterDescriptions: {
-      values: 'The values compared; null is comparable (null equals null)',
-      caseInsensitive: 'Fold string operands to one case before comparing (shallow)',
+      values: 'The values to compare, any number of them',
+      caseInsensitive:
+        'Ignore case when comparing strings, though not strings inside arrays or objects',
     },
   },
   greaterThan: {
     displayName: 'Greater than (>)',
-    description: 'Is the first value strictly greater than the second?',
+    description: 'True when the first value is greater than the second',
     docUrl: DOCS,
     colors: { background: '#b0e3e0', text: '#183f3e' },
     seeds: { values: [10, 9] },
     parameterDescriptions: {
-      values: 'Exactly two operands: both numbers, or both strings (codepoint order)',
-      nullValueDefault: 'Replaces a null operand before comparing',
+      values: 'The two values to compare: both numbers, or both strings',
+      nullValueDefault: 'Replaces a null value before comparing',
     },
   },
   greaterThanOrEqual: {
     displayName: 'Greater than or equal (>=)',
-    description: 'Is the first value greater than or equal to the second?',
+    description: 'True when the first value is greater than or equal to the second',
     docUrl: DOCS,
     colors: { background: '#d2efef', text: '#183f3e' },
     seeds: { values: [10, 10] },
     parameterDescriptions: {
-      values: 'Exactly two operands: both numbers, or both strings (codepoint order)',
-      nullValueDefault: 'Replaces a null operand before comparing',
+      values: 'The two values to compare: both numbers, or both strings',
+      nullValueDefault: 'Replaces a null value before comparing',
     },
   },
   lessThan: {
     displayName: 'Less than (<)',
-    description: 'Is the first value strictly less than the second?',
+    description: 'True when the first value is less than the second',
     docUrl: DOCS,
     colors: { background: '#c1e6e9', text: '#183f3e' },
     seeds: { values: [9, 10] },
     parameterDescriptions: {
-      values: 'Exactly two operands: both numbers, or both strings (codepoint order)',
-      nullValueDefault: 'Replaces a null operand before comparing',
+      values: 'The two values to compare: both numbers, or both strings',
+      nullValueDefault: 'Replaces a null value before comparing',
     },
   },
   lessThanOrEqual: {
     displayName: 'Less than or equal (<=)',
-    description: 'Is the first value less than or equal to the second?',
+    description: 'True when the first value is less than or equal to the second',
     docUrl: DOCS,
     colors: { background: '#b0dbe3', text: '#183f3e' },
     seeds: { values: [9, 9] },
     parameterDescriptions: {
-      values: 'Exactly two operands: both numbers, or both strings (codepoint order)',
-      nullValueDefault: 'Replaces a null operand before comparing',
+      values: 'The two values to compare: both numbers, or both strings',
+      nullValueDefault: 'Replaces a null value before comparing',
     },
   },
 
@@ -240,9 +240,8 @@ export const operatorListings: ListingMap = {
     colors: { background: '#d7edd4', text: '#193e1e' },
     seeds: { values: [1, 2, 3] },
     parameterDescriptions: {
-      values: 'The operands; homogeneous: all numbers, strings, arrays or objects',
-      expect:
-        'Pin the mode: every operand must be this type, and an empty input yields its identity',
+      values: 'The values to add, all of the same type',
+      expect: 'The type the values must be — needed when the list could be empty',
       nullValueDefault: 'Replaces any null operand before the addition',
     },
   },
@@ -252,38 +251,45 @@ export const operatorListings: ListingMap = {
     docUrl: DOCS,
     colors: { background: '#bfe4bc', text: '#193e1e' },
     seeds: { value: 10, minus: 5 },
-    parameterDescriptions: { value: 'The main operand', minus: 'The amount subtracted from value' },
+    parameterDescriptions: {
+      value: 'The number to subtract from',
+      minus: 'The amount to subtract',
+    },
   },
   multiply: {
     displayName: 'Multiply (*)',
-    description: 'Multiply numbers together — an empty input is 1, the empty product',
+    description: 'Multiply numbers together — an empty list returns 1',
     docUrl: DOCS,
     colors: { background: '#b4e0b3', text: '#193e1e' },
     seeds: { values: [5, 5] },
     parameterDescriptions: {
-      values: 'The factors',
+      values: 'The numbers to multiply',
       nullValueDefault: 'Replaces any null factor before multiplying',
     },
   },
   divide: {
     displayName: 'Divide (/)',
-    description: 'Divide one number by another — true division; zero divisors fail',
+    description: 'Divide one number by another — dividing by zero fails',
     docUrl: DOCS,
     colors: { background: '#cceacd', text: '#193e1e' },
     seeds: { value: 100, by: 10 },
-    parameterDescriptions: { value: 'The main operand', by: 'The divisor' },
+    parameterDescriptions: { value: 'The number to divide', by: 'The number to divide it by' },
   },
   modulo: {
     displayName: 'Modulo',
-    description: 'The floored remainder: the result takes the sign of mod, so modulo(-7, 3) is 2',
+    description: 'The remainder after dividing one number by another, with the sign of the divisor',
     docUrl: DOCS,
     colors: { background: '#c3e7c6', text: '#193e1e' },
     seeds: { value: 10, mod: 3 },
-    parameterDescriptions: { value: 'The main operand', mod: 'The modulus' },
+    parameterDescriptions: {
+      value: 'The number to divide',
+      mod: 'The number to divide by (the modulus)',
+    },
   },
   power: {
     displayName: 'Power (^)',
-    description: 'Raise a base to an exponent — overflow and complex results fail',
+    description:
+      "Raise a base to an exponent — overflow, and results that aren't real numbers, fail",
     docUrl: DOCS,
     colors: { background: '#acddb1', text: '#193e1e' },
     seeds: { base: 2, exponent: 3 },
@@ -291,14 +297,14 @@ export const operatorListings: ListingMap = {
   },
   round: {
     displayName: 'Round',
-    description:
-      'Round to a number of decimal places — ties go half away from zero; negative decimals round to tens, hundreds, …',
+    description: 'Round to a number of decimal places — halfway values round away from zero',
     docUrl: DOCS,
     colors: { background: '#d4edd8', text: '#193e1e' },
     seeds: { value: 3.14159, decimals: 2 },
     parameterDescriptions: {
       value: 'The number to round',
-      decimals: 'Decimal places to keep; negative values round to powers of ten',
+      decimals:
+        'Decimal places to keep; a negative number rounds to tens (-1), hundreds (-2) and so on',
     },
   },
   floor: {
@@ -351,52 +357,48 @@ export const operatorListings: ListingMap = {
   // ── Strings ────────────────────────────────────────────────────────────
   buildString: {
     displayName: 'String builder',
-    description: 'Render a template, filling its tokens — the result is always a string',
+    description: 'Build text from a template, filling in its tokens',
     docUrl: DOCS,
     colors: { background: '#f8d9c9', text: '#3f2f18' },
     // A data reference rather than a substitution key, since `substitutions`
     // is optional and a new node is seeded with its required parameters only
     seeds: { template: 'Hello {{$data.name}}' },
     parameterDescriptions: {
-      template:
-        'The text, with %N or {{name}} tokens; in a literal template, {{$data.x}} is that reference',
-      substitutions:
-        'An array pairs with %N tokens, an object with {{name}} tokens; the mode dispatches on which arrives',
-      trim: 'Trim whitespace from each rendered value, never from the template text',
-      closeGaps: 'A value that renders empty also takes one run of adjacent template whitespace',
-      nullValueDefault: 'Rendered in place of a null value, instead of ""',
+      template: 'The text, with %1, %2… or {{name}} tokens, or references such as {{$data.name}}',
+      substitutions: 'The values for the tokens: an array for %1, %2…, or an object for {{name}}',
+      trim: "Trim whitespace from the ends of each value filled in, but not from the template's own text",
+      closeGaps: 'Where a value fills in as empty text, remove the space beside it too',
+      nullValueDefault: 'Written in place of a null value, which is otherwise empty text',
     },
   },
   split: {
     displayName: 'Split text',
-    description:
-      'Divide a string on a delimiter into an array of pieces — empty pieces are kept; an empty delimiter splits into code points',
+    description: 'Divide a string into a list of pieces, at each delimiter',
     docUrl: DOCS,
     colors: { background: '#f5cbab', text: '#3f2f18' },
     // `trim` defaults to true, so it is added to turn it off
     seeds: { value: 'Alpha, Bravo, Charlie', delimiter: ',', trim: false },
     parameterDescriptions: {
       value: 'The string to divide',
-      delimiter: 'Split on each occurrence; "" splits into code points',
-      trim: 'Trim whitespace from each piece',
+      delimiter: 'The text to split at; an empty string splits into single characters',
+      trim: 'Trim whitespace from the ends of each piece',
     },
   },
   join: {
     displayName: 'Join text',
-    description: 'Render array elements to text and concatenate them with a delimiter',
+    description: "Join a list's values into one string, with a delimiter between them",
     docUrl: DOCS,
     colors: { background: '#f3cba0', text: '#3f2f18' },
     seeds: { values: ['Alpha', 'Bravo', 'Charlie'], delimiter: ', ' },
     parameterDescriptions: {
-      values:
-        'Elements of any type, rendered by the stringification table; a null renders "" and still occupies its slot',
-      delimiter: 'Placed between each adjacent pair — shares its contract with split',
-      nullValueDefault: 'Rendered in place of a null element, instead of ""',
+      values: 'The values to join, of any type',
+      delimiter: 'The text to put between each pair of values',
+      nullValueDefault: 'Written in place of a null value, which is otherwise empty text',
     },
   },
   lower: {
     displayName: 'Lower case',
-    description: 'Lowercase a string — Unicode default case mapping, locale-independent',
+    description: 'Convert a string to lower case',
     docUrl: DOCS,
     colors: { background: '#f7e1bf', text: '#3f2f18' },
     seeds: { value: 'Hello World' },
@@ -404,7 +406,7 @@ export const operatorListings: ListingMap = {
   },
   upper: {
     displayName: 'Upper case',
-    description: 'Uppercase a string — Unicode default case mapping, locale-independent',
+    description: 'Convert a string to upper case',
     docUrl: DOCS,
     colors: { background: '#f6e1b4', text: '#3f2f18' },
     seeds: { value: 'Hello World' },
@@ -412,7 +414,7 @@ export const operatorListings: ListingMap = {
   },
   trim: {
     displayName: 'Trim whitespace',
-    description: 'Strip whitespace (the JS trim set) from both ends of a string',
+    description: 'Remove whitespace from both ends of a string',
     docUrl: DOCS,
     colors: { background: '#f2dd97', text: '#3f2f18' },
     seeds: { value: '  Hello World  ' },
@@ -425,14 +427,13 @@ export const operatorListings: ListingMap = {
     colors: { background: '#f8f1c9', text: '#3f2f18' },
     seeds: { value: 'test-this', pattern: '^[a-z]{4}-[a-z]{4}$', flags: 'i' },
     parameterDescriptions: {
-      value: 'The subject string',
-      pattern: 'The regular expression source',
-      flags: 'The admitted subset: i, m, s, u',
-      mode: 'test gives a boolean, extract the first matching substring, match every one of them, replace the string with every match replaced',
-      noMatchDefault:
-        'The extract answer when nothing matches — a matched empty string still passes through',
+      value: 'The string to search',
+      pattern: 'The regular expression, as a string',
+      flags: 'Any of i, m, s and u',
+      mode: "'test' returns true or false, 'extract' the first match, 'match' every match, and 'replace' the string with every match replaced",
+      noMatchDefault: "What 'extract' returns when nothing matches",
       replacement:
-        'What replace puts in place of each match — $1 and $<name> insert a capture group, $& the whole match, $$ a dollar sign; empty removes the matches',
+        "What 'replace' puts in place of each match: $1 and $<name> insert a capture group, $& the whole match, $$ a dollar sign",
     },
   },
 
@@ -441,11 +442,11 @@ export const operatorListings: ListingMap = {
   // so an editor adding it also renames `$element` in `each`
   length: {
     displayName: 'Length',
-    description: "An array's element count, or a string's Unicode code-point count",
+    description: 'The number of elements in an array, or characters (code points) in a string',
     docUrl: DOCS,
     colors: { background: '#cde5f3', text: '#18293f' },
     seeds: { value: [1, 2, 3, 4, 5] },
-    parameterDescriptions: { value: 'The array or string measured' },
+    parameterDescriptions: { value: 'The array or string to measure' },
   },
   map: {
     displayName: 'Map each',
@@ -454,71 +455,70 @@ export const operatorListings: ListingMap = {
     colors: { background: '#bbd7ef', text: '#18293f' },
     seeds: { input: [1, 2, 3], each: '$element', as: 'item' },
     parameterDescriptions: {
-      input: 'The collection iterated over; a null input is a type error',
-      as: "Rename the bindings: as: 'row' binds $row and $rowIndex",
-      nullInputDefault: 'Used as the collection when input evaluates to null — typically []',
-      each: 'Evaluated per element, with $element and $index bound',
+      input: 'The array to iterate over',
+      as: "A name to use in place of element: 'row' gives $row and $rowIndex",
+      nullInputDefault: 'Used as the array when input is null, such as []',
+      each: 'Evaluated for each element, which it reads as $element',
     },
   },
   filter: {
     displayName: 'Filter',
-    description: 'Keep the elements of an array whose predicate is truthy',
+    description: 'Keep the elements of an array that pass a test',
     docUrl: DOCS,
     colors: { background: '#a8c7eb', text: '#18293f' },
     seeds: { input: [0, 1, 2, 3], each: '$element', as: 'item' },
     parameterDescriptions: {
-      input: 'The collection iterated over; a null input is a type error',
-      as: "Rename the bindings: as: 'row' binds $row and $rowIndex",
-      nullInputDefault: 'Used as the collection when input evaluates to null — typically []',
-      each: 'The predicate, per element — a truthiness position, so null is falsy',
+      input: 'The array to iterate over',
+      as: "A name to use in place of element: 'row' gives $row and $rowIndex",
+      nullInputDefault: 'Used as the array when input is null, such as []',
+      each: 'The test for each element, which it reads as $element, by FigTree truthiness',
     },
   },
   find: {
     displayName: 'Find first',
-    description: 'The first element of an array whose predicate is truthy',
+    description: 'The first element of an array that passes a test',
     docUrl: DOCS,
     colors: { background: '#cddcf3', text: '#18293f' },
     seeds: { input: [0, 1, 2, 3], each: '$element', as: 'item' },
     parameterDescriptions: {
-      input: 'The collection iterated over; a null input is a type error',
-      as: "Rename the bindings: as: 'row' binds $row and $rowIndex",
-      nullInputDefault: 'Used as the collection when input evaluates to null — typically []',
-      each: 'The predicate, per element — a truthiness position, so null is falsy',
-      noMatchDefault: 'The answer when nothing matches; a found null passes through unchanged',
+      input: 'The array to iterate over',
+      as: "A name to use in place of element: 'row' gives $row and $rowIndex",
+      nullInputDefault: 'Used as the array when input is null, such as []',
+      each: 'The test for each element, which it reads as $element, by FigTree truthiness',
+      noMatchDefault: 'What to return when no element passes',
     },
   },
   some: {
     displayName: 'Any match',
-    description: 'True when any element satisfies the predicate',
+    description: 'True when any element passes a test',
     docUrl: DOCS,
     colors: { background: '#bbccef', text: '#18293f' },
     seeds: { input: [0, 1, 2, 3], each: '$element', as: 'item' },
     parameterDescriptions: {
-      input: 'The collection iterated over; a null input is a type error',
-      as: "Rename the bindings: as: 'row' binds $row and $rowIndex",
-      nullInputDefault: 'Used as the collection when input evaluates to null — typically []',
-      each: 'The predicate, per element — a truthiness position, so null is falsy',
+      input: 'The array to iterate over',
+      as: "A name to use in place of element: 'row' gives $row and $rowIndex",
+      nullInputDefault: 'Used as the array when input is null, such as []',
+      each: 'The test for each element, which it reads as $element, by FigTree truthiness',
     },
   },
   every: {
     displayName: 'All match',
-    description: 'True when every element satisfies the predicate',
+    description: 'True when every element passes a test',
     docUrl: DOCS,
     colors: { background: '#a8b9eb', text: '#18293f' },
     seeds: { input: [0, 1, 2, 3], each: '$element', as: 'item' },
     parameterDescriptions: {
-      input: 'The collection iterated over; a null input is a type error',
-      as: "Rename the bindings: as: 'row' binds $row and $rowIndex",
-      nullInputDefault: 'Used as the collection when input evaluates to null — typically []',
-      each: 'The predicate, per element — a truthiness position, so null is falsy',
+      input: 'The array to iterate over',
+      as: "A name to use in place of element: 'row' gives $row and $rowIndex",
+      nullInputDefault: 'Used as the array when input is null, such as []',
+      each: 'The test for each element, which it reads as $element, by FigTree truthiness',
     },
   },
 
   // ── Data & objects ─────────────────────────────────────────────────────
   get: {
     displayName: 'Get data',
-    description:
-      'Read a path out of the evaluation data, or out of a supplied object — the dynamic face of a $data reference',
+    description: 'Read a value at a path, from $data or from another object',
     docUrl: DOCS,
     colors: { background: '#f0d1e5', text: '#3f182a' },
     // `from` holds what `path` reads, so adding it gives a working lookup
@@ -528,18 +528,14 @@ export const operatorListings: ListingMap = {
       default: 'Not found',
     },
     parameterDescriptions: {
-      path: 'Dot and bracket segments, quoted keys and the [*] projection — or an array of segments, taken verbatim',
-      from:
-        'The source the path reads: a value, or a bare namespace ($data, $vars, $params, $element) ' +
-        'whose var or parameter name opens the path — replace, never merge; a null source misses every path',
-      default:
-        'The answer when the path is missing — a stored null passes through unchanged (firstNonNull replaces one); supplying it also opts out of strictDataPaths',
+      path: 'The path to read, written as in a $data reference, or as an array of keys',
+      from: 'What to read from, in place of the data, such as a lookup table or $vars',
+      default: 'What to return when the path is missing, in place of null',
     },
   },
   buildObject: {
     displayName: 'Build object',
-    description:
-      'Assemble an object from computed key/value entries — for keys known only at runtime',
+    description: 'Build an object from key and value pairs, for keys worked out as it runs',
     docUrl: DOCS,
     colors: { background: '#eac0cc', text: '#3f182a' },
     seeds: {
@@ -549,7 +545,7 @@ export const operatorListings: ListingMap = {
       ],
     },
     parameterDescriptions: {
-      entries: 'Objects with a "key" and a "value"; a null value keeps its key',
+      entries: 'The entries, each an object with a key and a value',
     },
   },
 
@@ -557,13 +553,13 @@ export const operatorListings: ListingMap = {
   convert: {
     displayName: 'Convert type',
     description:
-      'Convert a value to a number, string, boolean or array — strict: a failed conversion is an error, never a guess',
+      "Convert a value to a number, string, boolean or array — a value that can't be converted is an error",
     docUrl: DOCS,
     colors: { background: '#dddfe3', text: '#272a30' },
     seeds: { value: '42' },
     parameterDescriptions: {
-      value: 'The value to convert; null propagates except for boolean, where it is false',
-      to: 'The target type',
+      value: 'The value to convert',
+      to: 'The type to convert to',
     },
   },
 
@@ -572,7 +568,7 @@ export const operatorListings: ListingMap = {
   // expire every request
   http: {
     displayName: 'HTTP request',
-    description: 'One HTTP request — GET or POST — returning the parsed JSON response',
+    description: 'Send an HTTP request, and return its JSON response',
     docUrl: DOCS,
     colors: { background: '#eeedd2', text: '#3a3f18' },
     seeds: {
@@ -581,20 +577,18 @@ export const operatorListings: ListingMap = {
       timeout: 5000,
     },
     parameterDescriptions: {
-      url: 'A full http(s) URL is used verbatim; anything else — including an empty string — joins http.baseEndpoint',
-      method: 'Lowercase; the mutating verbs are deliberately absent — an expression is a read',
-      query: 'Query-string pairs; a null value omits its pair, a composite one is an error',
-      body: 'The JSON payload; a whole-null body means NO body, while nulls inside one are JSON nulls',
-      headers:
-        'Merged over the http.headers option per key; a null value removes an inherited pair',
-      returnPath: 'Dot/bracket path or segments array applied to the response; a miss is null',
-      timeout:
-        'Per-request deadline in ms; expiry is an ordinary failure this node’s fallback catches',
+      url: "The URL to request; one without http:// or https:// is joined to the instance's base endpoint",
+      method: 'The request method',
+      query: 'Query string parameters; any whose value is null are omitted',
+      body: 'The body to send as JSON, for a POST',
+      headers: "Headers to send, added to the instance's; any set to null are omitted",
+      returnPath: 'The part of the response to return, as a path like a $data reference',
+      timeout: 'The longest the request can take, in milliseconds',
     },
   },
   graphQL: {
     displayName: 'GraphQL query',
-    description: 'One GraphQL query — a POST of { query, variables } — returning the data field',
+    description: "Send a GraphQL query, and return the response's data",
     docUrl: DOCS,
     colors: { background: '#e3e8c2', text: '#3a3f18' },
     seeds: {
@@ -605,32 +599,26 @@ export const operatorListings: ListingMap = {
       timeout: 5000,
     },
     parameterDescriptions: {
-      query: 'The GraphQL document — the protocol’s own word, as sql.query is',
-      variables:
-        'Query variables; a null value is CARRIED as JSON null, a nullable argument being meaningful GraphQL',
-      url: 'Per-node endpoint override; unset means the graphQL.endpoint option',
-      headers: 'Merged over http.headers then graphQL.headers; a null value removes a pair',
-      returnPath: 'Dot/bracket path or segments array applied to the response; a miss is null',
-      timeout:
-        'Per-request deadline in ms; expiry is an ordinary failure this node’s fallback catches',
+      query: 'The GraphQL query',
+      variables: "The query's variables",
+      url: "The endpoint, in place of the instance's",
+      headers: "Headers to send, added to the instance's; any set to null are omitted",
+      returnPath: 'The part of the response to return, as a path like a $data reference',
+      timeout: 'The longest the request can take, in milliseconds',
     },
   },
   sql: {
     displayName: 'SQL query',
-    description:
-      'One SQL query against the registered connection. Expressions are READS — give the connection a read-only role and run mutations host-side',
+    description: 'Run an SQL query, and return its rows',
     docUrl: DOCS,
     colors: { background: '#d2e2b1', text: '#3a3f18' },
     seeds: { query: 'SELECT contact_name FROM customers LIMIT 5', timeout: 5000 },
     parameterDescriptions: {
-      query: 'SQL text with the driver’s own placeholders — FigTree never parses SQL',
-      values: 'Bind values — positional as an array, named as an object; a null binds SQL NULL',
-      shape:
-        'rows: every row object; firstRow: the first; column: one column’s values; firstValue: one scalar',
-      noRowDefault:
-        'The answer when firstRow / firstValue find no row — never for rows / column, never on failure',
-      timeout:
-        'Per-request deadline in ms; expiry is an ordinary failure this node’s fallback catches',
+      query: "The query, with placeholders in the database's own style, such as $1",
+      values: "The values for the query's placeholders",
+      shape: "What to return: every row, the first row, one column's values, or the first value",
+      noRowDefault: "What 'firstRow' or 'firstValue' return when there's no row",
+      timeout: 'The longest the request can take, in milliseconds',
     },
   },
 

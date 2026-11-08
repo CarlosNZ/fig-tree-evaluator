@@ -1,0 +1,112 @@
+---
+title: Guarantees
+description: The promises FigTree makes about every expression
+sidebar:
+  order: 3
+---
+
+import Expression from '../../../components/Expression.astro'
+
+These are the promises FigTree makes about every expression — whatever is in it and whatever data it runs against.
+
+## Only registered operators can run
+
+> Evaluating an expression runs no code except the operators registered on the instance. Nothing in an expression or its data can define a function, or call one that isn't a registered operator.
+
+FigTree never runs text as code, in any form ([Logic as data](/under-the-hood/design/#logic-as-data)). An operator is called only by its name, and only if the host registered it, so an instance's operators are the whole of what its expressions can do. An instance created without the HTTP and SQL operators, for example, can't send a request or query a database, whatever its expressions say.
+
+Even a function in an expression or its data can't be called[^function]: it's a value like any other, and is returned as it is.
+
+What a registered operator does with its parameters is up to the operator. A [custom operator](/custom-operators/writing/) is the host's own code, and runs with the same trust as the rest of the app — it's the host's responsibility to put guardrails on [operators that reach outside](/guides/http-and-sql/) (e.g. your `sql` client should connect as a user without mutation capabilities).
+
+## Data is never evaluated
+
+> Only the expression itself is evaluated — a string in the data that looks like a reference is just a string, and an object in it with a `$`-prefixed key is just an object. This applies to all values that are in the "data" domain: `$data` itself, an HTTP response, or an operator's result.
+
+Here the data holds one of each ([Telling a reference from text](/under-the-hood/design/#telling-a-reference-from-text)):
+
+<Expression
+  code={`
+    { note: '$data.note', rule: '$data.rule' }
+  `}
+  data={`
+    {
+      note: '$data.password',
+      rule: { $plus: [1, 2] },
+      password: 'hunter2',
+    }
+  `}
+/>
+
+So someone who can only change the data can never inject an evaluable expression.
+
+## The input is never modified
+
+> Evaluating an expression never changes the expression, the data, or the options it's given. After an evaluation, whether it returned or threw, each one is as it was before and can safely be used again.
+
+Nothing is copied to keep this promise: FigTree holds the expression and the data by reference, and only reads them. Compiling builds a new structure beside the expression, and leaves the expression as it was.
+
+The flip side is that a result can share structure with the input: a fixed part of the expression, or a value read from the data, is returned as the same object, not a copy ([Evaluate](/under-the-hood/model/#evaluate)). So the result is **read-only** too ([What FigTree asks of the host](#what-figtree-asks-of-the-host)).
+
+The promise covers FigTree and its own operators. A custom operator is given the data's own objects as its parameters, so it is expected to [comply with this rule](/custom-operators/evaluate/#params), too.
+
+## Checking never throws
+
+> For any expression, `fig.validate()` returns a report and never throws, however malformed the expression is. The report lists every problem found, not just the first, each with its path in the expression. It can throw _only_ when its own options are invalid.
+
+Whoever is fixing an expression sees everything wrong with it at once, and an editor can show every problem in place. Something that can't be compiled at all, such as an operator that doesn't exist or a node with two operators in it, is reported, and checking carries on with the rest of the expression. That includes an expression nested too deep to walk.
+
+`fig.getDependencies()` and `fig.isEvaluable()` make the same promise.
+
+## A validated expression only fails at runtime
+
+> Every error FigTree raises about an expression is one of three kinds: static, runtime, or the kill switch. If `fig.validate()` reports no errors for an expression, evaluating it on the same instance, with the same options, never raises a static error, and any other error it raises, other than the kill switch, goes through its fallbacks.
+
+| Error kind      | For example                                                                                                                                       | Found                     | Caught by a fallback?                                                    |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------ |
+| **Static**      | An operator that doesn't exist, a misspelt parameter, a fixed value of the wrong type, an undefined variable, going over `maxDepth` or `maxNodes` | Before anything runs      | Never                                                                    |
+| **Runtime**     | A request that fails or takes longer than its own `timeout`, a value of the wrong type read from the data, a custom operator's failure            | While the expression runs | Always, by the nearest one around it                                     |
+| **Kill switch** | The evaluation's `timeout` running out, or its `signal` being aborted                                                                             | At any time               | No, apart from [timeout shielding](/guides/fallbacks/#timeout-shielding) |
+
+`fig.validate()` and `fig.evaluate()` run the same checks, so if `fig.validate()` reports no static error, there is none for `fig.evaluate()` to find. When there is one, `fig.evaluate()` throws it before anything runs. A runtime error is one a [fallback](/guides/fallbacks/) can plan for, since a problem in the data can't be fixed in advance ([Strict where it can be, and forgiving where it has to be](/under-the-hood/design/#strict-where-it-can-be-and-forgiving-where-it-has-to-be)). The kill switch is the host's, not the expression's: it stops everything, fallbacks included.
+
+So any error that escapes both `fig.validate()` and every fallback, other than the kill switch, would be a bug in FigTree, and worth [reporting](https://github.com/CarlosNZ/fig-tree-evaluator/issues). An error in the host's own call, such as an option that isn't valid, isn't one of these three kinds.
+
+The promise is why a static error should never reach a stored expression ([Checking expressions](/guides/validation/)): no fallback will ever catch it, so it fails on every evaluation.
+
+## A branch not taken never runs
+
+> A lazy parameter is evaluated only when its operator asks for it, and a fallback only when its node fails. Nothing in a parameter or fallback that isn't evaluated sends a request, reads a variable, or fails.
+
+So `if` runs only the branch its condition picks, and `match` only the branch its value selects. `firstNonNull` evaluates its values one at a time, and stops at the first that isn't `null`. A `get` evaluates its `default` only if the path is missing ([Not every argument is computed](/under-the-hood/design/#not-every-argument-is-computed)).
+
+`and`, `or`, `find`, `some` and `every` are different: they start all their values at once, so the answer arrives as soon as any value can settle it. Once it has, the rest are cancelled: nothing new starts in them, and their requests still in flight are aborted. A value that fails only fails the whole node if the answer depends on it: `{ $or: [{ $divide: [1, 0] }, true] }` returns `true`, even with the division by 0 in one of the `or` values.
+
+## A variable is computed at most once
+
+> A variable is evaluated at most once each time the node that declares it runs: when it's first read, and not at all if nothing reads it. Simultaneous reads wait for that same evaluation, and if it fails, every read gets the same failure.
+
+_Inside_ an iterator's `each`, that's once per element ([Variables](/concepts/variables/)).
+
+## Evaluation is bounded
+
+> Nothing in an expression can repeat until a condition is met, and no fragment or variable can refer back to itself, so the work an evaluation does is bounded by the size of the expression and of the arrays it iterates over. `maxDepth` and `maxNodes` refuse an expression over a given size before it runs, and `timeout` stops one that runs for longer than a given time.
+
+The only repetition is an iterator over an array that already exists, from the expression, the data or a response. A fragment that calls itself, directly or through another fragment, and a variable that depends on itself, are both refused before anything runs.
+
+The limits are the host's, and none are set by default ([Limits](/guides/setup/#limits)):
+
+- **`maxDepth`** limits how deeply the expression is nested.
+- **`maxNodes`** limits how many pieces in the expression are evaluated, counting each fragment's body where it's called. It counts the expression as written, so a node inside an iterator counts once, however many elements it runs for.
+- **`timeout`** limits how long an evaluation takes, fallbacks included. It's checked between one node and the next, and while waiting on a request, so it can't interrupt a single operator in the middle of its own work.
+
+## What FigTree asks of the host
+
+> Don't change a result, and don't change an expression after it's been evaluated or compiled.
+
+The promises above hold as long as the host keeps these two rules:
+
+- **A result is read-only.** It can share structure with the expression, the data and stored results, so changing it can change them too, and the next evaluation with them.
+- **An expression is fixed once it's been evaluated or compiled.** The compile cache knows an expression by its object, so after it's changed in place, FigTree still runs what it compiled the first time. To change an expression, make a new one ([Caching and compiling](/guides/caching/#compiling-once)).
+
+[^function]: JSON can't hold a function, but a host building an expression or its data in code _could_ put one in. Probably not useful in practice, but we're making a point about inert code.

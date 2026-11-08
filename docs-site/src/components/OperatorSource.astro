@@ -1,0 +1,28 @@
+---
+/**
+ * A custom operator's definition, shown from its file in lib/operators/: the
+ * same file the examples that set `customOperators` evaluate with, so what
+ * the page shows is what ran. Like any `ts` block, it's type-checked when
+ * the site is built.
+ */
+import { Code } from '@astrojs/starlight/components'
+
+interface Props {
+  /** The operator's file in lib/operators/, without its extension. */
+  name: string
+  /** A label for the code block; the file's name if not given. */
+  title?: string
+}
+
+const sources = import.meta.glob<string>('../lib/operators/*.ts', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+})
+
+const { name, title = `operators/${name}.ts` } = Astro.props
+const code = sources[`../lib/operators/${name}.ts`]
+if (code === undefined) throw new Error(`<OperatorSource>: no file '${name}.ts' in lib/operators/`)
+---
+
+<Code code={code.trimEnd()} lang="ts" title={title} />

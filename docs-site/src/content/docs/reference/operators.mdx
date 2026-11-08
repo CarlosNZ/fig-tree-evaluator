@@ -1,0 +1,100 @@
+---
+title: Operators
+description: Every operator FigTree provides, by category
+sidebar:
+  order: 1
+---
+
+import Expression from '../../../components/Expression.astro'
+import OperatorReference from '../../../components/OperatorReference.astro'
+
+Every operator FigTree provides, grouped by category: the core operators, and the I/O operators (`http`, `graphQL` and `sql`), which are added with `httpOperators()` and `sqlOperators()` ([Choosing operators](/guides/setup/#choosing-operators)).
+
+[How to read this page](#how-to-read-this-page), below the index, explains each operator's columns and tags, including what the Null column means.
+
+{/* NOTE (from How evaluation works): an idea to consider: filters on this page, such as by category, by evaluation tag (`lazy` and the rest), and perhaps by null policy or return type. */}
+
+<OperatorReference index />
+
+## How to read this page
+
+Each operator has its name and alias, a description, a table with a row for each parameter, and below that, its positional and single-value forms (where it has them) and return type. The table's columns are:
+
+- **Parameter:** the parameter's name, as written in a node's named parameters. A tag beside the name marks a parameter that isn't evaluated before the operator runs ([Lazy parameters](/concepts/evaluation/#lazy-parameters)):
+  - **lazy:** evaluated only if the operator needs it, and at most once.
+  - **lazy per entry:** the parameter is an object whose entries are each lazy: only the one the operator chooses is evaluated, as with `match`'s branches.
+  - **lazy in order:** the parameter is an array whose elements are each lazy, evaluated one at a time, each only if it's reached, as with `firstNonNull`'s values.
+  - **per element:** evaluated once for every element of the input, which may be many times or none.
+  - **stops early:** every element starts at once and, as soon as one decides the answer, the rest are stopped.
+  - **literal only:** never evaluated, so it has to be written out in the expression, as an iterator's `as` name is.
+- **Type:** what the parameter accepts. `array[number | string]` is an array whose elements are _all_ numbers or _all_ strings, and quoted values, such as `'test' | 'extract' | 'match' | 'replace'`, are the only ones allowed. Where the Null behaviour column says **propagate**, `null` is allowed too, but isn't shown in the type, since the operator never receives it.
+- **Presence:** whether the parameter can be left out:
+  - **required:** it has to be given, and leaving it out is an error.
+  - **optional:** it can be left out, and has no default value.
+  - **default:** it can be left out, and the value shown after it is used instead, such as `default 0`.
+- **Null behaviour:** what a `null` at this parameter does ([below](#what-a-null-does)).
+
+**Positional form** shows the order of the parameters when they're given as an array. Where it's only a list, such as `plus`'s `[...values]`, the whole list can also be given as one value, such as `'$data.prices'`. **Single value** shows the form that takes just the first parameter, for an operator that needs no other, and **Returns** is the type of value the operator returns.
+
+### What a null does
+
+Each parameter has its own rule for a `null` it receives, its null behaviour ([Null handling](/concepts/evaluation/#null-handling)). The Null behaviour column shows it as one of these:
+
+<div class="fds-null-key">
+
+| Null behaviour | A `null` here…                                                                                                                                                                       |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| propagate      | makes the whole node return `null`, and the operator doesn't run                                                                                                                     |
+| accept         | reaches the operator, which uses it like any other value: `equal` compares it, `firstNonNull` skips it, a condition reads it as false                                                |
+| omit           | counts as leaving the parameter out, so its default applies; at a parameter that replaces a `null`, it replaces nothing (see [Defaults for null, missing and no match](#defaults-for-null-missing-and-no-match)) |
+| error          | is a type error                                                                                                                                                                      |
+
+</div>
+
+A parameter that takes an array or object can have two behaviours: **(each)** for a `null` element, and **(whole)** for a `null` in place of the whole array or object. In `plus`, for example, a `null` among the values propagates, but `values: null` is an error. Where the two are the same, the column shows one.
+
+## Defaults for null, missing and no match
+
+Several operators have an optional parameter that gives them a value to use when they'd otherwise have nothing to work with. Its name says when it applies:
+
+- **`nullValueDefault`**: replaces a `null` among the values, so the operator runs with the replacement instead of passing the `null` on. It's on `plus`, `multiply`, `min`, `max` and the four ordered comparisons (`greaterThan` and the rest), and on `join` and `buildString`, where it's written in place of the empty text a `null` would give.
+- **`nullInputDefault`**: used as the array to iterate over when the `input` parameter is `null`, on the iterating operators (`map`, `filter`, `find`, `some` and `every`). You'd commonly set it to `[]`, so a missing list reads as empty rather than failing.
+- **`noMatchDefault`**: the answer when nothing matches, in place of `null`, on `find` and on `regex` in `extract` mode.
+- **`default`**: on `get`, the answer when the path is missing (a path whose value is `null` isn't missing, so it still returns `null`); on `match`, the branch taken when none matches, where without one the node fails.
+
+Here, the data has no bonus points and no orders:
+
+<Expression
+  code={`
+    {
+      // No bonus points on file means none
+      points: {
+        $plus: {
+          values: ['$data.points', '$data.bonusPoints'],
+          nullValueDefault: 0,
+        },
+      },
+      // No orders yet, so none are open
+      openOrders: {
+        $filter: {
+          input: '$data.orders',
+          each: { $equal: ['$element.status', 'open'] },
+          nullInputDefault: [],
+        },
+      },
+    }
+  `}
+  caption="Both keys read data that isn't there, and each default stands in for it."
+  data={`
+    // Uncomment bonusPoints and orders to see both values change
+    {
+      points: 120,
+      // bonusPoints: 30,
+      // orders: [{ id: 1, status: 'open' }, { id: 2, status: 'shipped' }],
+    }
+  `}
+/>
+
+Like any parameter, these can be set for every use of an operator with [`operatorDefaults`](/guides/setup/#defaults-for-an-operator), so that, for example, every `map` treats a missing list as empty: `{ map: { nullInputDefault: [] } }`.
+
+<OperatorReference all />

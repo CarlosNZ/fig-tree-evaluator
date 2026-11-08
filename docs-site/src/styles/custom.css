@@ -1,0 +1,2715 @@
+/*
+ * The site's own classes and tokens use the `fds-` prefix. The FigTree
+ * editor's stylesheet uses `ft-`, so the two never collide.
+ */
+
+/* ── Tokens ─────────────────────────────────────────────────────────────── */
+
+:root {
+  /*
+   * Starlight's default theme is dark; light overrides it below. The
+   * palette's colours, Starlight's and the `--fds-code-*` syntax tokens, are
+   * set from src/styles/palettes.mjs.
+   */
+  --fds-active-line: rgba(255, 255, 255, 0.04);
+  --fds-error-bg: #3b1219;
+  --fds-error-text: #ffb3b8;
+  --fds-notice-bg: #3a2e05;
+  --fds-notice-text: #f5d77a;
+  /* The tree editor's brackets, collapsed counts and chevrons */
+  --fds-tree-bracket: var(--fds-code-punct);
+  --fds-tree-item-count: var(--sl-color-gray-3);
+  --fds-tree-chevron: var(--sl-color-gray-2);
+  /* Its strings, text inputs and $ references, lifted from the light colours */
+  --fds-tree-string: color-mix(in oklab, #cb4b16, white 30%);
+  --fds-tree-input: var(--sl-color-text);
+  --fds-tree-highlight: var(--fds-selection);
+  --fds-tree-ref-data: color-mix(in oklab, #7b3fc4, white 40%);
+  --fds-tree-ref-vars: color-mix(in oklab, #0f7c7a, white 40%);
+  --fds-tree-ref-params: color-mix(in oklab, #b0307f, white 40%);
+  /* The tree's evaluation toasts: done, failed, caught by a fallback */
+  --fds-toast-done: #3fb950;
+  --fds-toast-failed: #f85149;
+  --fds-toast-fallback: #d29922;
+}
+
+:root[data-theme='light'] {
+  --fds-active-line: rgba(0, 0, 0, 0.035);
+  --fds-error-bg: #fff1f0;
+  --fds-error-text: #a40e26;
+  --fds-notice-bg: #fff8e1;
+  --fds-notice-text: #6b4e00;
+  /* json-edit-react's own colours */
+  --fds-tree-bracket: #002b36;
+  --fds-tree-item-count: #0000004d;
+  --fds-tree-chevron: #002b36;
+  --fds-tree-string: #cb4b16;
+  --fds-tree-input: #292929;
+  --fds-tree-highlight: #b3d8ff;
+  /* The editor's own (fig-tree-editor-react's defaultEditorTheme) */
+  --fds-tree-ref-data: #7b3fc4;
+  --fds-tree-ref-vars: #0f7c7a;
+  --fds-tree-ref-params: #b0307f;
+  --fds-toast-done: #1a7f37;
+  --fds-toast-failed: #cf222e;
+  --fds-toast-fallback: #9a6700;
+}
+
+/*
+ * A page without the contents column gives its widgets that width. Prose and
+ * code keep a reading measure; the widgets, the reference and card grids use
+ * the whole column. (An Astro island wraps each widget, hence :has.)
+ */
+:root:not([data-has-toc]) {
+  --sl-content-width: 72rem;
+}
+
+:root:not([data-has-toc])
+  .sl-markdown-content
+  > :not(:has(> .fds-playground, > .fds-playground-page), .fds-reference, .card-grid) {
+  max-width: 48rem;
+}
+
+/*
+ * A splash page (the home page) has no sidebar to sit beside, so its reading
+ * column is centred, and the wider blocks extend past it on both sides: grids
+ * of content cards a little, widgets to the full width. Grids of link cards
+ * keep to the column.
+ */
+:root[data-has-hero] .sl-markdown-content > :not(:has(> .fds-playground, > .fds-playground-page)) {
+  margin-inline: auto;
+}
+
+:root[data-has-hero] .hero,
+:root[data-has-hero] .sl-container > footer {
+  max-width: 48rem;
+  margin-inline: auto;
+}
+
+:root[data-has-hero] .sl-markdown-content > .card-grid {
+  max-width: 54rem;
+}
+
+:root[data-has-hero] .sl-markdown-content > .card-grid:has(.sl-link-card) {
+  max-width: 48rem;
+}
+
+/*
+ * The hero's image is the logo's icon, sized with the title: a multiple of
+ * the title's font size (Starlight's, in Hero.astro). Above the title it is
+ * 2.5 times; beside it, from 50rem, 3.25 times, which is 13rem beside the
+ * full-size title.
+ */
+:root[data-has-hero] .hero > img {
+  --fds-hero-icon-scale: 2.5;
+  width: calc(
+    var(--fds-hero-icon-scale) * clamp(var(--sl-text-3xl), calc(0.25rem + 5vw), var(--sl-text-6xl))
+  );
+}
+
+@media (min-width: 50rem) {
+  /* The icon beside the title and tagline */
+  :root[data-has-hero] .hero {
+    grid-template-columns: 1fr auto;
+    padding-block: clamp(1.75rem, calc(0.75rem + 6.5vmin), 6.5rem);
+  }
+
+  :root[data-has-hero] .hero > img {
+    --fds-hero-icon-scale: 3.25;
+  }
+}
+
+/*
+ * Headings after body content: Starlight's default is 1.5em, which above a
+ * large heading is far more than the 1rem between paragraphs. The gap is
+ * capped at twice that. Headings with anchor links sit in a wrapper, which
+ * carries the margin in their place.
+ */
+.sl-markdown-content
+  :not(h1, h2, h3, h4, h5, h6, .sl-heading-wrapper)
+  + :is(h1, h2, h3, h4, h5, h6, .sl-heading-wrapper):not(:where(.not-content *)) {
+  margin-top: min(1em, 2rem);
+}
+
+/*
+ * A table's first column names what each row is about, such as an option or
+ * an error code. Code there never wraps, so a name like `operator-failure`
+ * isn't broken at its hyphen, and the column takes the width of its longest
+ * name, rather than leaving that width to the description beside it.
+ */
+.sl-markdown-content td:first-child code:not(:where(.not-content *)) {
+  white-space: nowrap;
+}
+
+/*
+ * Lists of grouped items, where an item's heading has a sub-list beneath it
+ * (the static errors on Checking expressions). Markdown wraps each heading
+ * in a paragraph, so Starlight spaces the sub-list from it, and the items
+ * from each other, as it would separate paragraphs. A sub-list sits under
+ * its heading as closely as its own items sit together, and the groups are
+ * spaced a little less. Lists without sub-lists keep Starlight's spacing.
+ */
+.sl-markdown-content li > p + :is(ul, ol):not(:where(.not-content *)) {
+  margin-top: 0.25rem;
+}
+
+.sl-markdown-content li > :is(ul, ol) + p:not(:where(.not-content *)) {
+  margin-top: 0.5rem;
+}
+
+.sl-markdown-content
+  :is(ul, ol):has(> li > p + :is(ul, ol))
+  > li
+  > :last-child:not(:where(.not-content *)) {
+  margin-bottom: 0.75rem;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+
+/*
+ * The logo is a three-line lockup, so the header is taller than Starlight's
+ * to give each line of the wordmark a readable size.
+ */
+:root {
+  --sl-nav-height: 5rem;
+}
+
+.site-title img {
+  height: 3.5rem;
+}
+
+/* ── Footnotes ──────────────────────────────────────────────────────────── */
+
+.sl-markdown-content .footnotes {
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--sl-color-hairline);
+  font-size: var(--sl-text-sm);
+  color: var(--sl-color-gray-2);
+}
+
+/* The back-link's ↩ as text, not the emoji some platforms draw */
+.sl-markdown-content .footnotes [data-footnote-backref] {
+  font-variant-emoji: text;
+  font-family: var(--__sl-font-mono);
+  text-decoration: none;
+}
+
+/* ── Code blocks ────────────────────────────────────────────────────────── */
+
+/* A twoslash popup's type is a code block of its own, so it hangs its lines
+   too: a negative text-indent, offset by an equal padding. The plugin forces
+   that padding to zero (`!important` in a layer, which nothing unlayered can
+   override), leaving every line shifted left and cut off, so a margin stands
+   in for it */
+.expressive-code .twoslash-popup-code-type .ec-line .code {
+  margin-inline-start: var(--ecIndent, 0ch);
+}
+
+/* ── Blockquotes ────────────────────────────────────────────────────────── */
+
+/*
+ * A blockquote states a rule exactly (a guarantee, the truthiness rule), so
+ * it stands a little apart from the prose around it: set in from the
+ * margin, with the accent down its side, a faint tint of it behind, and the
+ * text at full strength. The tint is mixed over the page, so it follows the
+ * mode. Set in and at body size so it reads as a quotation, not a callout.
+ */
+.sl-markdown-content blockquote:not(:where(.not-content *)) {
+  margin-inline-start: 1.5rem;
+  border-inline-start: 3px solid var(--sl-color-accent);
+  border-start-end-radius: 0.375rem;
+  border-end-end-radius: 0.375rem;
+  background-color: color-mix(in srgb, var(--sl-color-accent) 9%, transparent);
+  padding: 0.75rem 1rem;
+  color: var(--sl-color-white);
+}
+
+/* ── Callouts (Callout.astro) ───────────────────────────────────────────── */
+
+/* A code block in a callout lets the callout's colour through */
+.starlight-aside .expressive-code .frame pre {
+  background: color-mix(in srgb, var(--code-background) 50%, transparent);
+}
+
+/*
+ * Each kind's colours come from the palette (src/styles/palettes.mjs), in
+ * place of Starlight's own. `why` is the site's own kind, over Starlight's
+ * note.
+ */
+.starlight-aside--note {
+  --sl-color-asides-text-accent: var(--fds-callout-note-title);
+  --sl-color-asides-border: var(--fds-callout-note-border);
+  background-color: var(--fds-callout-note-bg);
+}
+
+.starlight-aside--tip {
+  --sl-color-asides-text-accent: var(--fds-callout-tip-title);
+  --sl-color-asides-border: var(--fds-callout-tip-border);
+  background-color: var(--fds-callout-tip-bg);
+}
+
+/*
+ * Tip's icon is a lightbulb (Lucide's `lightbulb`, ISC licence), which
+ * Starlight's icon set lacks: Starlight's rocket is hidden, and the bulb is
+ * drawn as a mask over its box in the title's colour.
+ */
+.starlight-aside--tip .starlight-aside__icon {
+  background-color: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5'/%3E%3Cpath d='M9 18h6'/%3E%3Cpath d='M10 22h4'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+.starlight-aside--tip .starlight-aside__icon > * {
+  display: none;
+}
+
+.starlight-aside--caution {
+  --sl-color-asides-text-accent: var(--fds-callout-caution-title);
+  --sl-color-asides-border: var(--fds-callout-caution-border);
+  background-color: var(--fds-callout-caution-bg);
+}
+
+.starlight-aside--danger {
+  --sl-color-asides-text-accent: var(--fds-callout-danger-title);
+  --sl-color-asides-border: var(--fds-callout-danger-border);
+  background-color: var(--fds-callout-danger-bg);
+}
+
+.fds-callout--why .starlight-aside {
+  --sl-color-asides-text-accent: var(--fds-callout-why-title);
+  --sl-color-asides-border: var(--fds-callout-why-border);
+  background-color: var(--fds-callout-why-bg);
+}
+
+/* ── Static expression blocks ───────────────────────────────────────────── */
+
+.fds-expression {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+:is(.fds-expression, .fds-tree-figure) figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-3);
+}
+
+/* An example's trace or coverage report, below its figure (Expression.astro) */
+.fds-expression-report {
+  margin-top: 0.5rem;
+}
+
+/* About a dozen lines of it, fading out, until it's shown in full */
+.fds-expression-report[data-collapsed] .expressive-code pre {
+  max-height: 18rem;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, black calc(100% - 4rem), transparent);
+}
+
+.fds-report-toggle {
+  margin-top: 0.4rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--sl-color-text-accent);
+  font-size: var(--sl-text-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fds-report-toggle:hover {
+  text-decoration: underline;
+}
+
+:is(.fds-expression, .fds-tree-figure) figcaption a {
+  color: var(--sl-color-text-accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.fds-expression-error,
+.fds-widget-error {
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.25rem;
+  background: var(--fds-error-bg);
+  color: var(--fds-error-text);
+  font-family: var(--__sl-font-mono);
+  font-size: var(--sl-text-code);
+  overflow-wrap: anywhere;
+}
+
+.fds-expression-error-code {
+  font-weight: 700;
+  margin-right: 0.6em;
+}
+
+/*
+ * The two kinds of error an example can show. A runtime error is a filled
+ * box with a solid edge: the expression ran, and failed. A static error is
+ * an empty, dashed outline: nothing ran at all.
+ */
+.fds-expression-error--runtime {
+  border-left: 4px solid var(--fds-error-text);
+}
+
+.fds-expression-error--static {
+  background: transparent;
+  border: 2px dashed var(--fds-error-text);
+}
+
+/*
+ * Which kind it is, as a badge straddling the box's top-right edge, so it
+ * takes no room from the message. Its fill follows the box's: solid for a
+ * runtime error, a dashed outline for a static one.
+ */
+.fds-expression-error--static,
+.fds-expression-error--runtime {
+  position: relative;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+}
+
+.fds-expression-error-badge {
+  position: absolute;
+  top: 0;
+  right: 0.75rem;
+  transform: translateY(-50%);
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  font-family: var(--__sl-font);
+  font-size: var(--sl-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.fds-expression-error--runtime .fds-expression-error-badge {
+  background: var(--fds-error-text);
+  color: var(--fds-error-bg);
+}
+
+.fds-expression-error--static .fds-expression-error-badge {
+  background: var(--sl-color-bg);
+  color: var(--fds-error-text);
+  border: 2px dashed var(--fds-error-text);
+}
+
+/* "Open in editor" while the editor's code loads (ExpressionEditor.tsx) */
+.fds-editable--loading .fds-editor-link {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+/* ── Code examples in a table ───────────────────────────────────────────── */
+
+/*
+ * A table wrapped in <div class="fds-code-examples">: each piece of code in
+ * its last column is a block of its own, rather than an inline pill, with a
+ * gap between two in the same cell. A line too long for the column wraps
+ * with a hanging indent, so each block still reads as one piece of code.
+ */
+.fds-code-examples td:last-child code {
+  display: block;
+  width: fit-content;
+  padding: 0.25rem 0.5rem 0.25rem calc(0.5rem + 2ch);
+  text-indent: -2ch;
+}
+
+.fds-code-examples td:last-child code + code {
+  margin-top: 0.5rem;
+}
+
+/* ── Import costs (ImportCosts.astro) ───────────────────────────────────── */
+
+/*
+ * An import statement over two lines, as one block of code rather than an
+ * inline pill on each line, with its `from` indented under the clause
+ */
+.fds-import {
+  display: block;
+  width: max-content;
+  padding: 0.25rem 0.5rem;
+}
+
+.fds-import span {
+  display: block;
+  padding-left: 2ch;
+}
+
+/* The sizes, a step smaller than the text, so the statements lead each row */
+.fds-size {
+  font-size: var(--sl-text-sm);
+}
+
+/* ── Screenshots (Screenshot.astro) ─────────────────────────────────────── */
+
+/*
+ * Narrower than the column and centred, so the shadow has room and the
+ * picture sits apart from the text around it
+ */
+.fds-screenshot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 2rem auto;
+  max-width: 85%;
+}
+
+/* align="left": against the column's left edge, keeping the space below */
+.fds-screenshot--left {
+  align-items: flex-start;
+  margin-inline: 0;
+}
+
+/* No `display` here: Starlight's light:/dark:sl-hidden pick the theme's image */
+.fds-screenshot img {
+  border-radius: 0.5rem;
+  box-shadow:
+    0 1px 2px hsl(0deg 0% 0% / 0.08),
+    0 4px 12px hsl(0deg 0% 0% / 0.1),
+    0 12px 32px hsl(0deg 0% 0% / 0.12);
+}
+
+/* A shadow barely shows on a dark page, so a faint edge sets the picture off */
+:root[data-theme='dark'] .fds-screenshot img {
+  box-shadow:
+    0 0 0 1px hsl(0deg 0% 100% / 0.1),
+    0 1px 2px hsl(0deg 0% 0% / 0.3),
+    0 4px 12px hsl(0deg 0% 0% / 0.35),
+    0 12px 32px hsl(0deg 0% 0% / 0.45);
+}
+
+/* ── Expression trees (ExpressionTree.astro) ────────────────────────────── */
+
+.fds-tree-figure {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* A wide tree scrolls within the figure, never the page */
+.fds-tree {
+  --fds-tree-line: var(--sl-color-gray-4);
+  --fds-tree-gap: 1.25rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+/* The diagram's own box, which the data box is positioned in */
+.fds-tree-canvas {
+  position: relative;
+  width: max-content;
+  min-width: 100%;
+}
+
+.fds-tree-data {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: max-content;
+  max-width: 100%;
+  margin-bottom: var(--fds-tree-gap);
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--fds-tree-ref-data);
+  border-radius: 0.375rem;
+  background: var(--sl-color-bg);
+  font-size: var(--sl-text-sm);
+}
+
+.fds-tree-data--placed {
+  position: absolute;
+  margin: 0;
+}
+
+.fds-tree-data-label {
+  font-size: var(--sl-text-xs);
+  font-weight: 600;
+  color: var(--fds-tree-ref-data);
+}
+
+.fds-tree-data code {
+  padding: 0;
+  background: none;
+  font-size: inherit;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/*
+ * Without the layout script, CSS draws the lists as the diagram: each entry
+ * draws the line down to it from its parent, half of the bar across its
+ * siblings on each side and a drop from that bar to its box. The outermost
+ * entries leave off their outer half, and an only child has no bar at all.
+ */
+.fds-tree ul {
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  width: max-content;
+  min-width: 100%;
+}
+
+.fds-tree ul ul {
+  position: relative;
+  padding-top: var(--fds-tree-gap);
+}
+
+/* The drop from a parent's box to the bar across its children */
+.fds-tree ul ul::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: var(--fds-tree-gap);
+  border-left: 1px solid var(--fds-tree-line);
+}
+
+.fds-tree li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  padding: var(--fds-tree-gap) 0.25rem 0;
+  list-style: none;
+}
+
+.fds-tree-canvas > ul > li {
+  padding-top: 0;
+}
+
+.fds-tree ul ul > li::before,
+.fds-tree ul ul > li::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: var(--fds-tree-gap);
+  border-top: 1px solid var(--fds-tree-line);
+}
+
+.fds-tree ul ul > li::before {
+  right: 50%;
+}
+
+.fds-tree ul ul > li::after {
+  left: 50%;
+  border-left: 1px solid var(--fds-tree-line);
+}
+
+.fds-tree ul ul > li:first-child::before,
+.fds-tree ul ul > li:last-child::after {
+  border-top: none;
+}
+
+.fds-tree ul ul > li:only-child::after {
+  border-top: none;
+}
+
+.fds-tree-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/*
+ * Laid out (src/lib/treeLayout.ts), every unit and the data box are placed in
+ * the canvas, which the script sizes to the figure, or to the tree where it's
+ * wider, and the SVG draws the lines.
+ * Until then a tree is hidden where scripts run, so it doesn't jump.
+ */
+@media (scripting: enabled) {
+  .fds-tree:not(.fds-tree--laid-out) .fds-tree-canvas {
+    visibility: hidden;
+  }
+}
+
+.fds-tree--laid-out .fds-tree-canvas {
+  min-width: 0;
+}
+
+/* Doubled class to outrank the fallback's list rules */
+.fds-tree.fds-tree--laid-out :is(ul, li) {
+  position: static;
+  display: block;
+  padding: 0;
+}
+
+.fds-tree.fds-tree--laid-out :is(ul, li)::before,
+.fds-tree.fds-tree--laid-out :is(ul, li)::after {
+  display: none;
+}
+
+.fds-tree--laid-out :is(.fds-tree-unit, .fds-tree-data) {
+  position: absolute;
+  margin: 0;
+}
+
+.fds-tree-lines {
+  position: absolute;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+  fill: none;
+  stroke: var(--fds-tree-line);
+  stroke-width: 1;
+}
+
+.fds-tree-param {
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-3);
+  margin-bottom: 0.15rem;
+}
+
+.fds-tree-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.375rem;
+  background: var(--sl-color-gray-7, var(--sl-color-black));
+  font-size: var(--sl-text-sm);
+  text-align: center;
+}
+
+/* A long value wraps at its spaces rather than widening the whole tree */
+.fds-tree-box code {
+  max-width: 9rem;
+  background: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+.fds-tree-box--node {
+  border-color: var(--sl-color-accent);
+}
+
+/*
+ * An operator name is a label, set in the body font: in a monospace font the
+ * narrow `$` sits apart from the name
+ */
+.fds-tree-box--node > code {
+  font-family: var(--__sl-font);
+  font-weight: 600;
+  color: var(--sl-color-text-accent);
+}
+
+.fds-tree-box--reference > code {
+  color: var(--fds-tree-ref-data);
+}
+
+.fds-tree-result {
+  font-family: var(--__sl-font-mono);
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-2);
+}
+
+/* ── Operator reference ─────────────────────────────────────────────────── */
+
+.fds-reference {
+  margin-top: 1.5rem;
+}
+
+.fds-op {
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 0.5rem;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.fds-op-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.fds-op-header h3 {
+  margin: 0;
+  font-size: var(--sl-text-h4);
+}
+
+.fds-op-alias {
+  font-size: var(--sl-text-sm);
+  padding: 0.05rem 0.4rem;
+  border-radius: 0.25rem;
+  background: var(--sl-color-bg-inline-code);
+}
+
+.fds-op-category {
+  margin-left: auto;
+  font-size: var(--sl-text-xs);
+  font-weight: 600;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+}
+
+.fds-op-description {
+  margin: 0.6rem 0;
+}
+
+/*
+ * The operators page: an index of every operator by category, then a section
+ * per category whose heading stays pinned below the site's header (and, on a
+ * narrow screen, its contents bar) while the section's operators scroll
+ * beneath it. A sticky heading can't leave its section, so the next one takes
+ * its place. Each section's category colour is `--fds-category`.
+ */
+.fds-ref-index {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 1rem 1.5rem;
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 0.5rem;
+}
+
+.fds-ref-index-category {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--sl-text-sm);
+  font-weight: 600;
+  color: var(--sl-color-white);
+  text-decoration: none;
+}
+
+.fds-ref-index-category::before {
+  content: '';
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--fds-category);
+}
+
+.fds-ref-index ul {
+  margin: 0.4rem 0 0;
+  padding: 0 0 0 1.1rem;
+  list-style: none;
+  font-size: var(--sl-text-sm);
+}
+
+.fds-ref-index li {
+  margin: 0.15rem 0;
+}
+
+.fds-ref-index a:hover {
+  color: var(--sl-color-text-accent);
+}
+
+.fds-ref-index li a {
+  color: var(--sl-color-gray-2);
+  text-decoration: none;
+}
+
+.fds-ref-category {
+  margin-top: 2.5rem;
+}
+
+.fds-ref-category-header {
+  position: sticky;
+  top: calc(var(--sl-nav-height) + var(--sl-mobile-toc-height));
+  z-index: 2;
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.75rem;
+  border-left: 4px solid var(--fds-category);
+  border-bottom: 1px solid var(--sl-color-hairline);
+  background: var(--sl-color-bg);
+  font-size: var(--sl-text-h4);
+  font-weight: 600;
+  color: var(--sl-color-white);
+}
+
+/* A row of links to a category's operators, under its heading */
+.fds-ref-category-index ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1rem;
+  margin: 0 0 1.25rem;
+  padding: 0 0.75rem;
+  list-style: none;
+  font-size: var(--sl-text-sm);
+}
+
+.fds-ref-category-index a {
+  color: var(--sl-color-gray-2);
+  text-decoration: none;
+}
+
+.fds-ref-category-index a:hover {
+  color: var(--sl-color-text-accent);
+}
+
+/* A category's own note, between its heading and its first operator */
+.fds-ref-category-notes {
+  margin: 0 0 1.5rem;
+}
+
+.fds-ref-category-notes > :is(p, ul, ol) {
+  margin: 0.6rem 0;
+}
+
+/* A link to an operator lands it below its category's pinned heading */
+.fds-ref-category .fds-op {
+  scroll-margin-top: 3.5rem;
+}
+
+/*
+ * The reference is `not-content`, which turns off Starlight's styles for
+ * page text, so its prose (category notes, descriptions and operator notes),
+ * its parameter tables and the lines below them take back the page's inline
+ * code and links. Code in a note's examples keeps the examples' own style.
+ */
+:is(
+  .fds-ref-category-notes > :is(p, ul, ol, table),
+  .fds-op-description,
+  .fds-op-notes > :is(p, ul, ol, table),
+  .fds-op-params td,
+  .fds-op-meta p
+) {
+  & code {
+    background-color: var(--sl-color-bg-inline-code);
+    margin-block: -0.125rem;
+    padding: 0.125rem 0.375rem;
+    font-size: var(--sl-text-code-sm);
+    /* Keeps the spaces an example is about, as in trim's '  Kia ora  ' */
+    white-space: pre-wrap;
+  }
+
+  & a {
+    color: var(--sl-color-text-accent);
+  }
+
+  & a:hover {
+    color: var(--sl-color-white);
+  }
+}
+
+/* The docs' own longer notes on an operator (src/content/operator-notes/) */
+.fds-op-notes {
+  margin: 0 0 1.25rem;
+}
+
+.fds-op-notes > p {
+  margin: 0.6rem 0;
+}
+
+.fds-op-meta {
+  margin: 0.75rem 0 0;
+  font-size: var(--sl-text-sm);
+  color: var(--sl-color-gray-2);
+}
+
+.fds-op-meta p {
+  margin: 0.25rem 0;
+}
+
+.fds-op-meta-label {
+  font-weight: 600;
+}
+
+.fds-op-params-scroll {
+  overflow-x: auto;
+}
+
+.fds-op-params,
+:is(.fds-op-notes, .fds-ref-category-notes) > table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--sl-text-sm);
+}
+
+/* A note's own table, such as convert's, set like the parameter tables */
+:is(.fds-op-notes, .fds-ref-category-notes) > table {
+  margin: 0.75rem 0;
+}
+
+.fds-op-params th,
+.fds-op-params td,
+:is(.fds-op-notes, .fds-ref-category-notes) > table :is(th, td) {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid var(--sl-color-hairline);
+}
+
+.fds-op-params th,
+:is(.fds-op-notes, .fds-ref-category-notes) > table th {
+  font-weight: 600;
+  color: var(--sl-color-gray-2);
+  white-space: nowrap;
+}
+
+.fds-op-null {
+  cursor: help;
+  white-space: nowrap;
+  text-decoration: underline dotted var(--sl-color-gray-4);
+  text-underline-offset: 0.2em;
+}
+
+/* A column heading's link to the operators page's key, set as a footnote */
+.fds-op-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25em;
+  height: 1.25em;
+  margin-left: 0.25em;
+  position: relative;
+  top: -0.4em;
+  border: 1px solid color-mix(in srgb, var(--sl-color-gray-4), var(--sl-color-gray-5));
+  border-radius: 50%;
+  font-size: 0.8em;
+  line-height: 1;
+  font-weight: 600;
+  color: var(--sl-color-gray-3);
+  text-decoration: none;
+}
+
+.fds-op-key:hover {
+  color: var(--sl-color-text-accent);
+  border-color: currentColor;
+}
+
+/* The operators page's key to the Null column: each label on one line */
+.fds-null-key td:first-child {
+  white-space: nowrap;
+}
+
+/*
+ * A parameter's name and evaluation tag: on one line where the column has
+ * room, and the tag under the name, flush left, where it doesn't
+ */
+.fds-op-param {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fds-op-tag {
+  cursor: help;
+  white-space: nowrap;
+  font-size: var(--sl-text-xs);
+  line-height: 1.5;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: var(--sl-color-accent-low);
+  color: var(--sl-color-text-accent);
+}
+
+.fds-op-hint,
+.fds-reference-note {
+  margin: 0.6rem 0 0;
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-3);
+}
+
+/* ── The two-pane widget ────────────────────────────────────────────────── */
+
+.fds-playground {
+  margin-top: 1.5rem;
+  scroll-margin-top: calc(var(--sl-nav-height) + 1rem);
+}
+
+.fds-playground-placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 20rem;
+  border: 1px dashed var(--sl-color-hairline);
+  border-radius: 0.5rem;
+  color: var(--sl-color-gray-3);
+}
+
+.fds-widget {
+  /* The tree editor's pane: the code pane's background, a shade towards the text */
+  --fds-tree-bg: color-mix(in oklab, var(--sl-color-bg), var(--sl-color-text) 4%);
+  /* The tree preview lays the editor out this wide, then shrinks it */
+  --fds-preview-width: 26rem;
+  --fds-preview-scale: 0.8;
+  container-type: inline-size;
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 0.5rem;
+  background: var(--sl-color-bg);
+  overflow: hidden;
+}
+
+.fds-widget-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--sl-color-hairline);
+  background: var(--sl-color-bg-nav);
+}
+
+/* An example's title, above a widget standing in for it */
+.fds-widget-title {
+  font-size: var(--sl-text-sm);
+  font-weight: 600;
+  color: var(--sl-color-white);
+}
+
+.fds-widget-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+  font: inherit;
+  font-size: var(--sl-text-sm);
+  padding: 0.2rem 0.7rem;
+  border: 1px solid var(--sl-color-hairline-shade);
+  border-radius: 0.375rem;
+  background: var(--sl-color-bg);
+  color: var(--sl-color-gray-2);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+  cursor: pointer;
+}
+
+.fds-widget-action + .fds-widget-action {
+  margin-left: 0;
+}
+
+.fds-widget-action:hover:enabled {
+  color: var(--sl-color-text-accent);
+  border-color: var(--sl-color-text-accent);
+}
+
+/* An example's own action, filled with the accent so it stands out */
+.fds-widget-action--primary {
+  border-color: var(--sl-color-accent);
+  background: var(--sl-color-accent);
+  color: var(--sl-color-black);
+}
+
+.fds-widget-action--primary:hover:enabled {
+  border-color: var(--sl-color-accent-high);
+  background: var(--sl-color-accent-high);
+  color: var(--sl-color-black);
+}
+
+/* Between the two: outlined in the accent, and filled with it on hover */
+.fds-widget-action--accent {
+  border-color: var(--sl-color-text-accent);
+  color: var(--sl-color-text-accent);
+}
+
+.fds-widget-action--accent:hover:enabled {
+  border-color: var(--sl-color-accent);
+  background: var(--sl-color-accent);
+  color: var(--sl-color-black);
+}
+
+.fds-widget-action:disabled {
+  cursor: default;
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+.fds-widget-action svg {
+  width: 0.9em;
+  height: 0.9em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fds-widget-panes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.fds-widget-panes--preview {
+  grid-template-columns:
+    minmax(0, 1fr)
+    min(calc(var(--fds-preview-width) * var(--fds-preview-scale) + 0.5rem), 50%);
+}
+
+/* In a narrow widget the code needs more of the width than the preview */
+@container (width < 37.5rem) {
+  .fds-widget-panes--preview {
+    grid-template-columns: minmax(0, 1fr) 40%;
+  }
+}
+
+.fds-widget-pane {
+  display: flex;
+  flex-direction: column;
+  max-height: 32rem;
+  overflow: auto;
+}
+
+.fds-widget-pane + .fds-widget-pane,
+.fds-widget-preview,
+.fds-widget-tree-cell {
+  border-left: 1px solid var(--sl-color-hairline);
+}
+
+/* Without the preview, the panes stack */
+.fds-widget-panes--stacked > .fds-widget-pane + .fds-widget-pane {
+  border-left: none;
+  border-top: 1px solid var(--sl-color-hairline);
+}
+
+/*
+ * The inline widget's tree: the editor drawn at a fraction of its size, not
+ * interactive, and a button that opens the overlay. The tree is placed
+ * absolutely and scaled, so it takes no room of its own: the pane's minimum
+ * height, from its measured height, is what makes room for it.
+ */
+.fds-widget-preview {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  /* Room for the label and the shrunken tree, measured, up to a pane's cap */
+  min-height: min(calc(var(--fds-preview-height, 0px) + 2.25rem), 32rem);
+  background: var(--fds-tree-bg);
+  cursor: zoom-in;
+}
+
+.fds-widget-preview:hover,
+.fds-widget-preview:focus-visible {
+  background: color-mix(in oklab, var(--fds-tree-bg), var(--sl-color-text) 4%);
+  outline: none;
+}
+
+.fds-widget-preview-frame {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  padding: 0 0.25rem;
+}
+
+.fds-widget-preview-frame--clip-bottom {
+  mask-image: linear-gradient(to bottom, black calc(100% - 2.5rem), transparent);
+}
+
+.fds-widget-preview-frame--clip-right {
+  mask-image: linear-gradient(to right, black calc(100% - 2.5rem), transparent);
+}
+
+.fds-widget-preview-frame--clip-bottom.fds-widget-preview-frame--clip-right {
+  mask-image:
+    linear-gradient(to bottom, black calc(100% - 2.5rem), transparent),
+    linear-gradient(to right, black calc(100% - 2.5rem), transparent);
+  mask-composite: intersect;
+}
+
+.fds-widget-preview-scaled {
+  position: absolute;
+  top: 0;
+  left: 0.25rem;
+  width: var(--fds-preview-width);
+  transform: scale(var(--fds-preview-scale));
+  transform-origin: 0 0;
+}
+
+.fds-widget-preview-hint {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  font-size: var(--sl-text-xs);
+  padding: 0.1rem 0.5rem;
+  border-radius: 0.25rem;
+  background: var(--sl-color-accent-low);
+  color: var(--sl-color-text-accent);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.fds-widget-preview:hover .fds-widget-preview-hint,
+.fds-widget-preview:focus-visible .fds-widget-preview-hint {
+  opacity: 1;
+}
+
+/* ── The expanded overlay ── */
+
+.fds-overlay {
+  margin: auto;
+  width: min(96vw, 110rem);
+  max-width: none;
+  height: 92vh;
+  max-height: none;
+  padding: 0;
+  color: var(--sl-color-text);
+  flex-direction: column;
+}
+
+.fds-overlay[open] {
+  display: flex;
+}
+
+.fds-overlay::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
+
+:root:has(.fds-overlay[open]) {
+  overflow: hidden;
+}
+
+.fds-overlay .fds-widget-panes {
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.fds-overlay .fds-widget-pane {
+  min-height: 0;
+  max-height: none;
+}
+
+/*
+ * The data and result take 30% of the height, unless the panes above need
+ * more room than the rest and these need less than their 30%. Each row starts
+ * at its content's height, so an overflow is taken from this row first, down
+ * to its own content, and only then from the panes above.
+ */
+.fds-overlay .fds-widget-below {
+  flex: 0 1000 30%;
+  min-height: auto;
+  max-height: 30%;
+}
+
+/* What to do or notice in the editor, at the overlay's foot */
+.fds-overlay-caption {
+  flex: none;
+  margin: 0;
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--sl-color-hairline);
+  color: var(--sl-color-gray-2);
+  font-size: var(--sl-text-sm);
+}
+
+/* The tree's pane, with its toasts over its foot */
+.fds-widget-tree-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.fds-widget-tree-cell > .fds-widget-pane {
+  flex: 1;
+}
+
+@media (max-width: 48rem) {
+  .fds-overlay {
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+  }
+
+  /*
+   * The panes stack in one scrolling column under a toolbar that stays put,
+   * each as tall as its content, up to a share of the screen
+   */
+  .fds-overlay {
+    overflow-y: auto;
+  }
+
+  .fds-overlay .fds-widget-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+  }
+
+  .fds-overlay .fds-widget-panes,
+  .fds-overlay .fds-widget-below {
+    flex: none;
+    height: auto;
+    max-height: none;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fds-overlay .fds-widget-pane {
+    max-height: 30dvh;
+  }
+
+  .fds-overlay .fds-widget-tree-cell > .fds-widget-pane {
+    max-height: 40dvh;
+  }
+
+  .fds-overlay .fds-widget-pane + .fds-widget-pane,
+  .fds-overlay .fds-widget-tree-cell {
+    border-left: none;
+    border-top: 1px solid var(--sl-color-hairline);
+  }
+}
+
+.fds-widget-pane--tree {
+  padding: 0 0.25rem 0.5rem;
+  background: var(--fds-tree-bg);
+}
+
+/* The tree, put away while an example's trace or coverage is showing in its place */
+.fds-widget-pane[hidden] {
+  display: none;
+}
+
+.fds-widget-pane--stale .fds-cm {
+  opacity: 0.55;
+}
+
+/*
+ * The tree editor's messages area, which its stylesheet colours for a light
+ * page: here it takes the pane's background and the site's text.
+ */
+.fds-widget .ft-message-container {
+  background-color: transparent;
+  color: var(--sl-color-text);
+}
+
+.fds-widget .ft-messages-header {
+  background-color: color-mix(in oklab, var(--fds-tree-bg), var(--sl-color-text) 5%);
+}
+
+.fds-widget .ft-message {
+  border-top-color: var(--sl-color-hairline);
+}
+
+.fds-widget button.ft-message-path {
+  color: var(--sl-color-text-accent);
+}
+
+/*
+ * json-edit-react's type dropdown, on a dark page (in the widget, and in the
+ * Playground's Configuration panel): a native <select> in a white box, which
+ * takes the page's colours. Its variables are set on :root, so the widget's
+ * own values override them here.
+ */
+:root[data-theme='dark'] :is(.fds-widget, .fds-config-dialog) {
+  --jer-select-border: var(--sl-color-gray-5);
+  --jer-select-focus: var(--sl-color-gray-3);
+  --jer-select-arrow: var(--sl-color-gray-3);
+}
+
+:root[data-theme='dark'] :is(.fds-widget, .fds-config-dialog) .jer-select {
+  background: var(--sl-color-bg);
+  color-scheme: dark;
+}
+
+:root[data-theme='dark'] :is(.fds-widget, .fds-config-dialog) .jer-select select {
+  color: var(--sl-color-text);
+}
+
+/*
+ * The editor's own select (the operator and parameter pickers, and the
+ * Playground's example picker), on a dark page: its white boxes and list take
+ * the page's colours. Its border is `!important` in the editor's stylesheet,
+ * so this one is too.
+ */
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-input {
+  border-color: var(--sl-color-gray-5) !important;
+  background-color: var(--sl-color-bg);
+  color: var(--sl-color-text);
+}
+
+:root[data-theme='dark']
+  :is(.fds-widget, .fds-playground-footer)
+  input.ft-select-input::placeholder,
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-placeholder,
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-chevron {
+  color: var(--sl-color-gray-3);
+}
+
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-dropdown {
+  border-color: var(--sl-color-gray-5);
+  background-color: var(--sl-color-bg-nav);
+  color: var(--sl-color-text);
+  box-shadow: 0 0.3em 1em rgb(0 0 0 / 0.4);
+}
+
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-group-label {
+  background-color: var(--sl-color-gray-6);
+}
+
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-option-border {
+  border-top-color: var(--sl-color-gray-5);
+}
+
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-option:hover,
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-highlighted {
+  background-color: var(--sl-color-gray-6);
+}
+
+:root[data-theme='dark']
+  :is(.fds-widget, .fds-playground-footer)
+  .ft-select-option.ft-select-disabled {
+  color: var(--sl-color-gray-4);
+  background-color: transparent;
+}
+
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-option-description {
+  color: var(--sl-color-gray-2);
+}
+
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-option-hint {
+  color: var(--sl-color-text-accent);
+}
+
+:root[data-theme='dark'] :is(.fds-widget, .fds-playground-footer) .ft-select-selected {
+  background-color: var(--sl-color-accent-low);
+  color: var(--sl-color-text-accent);
+}
+
+:root[data-theme='dark']
+  :is(.fds-widget, .fds-playground-footer)
+  .ft-select-selected
+  .ft-select-option-description,
+:root[data-theme='dark']
+  :is(.fds-widget, .fds-playground-footer)
+  .ft-select-disabled
+  .ft-select-option-description {
+  color: inherit;
+}
+
+:root[data-theme='dark']
+  :is(.fds-widget, .fds-playground-footer)
+  .ft-select-selected
+  .ft-select-option-hint {
+  color: #ffd24d;
+}
+
+/* The messages' quick fixes, on a dark page: a tint of the accent */
+:root[data-theme='dark'] .fds-widget .ft-fix {
+  border-color: color-mix(in oklab, var(--sl-color-accent), transparent 50%);
+  background-color: var(--sl-color-accent-low);
+  color: var(--sl-color-text-accent);
+}
+
+:root[data-theme='dark'] .fds-widget .ft-fix:hover {
+  background-color: color-mix(in oklab, var(--sl-color-accent-low), var(--sl-color-accent) 30%);
+}
+
+/* The root's Evaluate button is dark on a light page; on a dark one, light */
+:root[data-theme='dark'] .fds-widget .ft-root-bar .ft-evaluate-button {
+  background-color: var(--sl-color-gray-2);
+  color: var(--sl-color-black);
+}
+
+.fds-widget-pane-label {
+  font-size: var(--sl-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sl-color-gray-3);
+  padding: 0.4rem 0.75rem 0.2rem;
+}
+
+.fds-widget-pane--tree .fds-widget-pane-label {
+  padding-inline: 0.25rem;
+}
+
+.fds-cm {
+  flex: 1;
+  min-height: 0;
+  container-type: inline-size;
+}
+
+/*
+ * A narrow code pane gives line numbers' width to the code. CodeMirror's own
+ * gutter rule is `!important`, so this one has to be too.
+ */
+@container (width < 550px) {
+  .fds-cm .cm-lineNumbers {
+    display: none !important;
+  }
+}
+
+.fds-cm--bare .cm-lineNumbers {
+  display: none !important;
+}
+
+/* The inline widget shares its row with the preview, so its text runs smaller */
+.fds-widget:not(.fds-overlay) > .fds-widget-panes .cm-editor {
+  font-size: 0.8125rem;
+}
+
+.fds-widget-notice {
+  padding: 0.5rem 0.75rem;
+  font-size: var(--sl-text-sm);
+  background: var(--fds-notice-bg);
+  color: var(--fds-notice-text);
+  border-top: 1px solid var(--sl-color-hairline);
+}
+
+/* ── Data and result ── */
+
+.fds-widget-below {
+  border-top: 1px solid var(--sl-color-hairline);
+}
+
+.fds-widget-below .fds-widget-pane {
+  max-height: 16rem;
+}
+
+/* The latest result stays, faded, while the next is worked out */
+.fds-widget-result {
+  padding: 0.2rem 0.75rem 0.75rem;
+  transition: opacity 0.15s;
+}
+
+.fds-widget-result--stale {
+  opacity: 0.55;
+}
+
+.fds-widget-result-message {
+  font-family: var(--__sl-font-mono);
+  font-size: var(--sl-text-code);
+  color: var(--sl-color-gray-3);
+}
+
+.fds-widget-result-failed {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  background: var(--fds-error-bg);
+  color: var(--fds-error-text);
+  font-family: var(--__sl-font-mono);
+  font-size: var(--sl-text-code);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * A value, as a result or a toast shows it (ResultValue.tsx): text in the
+ * body font, sized by its length, and code in the code font.
+ */
+.fds-value {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.fds-value--text {
+  font-family: var(--sl-font);
+  line-height: 1.3;
+  color: var(--sl-color-white);
+}
+
+.fds-value--large {
+  font-size: 1.75rem;
+  font-weight: 500;
+}
+
+.fds-value--medium {
+  font-size: 1.25rem;
+}
+
+.fds-value--small {
+  font-size: var(--sl-text-base);
+}
+
+.fds-value--empty {
+  font-family: var(--sl-font);
+  font-style: italic;
+  color: var(--sl-color-gray-3);
+}
+
+.fds-value--code {
+  font-family: var(--__sl-font-mono);
+  font-size: var(--sl-text-code);
+  white-space: pre-wrap;
+  color: var(--sl-color-white);
+}
+
+.fds-value--literal {
+  font-size: 1.25rem;
+}
+
+/* ── The Playground page (PlaygroundPage.tsx) ───────────────────────────── */
+
+/*
+ * The page takes the window's whole width: its sidebar is hidden until the
+ * header's menu button shows it (ThemeSelect.astro), and then the playground
+ * narrows to make room. Its title stays for screen readers but isn't shown,
+ * so the page opens on the playground, and the panel below the title's loses
+ * the rule that separates them. The space above the playground is the space
+ * between its rows.
+ */
+:root:has(.fds-playground-page) {
+  --sl-content-width: 100%;
+}
+
+@media (min-width: 50rem) {
+  :root[data-has-sidebar]:has(.fds-playground-page):not([data-fds-menu-open]) {
+    --sl-content-inline-start: 0rem;
+  }
+
+  :root:has(.fds-playground-page):not([data-fds-menu-open]) .sidebar-pane {
+    display: none;
+  }
+}
+
+:root:has(.fds-playground-page) .content-panel:has(> .sl-container > #_top) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+:root:has(.fds-playground-page) .content-panel + .content-panel {
+  padding-top: 1rem;
+  border-top: none;
+}
+
+/* Starlight's space between the content's blocks, which the page doesn't use */
+.sl-markdown-content .fds-playground-page,
+.fds-playground-page > .fds-playground-editors {
+  margin-top: 0;
+}
+
+/*
+ * The data and expression editors (PlaygroundEditors.tsx): two panes side by
+ * side where both have room, else one above the other, below fragment mode's
+ * bar
+ */
+.fds-playground-editors {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.fds-playground-panes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+/*
+ * Little padding above the tree, so the space above the root's name is about
+ * the space between its baseline and the root node's frame, and none below,
+ * where the editor has padding of its own
+ */
+.fds-playground-pane {
+  --fds-playground-pane-padding-top: 0.2rem;
+  position: relative;
+  padding: var(--fds-playground-pane-padding-top) 0.25rem 0rem;
+  background: var(--fds-tree-bg);
+}
+
+/*
+ * Fragment mode's bar, across both panes: the fragment picker, its Undo, Redo
+ * and Save, and the way back to the expression at the far end
+ */
+.fds-playground-fragment-bar {
+  overflow: visible;
+}
+
+.fds-playground-fragment-bar .fds-widget-toolbar {
+  border-bottom: none;
+  border-radius: 0.5rem;
+}
+
+.fds-playground-fragment-bar .fds-picker {
+  min-width: 0;
+}
+
+/*
+ * The fragment picker (the editor's select, sized for the tree), at the
+ * footer's example picker's size, and as wide whatever it shows
+ */
+.fds-playground-fragment-bar .ft-fragment-select {
+  font-size: var(--sl-text-sm);
+}
+
+.fds-playground-fragment-bar .ft-fragment-select .ft-select-trigger {
+  min-width: 14rem;
+}
+
+/*
+ * A fragment's name and description, close together, not at the page's line
+ * height
+ */
+.fds-playground-fragment-bar .ft-fragment-select .ft-select-option {
+  gap: 0.1em;
+  line-height: 1.3;
+}
+
+.fds-playground-fragment-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.fds-playground-fragment-actions .fds-widget-action {
+  margin-left: 0;
+}
+
+/* Two or more options, one of them pressed: fragment mode's Definition | Data */
+.fds-segmented {
+  display: inline-flex;
+  border: 1px solid var(--sl-color-hairline-shade);
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+.fds-segmented-option {
+  padding: 0.2rem 0.8rem;
+  border: none;
+  background: var(--sl-color-bg);
+  color: var(--sl-color-gray-2);
+  font: inherit;
+  font-size: var(--sl-text-sm);
+  cursor: pointer;
+}
+
+.fds-segmented-option + .fds-segmented-option {
+  border-left: 1px solid var(--sl-color-hairline-shade);
+}
+
+.fds-segmented-option:hover {
+  color: var(--sl-color-text-accent);
+}
+
+.fds-segmented-option[aria-pressed='true'] {
+  background: var(--sl-color-accent);
+  color: var(--sl-color-black);
+}
+
+/* The left pane's Trace view: the trace, or how to get one */
+.fds-playground-trace {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem 0.75rem;
+}
+
+.fds-playground-trace-note {
+  margin: 0;
+  font-size: var(--sl-text-sm);
+  color: var(--sl-color-gray-2);
+}
+
+/* "Out of date", in the trace's top right corner, as the coverage badge sits */
+.fds-playground-trace-code {
+  position: relative;
+}
+
+.fds-playground-trace-outdated {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.5rem;
+  z-index: 1;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid currentColor;
+  border-radius: 0.375rem;
+  background: var(--sl-color-bg);
+  color: var(--fds-toast-fallback);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  cursor: default;
+}
+
+/* The live form an example's result configures, its fields as the Config dialog's */
+.fds-form-preview {
+  padding: 0.75rem;
+  font-size: var(--sl-text-sm);
+}
+
+.fds-form-preview-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 24rem;
+}
+
+.fds-form-preview-title {
+  margin: 0;
+  font-size: var(--sl-text-lg);
+}
+
+.fds-form-preview :is(input, select) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 2.35rem;
+  font: inherit;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.375rem;
+  background: var(--sl-color-bg);
+  color: var(--sl-color-text);
+}
+
+/* What the form is, above it: the host's words, not the expression's */
+.fds-form-preview-intro {
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--sl-color-accent);
+  background: var(--sl-color-bg-nav);
+  color: var(--sl-color-gray-2);
+}
+
+/* A field's comment, from the expression, between its label and its input */
+.fds-form-preview-comment {
+  color: var(--sl-color-gray-3);
+  font-style: italic;
+}
+
+.fds-form-preview-required {
+  color: var(--fds-toast-failed);
+}
+
+.fds-form-preview-note {
+  margin: 0 0 0.75rem;
+  color: var(--sl-color-gray-2);
+}
+
+.fds-form-preview-note--failed {
+  color: var(--fds-toast-failed);
+}
+
+/* Undo and Redo, at the foot of each pane, like a widget's toolbar */
+.fds-playground-history {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  border-top: 1px solid var(--sl-color-hairline);
+  background: var(--sl-color-bg-nav);
+}
+
+.fds-playground-history .fds-widget-action {
+  margin-left: 0;
+}
+
+/*
+ * Whether the expression is fully covered, in the pane's top right corner,
+ * centred in the space between the pane's top edge and the frame of the
+ * tree's root node. The frame starts below the pane's padding, the editor's
+ * own (0.1rem), and the root's row (1.7rem).
+ */
+.fds-coverage-badge {
+  position: absolute;
+  top: 0;
+  right: 0.75rem;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  height: calc(var(--fds-playground-pane-padding-top) + 1.8rem);
+  /* The editor's base size, so its hover card is the size of the editor's */
+  font-size: 1rem;
+  line-height: 1.1;
+  /*
+   * The summary shows sooner than the tree's cards, which wait so as not to
+   * flash up as the pointer crosses the tree: the badge is hovered on purpose
+   */
+  --ft-hover-card-delay: 0.1s;
+}
+
+.fds-coverage-badge-label {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fds-coverage-badge-label:hover {
+  text-decoration: underline;
+}
+
+.fds-coverage-badge-label--covered {
+  color: var(--fds-toast-done);
+}
+
+.fds-coverage-badge-label--uncovered {
+  color: var(--fds-toast-fallback);
+}
+
+/* The summary card, while the panel is open */
+.fds-coverage-badge[data-open] .ft-hover-card-anchor > .ft-hover-card {
+  display: none;
+}
+
+/*
+ * The badge's panel, which looks like the editor's hover cards but is open
+ * until it's closed, takes the pointer, and scrolls when it's long
+ */
+.fds-coverage-panel.ft-hover-card {
+  visibility: visible;
+  opacity: 1;
+  left: auto;
+  right: 0;
+  max-width: 26em;
+  max-height: min(24em, 60vh);
+  overflow-y: auto;
+  pointer-events: auto;
+  line-height: 1.25;
+}
+
+.fds-coverage-findings {
+  margin-top: 0.8em;
+}
+
+/* A failure, which shows its node in the tree */
+.fds-coverage-finding {
+  display: block;
+  width: 100%;
+  margin: 0.15em 0 0;
+  padding: 0.3em 0.4em;
+  border: none;
+  border-radius: 0.25em;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fds-coverage-finding:hover,
+.fds-coverage-finding:focus-visible {
+  background: #f1f3f5;
+}
+
+/*
+ * The toasts, at the foot of the window, which the panes outgrow, above the
+ * bar there: a configuration change above an evaluation's
+ */
+.fds-playground-toasts {
+  position: fixed;
+  right: 1rem;
+  bottom: calc(var(--fds-playground-footer-height) + 1rem);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(24rem, calc(100vw - 2rem));
+  pointer-events: none;
+}
+
+.fds-playground-toasts > .fds-toast-region {
+  position: static;
+  width: auto;
+}
+
+.fds-toast-changes {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: var(--sl-text-sm);
+}
+
+/*
+ * While an object or array is edited as text, the strips down the tree's
+ * left margins that collapse a collection on a click (json-edit-react's
+ * click zones) let clicks through, since they lie over the pane's fold
+ * gutter
+ *
+ * TO-DO: remove once json-edit-react#427 is released, which stops a
+ * collection's click zone rendering while it's edited as text
+ */
+.jer-editor-container:has(.jer-collection-text-edit-custom) .jer-clickzone {
+  pointer-events: none;
+}
+
+/* An object or array edited as text, in the site's JSON5 pane */
+.fds-playground-editors .jer-collection-text-edit-custom > .fds-cm {
+  align-self: stretch;
+  border: 1px solid var(--sl-color-hairline-shade);
+  border-radius: 0.375rem;
+  background: var(--sl-color-bg);
+  overflow: hidden;
+}
+
+.fds-playground-editors .jer-collection-text-edit-custom .cm-editor {
+  min-height: 3em;
+  max-height: 30em;
+}
+
+.fds-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: var(--sl-text-sm);
+}
+
+.fds-picker-label {
+  font-weight: 600;
+  color: var(--sl-color-white);
+}
+
+/*
+ * The bar fixed to the foot of the window, across the content beside the
+ * sidebar: the example picker and its Info, then the version and the
+ * configuration. The page leaves room below the editors to scroll them clear
+ * of it, by the bar's height, which the page sets as the bar wraps onto more
+ * rows (PlaygroundPage.tsx); these are its heights until then. As the window
+ * narrows, the version goes first, then the buttons' labels, then the
+ * picker's, then the picker shrinks.
+ */
+:root:has(.fds-playground-footer) {
+  --fds-playground-footer-height: 3.5rem;
+}
+
+@media (max-width: 50rem) {
+  :root:has(.fds-playground-footer) {
+    --fds-playground-footer-height: 6.5rem;
+  }
+}
+
+.fds-playground-page {
+  padding-bottom: var(--fds-playground-footer-height);
+}
+
+.fds-playground-footer {
+  position: fixed;
+  inset-inline: var(--sl-content-inline-start, 0) 0;
+  bottom: 0;
+  /* Above the editors' own layers, within the content's stacking context */
+  z-index: 100;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem var(--sl-content-pad-x);
+  border-top: 1px solid var(--sl-color-hairline-shade);
+  background: var(--sl-color-bg-nav);
+}
+
+/* A switch while it's on, such as Fragments in fragment mode, filled */
+.fds-widget-action--accent[aria-pressed='true'] {
+  border-color: var(--sl-color-accent);
+  background: var(--sl-color-accent);
+  color: var(--sl-color-black);
+}
+
+/* The bar's buttons are as tall as the picker beside them */
+.fds-playground-footer .fds-widget-action {
+  height: 2.5rem;
+  margin-left: 0;
+  padding-inline: 0.9rem;
+}
+
+/* The picker and its Info share a row, the select giving up width to fit */
+.fds-playground-footer-start {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.fds-playground-footer .fds-picker {
+  min-width: 0;
+}
+
+/* The example picker (the editor's select), whose list opens upward */
+.fds-playground-footer .fds-example-select {
+  min-width: 0;
+  font-size: var(--sl-text-sm);
+}
+
+.fds-playground-footer .fds-example-select .ft-select-trigger {
+  height: 2.5rem;
+  min-width: 14rem;
+  max-width: 100%;
+}
+
+.fds-playground-footer .fds-example-select .ft-select-dropdown {
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 0.25em;
+  max-height: min(24em, 70vh);
+}
+
+/*
+ * An example the reader has edits to: "edited" after its name, set apart
+ * from it, in the list (the option's hint) and in the closed box
+ */
+.fds-playground-footer .fds-example-select .ft-select-option-hint,
+.fds-picker[data-edited] .ft-select-trigger-label::after {
+  margin-left: 0.5em;
+  font-size: 0.85em;
+  font-style: italic;
+  font-weight: normal;
+  color: var(--sl-color-gray-3);
+}
+
+.fds-picker[data-edited] .ft-select-trigger-label::after {
+  content: 'edited';
+}
+
+/* On the selected option's background, its own text colour */
+.fds-playground-footer .fds-example-select .ft-select-selected .ft-select-option-hint {
+  color: inherit;
+  opacity: 0.75;
+}
+
+.fds-playground-footer-end {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: auto;
+}
+
+.fds-playground-version {
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-3);
+}
+
+/*
+ * Where the bar's buttons would otherwise wrap onto a second row, the version
+ * makes room, Reset example showing or not
+ */
+@media (max-width: 78rem) {
+  .fds-playground-version {
+    display: none;
+  }
+}
+
+/* Then the buttons show only their icons, their labels left to their titles */
+@media (max-width: 62rem) {
+  .fds-playground-footer .fds-widget-action {
+    justify-content: center;
+    width: 2.5rem;
+    padding-inline: 0;
+  }
+
+  .fds-playground-footer .fds-widget-action svg {
+    width: 1.1em;
+    height: 1.1em;
+  }
+
+  .fds-playground-footer .fds-action-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/*
+ * Then the picker loses its label, and shrinks to fit, its name ending in
+ * "…"
+ */
+@media (max-width: 40rem) {
+  .fds-playground-footer .fds-picker-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .fds-playground-footer .fds-example-select {
+    max-width: 100%;
+  }
+
+  .fds-playground-footer .fds-example-select .ft-select-trigger {
+    min-width: 0;
+  }
+}
+
+/*
+ * The Playground's dialogs (BlurbDialog.tsx, ConfigDialog.tsx), styled as the
+ * expanded overlay: a toolbar with the title and a Close, over a body that
+ * scrolls
+ */
+.fds-dialog {
+  margin: auto;
+  width: min(92vw, var(--fds-dialog-width, 52rem));
+  max-height: 85vh;
+  padding: 0;
+  /* Only the body scrolls, never the toolbar above it */
+  overflow: hidden;
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 0.5rem;
+  background: var(--sl-color-bg);
+  color: var(--sl-color-text);
+}
+
+.fds-dialog::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
+
+:root:has(.fds-dialog[open]) {
+  overflow: hidden;
+}
+
+.fds-dialog-content {
+  display: flex;
+  flex-direction: column;
+  /* Inside the dialog's border */
+  max-height: calc(85vh - 2px);
+}
+
+.fds-dialog .fds-widget-toolbar {
+  flex: none;
+}
+
+.fds-dialog .fds-dialog-title {
+  margin: 0;
+  font-size: var(--sl-text-lg);
+  color: var(--sl-color-white);
+}
+
+/* A question, such as whether to discard a fragment's unsaved edits */
+.fds-confirm-dialog {
+  --fds-dialog-width: 26rem;
+}
+
+.fds-confirm-message {
+  margin: 0;
+  padding: 1rem 1.25rem 0.25rem;
+  font-size: var(--sl-text-sm);
+}
+
+/* An example's blurb */
+.fds-blurb-body {
+  /* Shrinks to the dialog, so it scrolls in place of overflowing it */
+  min-height: 0;
+  overflow-y: auto;
+  /* Without Starlight's flow margin: the padding is the gap below the title */
+  margin-top: 0;
+  padding: 1rem 1.25rem 1.25rem;
+  font-size: var(--sl-text-sm);
+}
+
+/* In the welcome, the title of the example's blurb that follows it */
+.fds-blurb-body .fds-blurb-example-title {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--sl-color-hairline);
+  font-size: var(--sl-text-lg);
+}
+
+.fds-blurb-body img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* The Configuration panel: sections of labelled fields, then Cancel and Save */
+.fds-config-dialog {
+  --fds-dialog-width: 34rem;
+  /* A one-line field's height, which a checkbox beside fields matches */
+  --fds-config-input-height: 2.35rem;
+}
+
+.fds-config-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  /* Shrinks to the dialog, so it scrolls in place of overflowing it */
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.75rem 1.25rem 1rem;
+  font-size: var(--sl-text-sm);
+}
+
+.fds-config-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.fds-config-section + .fds-config-section {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--sl-color-hairline);
+}
+
+.fds-config-heading {
+  margin: 0;
+  font-size: var(--sl-text-base);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--sl-color-white);
+}
+
+.fds-config-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.fds-config-label {
+  font-weight: 600;
+  color: var(--sl-color-gray-2);
+}
+
+.fds-config-hint {
+  font-weight: normal;
+  color: var(--sl-color-gray-3);
+}
+
+.fds-config-field :is(input, textarea) {
+  box-sizing: border-box;
+  font: inherit;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.375rem;
+  background: var(--sl-color-bg);
+  color: var(--sl-color-text);
+}
+
+.fds-config-field input {
+  /* As wide as the field, whatever width the browser gives an input */
+  width: 100%;
+  min-width: 0;
+  height: var(--fds-config-input-height);
+}
+
+.fds-config-field textarea {
+  min-height: 3.5em;
+  resize: vertical;
+  font-family: var(--__sl-font-mono);
+  font-size: var(--sl-text-xs);
+}
+
+/* Short fields side by side, such as the cache's size and time */
+.fds-config-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.6rem 1rem;
+  align-items: end;
+}
+
+/* A checkbox and its label, which can wrap, the box level with its first line */
+.fds-config-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: var(--sl-text-xs);
+  line-height: 1.35;
+  color: var(--sl-color-gray-2);
+}
+
+/* One line of the label tall, with the box centred in it (ConfigDialog.tsx) */
+.fds-config-check-box {
+  display: flex;
+  flex: none;
+  align-items: center;
+  height: 1.35em;
+}
+
+.fds-config-check input {
+  margin: 0;
+  accent-color: var(--sl-color-accent);
+}
+
+/* A checkbox leading a row of short fields, all on one line where they fit */
+.fds-config-row--check {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+/* A field with its label before it and its unit after, for a short number */
+.fds-config-field--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.fds-config-field--inline input {
+  flex: none;
+  width: 4rem;
+}
+
+/* A section's optional part, folded away until it's wanted */
+.fds-config-more > summary {
+  font-weight: 600;
+  color: var(--sl-color-gray-2);
+  cursor: pointer;
+}
+
+.fds-config-more[open] > summary {
+  margin-bottom: 0.45rem;
+}
+
+.fds-config-more > .fds-config-section {
+  padding-left: 1rem;
+}
+
+/* A tree editor in the panel, on the editors' own background (.fds-widget) */
+.fds-config-tree {
+  padding: 0.25rem;
+  border-radius: 0.375rem;
+  background: color-mix(in oklab, var(--sl-color-bg), var(--sl-color-text) 4%);
+}
+
+/* How many entries the cache holds, beside a compact Clear cache */
+.fds-config-cache {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-3);
+}
+
+.fds-config-cache .fds-widget-action {
+  padding: 0.1rem 0.5rem;
+  font-size: var(--sl-text-xs);
+}
+
+/*
+ * A note under a section's heading, such as why the reader's own API may not
+ * answer: small, with the accent down its side as a blockquote has, and
+ * closer to what's around it than the section's gap
+ */
+.fds-config-note {
+  margin: -0.2rem 0 0;
+  padding: 0.15rem 0 0.15rem 0.6rem;
+  border-inline-start: 3px solid var(--sl-color-accent);
+  font-size: var(--sl-text-xs);
+  line-height: 1.45;
+  color: var(--sl-color-gray-2);
+}
+
+.fds-config-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.fds-config-footer {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem 0.75rem;
+  padding: 0.6rem 1.25rem;
+  border-top: 1px solid var(--sl-color-hairline);
+  background: var(--sl-color-bg-nav);
+}
+
+:is(.fds-config-footer, .fds-config-cache, .fds-config-actions) .fds-widget-action {
+  margin-left: 0;
+}
+
+.fds-config-error {
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--fds-error-text);
+  font-size: var(--sl-text-sm);
+}
+
+/* ── The tree's evaluation toasts (EvaluationToast.tsx) ── */
+
+.fds-toast-region {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 2;
+  width: min(24rem, calc(100% - 1.5rem), 50vw);
+  pointer-events: none;
+}
+
+.fds-toast {
+  --fds-toast-accent: var(--sl-color-gray-3);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.6rem 0.75rem 0.7rem;
+  border: 1px solid var(--sl-color-hairline-shade);
+  border-left: 4px solid var(--fds-toast-accent);
+  border-radius: 0.5rem;
+  background: var(--sl-color-bg);
+  box-shadow:
+    0 6px 24px rgb(0 0 0 / 0.18),
+    0 1px 3px rgb(0 0 0 / 0.12);
+  pointer-events: auto;
+  animation: fds-toast-in 0.18s ease-out;
+}
+
+.fds-toast--done {
+  --fds-toast-accent: var(--fds-toast-done);
+}
+
+.fds-toast--failed {
+  --fds-toast-accent: var(--fds-toast-failed);
+}
+
+.fds-toast--fallback {
+  --fds-toast-accent: var(--fds-toast-fallback);
+}
+
+/* What an example changed in the Playground's configuration (ConfigToast.tsx) */
+.fds-toast--config {
+  --fds-toast-accent: var(--sl-color-text-accent);
+}
+
+.fds-toast-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-right: 1.5rem;
+  font-size: var(--sl-text-sm);
+}
+
+.fds-toast-icon {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: var(--fds-toast-accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fds-toast-path,
+.fds-toast-note code {
+  font-family: var(--__sl-font-mono);
+  font-size: var(--sl-text-xs);
+  padding: 0.05rem 0.3rem;
+  border-radius: 0.25rem;
+  background: var(--sl-color-bg-inline-code);
+  overflow-wrap: anywhere;
+}
+
+.fds-toast-status {
+  color: var(--sl-color-gray-3);
+  font-size: var(--sl-text-xs);
+}
+
+.fds-toast-body {
+  max-height: 12rem;
+  overflow: auto;
+}
+
+.fds-toast .fds-value--large {
+  font-size: 1.5rem;
+}
+
+.fds-toast-error {
+  margin: 0;
+  font-family: var(--__sl-font-mono);
+  font-size: var(--sl-text-code);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--fds-error-text);
+}
+
+.fds-toast-note {
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-2);
+}
+
+.fds-toast-copy {
+  align-self: flex-start;
+  font: inherit;
+  font-size: var(--sl-text-xs);
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.3rem;
+  background: transparent;
+  color: var(--sl-color-gray-2);
+  cursor: pointer;
+}
+
+.fds-toast-copy:hover {
+  color: var(--sl-color-text-accent);
+  border-color: var(--sl-color-text-accent);
+}
+
+.fds-toast-close {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: var(--sl-color-gray-3);
+  cursor: pointer;
+}
+
+.fds-toast-close:hover {
+  background: var(--sl-color-bg-inline-code);
+  color: var(--sl-color-text);
+}
+
+.fds-toast-close .fds-toast-icon {
+  width: 0.8rem;
+  height: 0.8rem;
+  stroke: currentColor;
+}
+
+.fds-toast-spinner {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--sl-color-gray-5);
+  border-top-color: var(--sl-color-gray-2);
+  border-radius: 50%;
+  animation: fds-spin 0.8s linear infinite;
+}
+
+@keyframes fds-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+
+@keyframes fds-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* On a small screen, a smaller toast */
+@media (max-width: 48rem) {
+  .fds-toast {
+    gap: 0.3rem;
+    padding: 0.45rem 0.55rem 0.55rem;
+    border-left-width: 3px;
+  }
+
+  .fds-toast-head,
+  .fds-toast-error,
+  .fds-toast .fds-value--code {
+    font-size: var(--sl-text-xs);
+  }
+
+  .fds-toast .fds-value--large,
+  .fds-toast .fds-value--literal {
+    font-size: 1.125rem;
+  }
+
+  .fds-toast .fds-value--medium {
+    font-size: 1rem;
+  }
+
+  .fds-toast .fds-value--small {
+    font-size: var(--sl-text-sm);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fds-toast {
+    animation: none;
+  }
+
+  .fds-toast-spinner {
+    animation-duration: 2s;
+  }
+}

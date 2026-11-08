@@ -38,9 +38,12 @@ pnpm release [--dry-run]  # prompt for a version, check CHANGELOG, bump, run CI,
 pnpm build:logo           # rebuild images/logo/ from codegen/logo/ (setup in codegen/logo/README.md)
 pnpm dev [name]           # run src/dev/<name>.ts (default: the gitignored playground); `pnpm dev list` shows them
 pnpm dev phase4_showcase  # the per-phase showcase: a range of expressions with their printed results
+pnpm docs:dev             # the docs site's dev server (docs-site/, http://localhost:4321)
 ```
 
 There is no watch/dev-server — this is a library. Note pnpm does not run implicit pre/post hooks: `build` chains `getVersion` explicitly.
+
+The v3 docs site lives in [docs-site/](docs-site/): a separate Starlight package with its own `package.json` and lockfile (not a workspace), which links this package's `build/` and a local `fig-tree-editor-react` checkout. Setup, `pnpm dev` / `pnpm build` and how examples are written are in [docs-site/README.md](docs-site/README.md); the plan behind it is [docs-dev/doc-planning.md](docs-dev/doc-planning.md). Root ESLint ignores it, and root Prettier skips its `.mdx`.
 
 `pnpm build` ends with a size report from `codegen/bundleSize.mjs`: a row per entry point and per shared chunk (minified / gzip / brotli / types), then a per-module breakdown of each multi-module bundle. The entry points are listed once, in `codegen/entries.mjs`, which the build, the report and the PR comment all follow, and the build fails if package.json's `exports`, or its `typesVersions` fallback for TypeScript's legacy `node` resolution, disagrees with it. **At the close of each v3 phase, record the numbers in the bundle-size table in [docs-dev/v3-specs/v3-implementation-plan.md](docs-dev/v3-specs/v3-implementation-plan.md)** — working rule 6 there. The build is also a CI step, so it has to stay green even while the engine is incomplete.
 
@@ -84,6 +87,7 @@ src/
 
 - **`src/version.ts`** — built from `package.json` by `codegen/getVersion.ts` (run `pnpm getVersion`; `pnpm build` runs it first).
 - **`docs-dev/v3-specs/v3-coverage-cases.md`** — the #217 case corpus (`test/coverage-cases.ts`) as a readable page, one expression and its expected findings per case. Built by `codegen/coverageCasesPage.ts` (run `pnpm coverageCases`) after any change to the cases.
+- **`docs-site/src/lib/httpRecordings.json`** — the responses the docs site's HTTP examples got from the real APIs, which the site build replays offline (in the browser, requests are real). Written by `pnpm record:http` in `docs-site/`.
 - **`differential/sqlRecordings.ts`** — what a live Northwind Postgres answered to each query the differential's cases send, which the runner replays offline. Written by `pnpm differential --record-sql`.
 - **`src/migrate/v2/operators.generated.ts`** and **`src/migrate/v3Names.generated.ts`** — the v2 converter's reference tables, built by `codegen/extractV2Table.ts` (run `pnpm extractV2Table`) from the published v2 package (the devDependency `fig-tree-evaluator-v2`) and from the core and I/O operators' definitions. `test/migrate-table.test.ts` fails when either differs from a fresh extraction, so re-run it after bumping the v2 package or renaming or re-aliasing an operator.
 

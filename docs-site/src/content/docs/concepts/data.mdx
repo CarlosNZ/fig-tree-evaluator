@@ -1,0 +1,191 @@
+---
+title: Data references
+description: Reading values from your app's data
+sidebar:
+  order: 3
+---
+
+import Expression from '../../../components/Expression.astro'
+
+Most expressions do something with your application's data — define logic for form fields based on a user's input, compose messages based on user data, or make API calls based on application state, for example. Your app passes this data to FigTree when it evaluates an expression, and `$data` references, such as `$data.user.name`, read from it.
+
+## The data object
+
+What's in the data is up to your app. It should make clear what's available to you, such as a list of the fields you can read, or sample data to [check your expression against](/guides/validation/#checking-against-sample-data). For developers, [Setting up FigTree](/guides/setup/#options-for-a-single-evaluation) shows how to pass it.
+
+## `$data.` strings
+
+A reference can go anywhere a value can: as an operator's parameter, inside a plain object or array, or as the whole expression. `$d` is short for `$data`, and a bare `$data` gives the whole data object.
+
+<Expression
+  title="An order confirmation"
+  code={`
+    {
+      orderId: '$data.order.id',
+      // $d is short for $data
+      customer: '$d.customer.name',
+      total: { $plus: ['$d.order.subtotal', '$d.order.shipping'] },
+      // Only a whole string is a reference, so this one is plain text
+      plain: 'Thanks, $data.customer.firstName!',
+      // To put a value inside text, use a buildString template
+      greeting: { $buildString: 'Thanks, {{$d.customer.firstName}}!' },
+    }
+  `}
+  data={`
+    {
+      customer: { name: 'Aroha Ngata', firstName: 'Aroha' },
+      order: { id: 'A-1042', subtotal: 80, shipping: 5.5 },
+    }
+  `}
+/>
+
+A string is a reference only when it _starts_ with `$data` or `$d`, or one of the other kinds of reference [below](#every-reference). Any other string is plain text, even one starting with `$`, such as `'$5.00'`. Validation does warn about a `$` string that looks like a reference, such as `'$dat.price'` or `'$USD'`, in case it's a typo; wrap one in [`literal`](/reference/operators/#op-literal) if you mean it as text.
+
+## The `get` operator
+
+A `$data` reference is really just a convenient way to write a [`get` operator](/reference/operators/#op-get): `$data.order.id` is the same as `{ $get: 'order.id' }`. Most of the time, it's all you need, but there are a few cases where you need to write it the long way:
+
+- **When `null` isn't the right replacement for missing data:** `get` takes a `default` to give instead ([Missing values](#missing-values)).
+- **When reading from something other than the data:** `get` takes a `from` to read from instead, such as a lookup table written into the expression itself.
+- **When the path is itself computed by an expression**, such as a key chosen by the user.
+
+Here, the path references the lookup table, so it has no `$data`:
+
+```json5
+{
+  $get: {
+    // Read from the table below, so no $data
+    path: 'mi',
+    from: { en: 'Hello', mi: 'Kia ora', fr: 'Bonjour' },
+  },
+}
+```
+
+Computing the path as well picks the greeting in the user's language from the same table:
+
+<Expression
+  title="A greeting in the user's language"
+  code={`
+    {
+      $get: {
+        // The key to read comes from the data: here, 'mi'
+        path: '$data.user.language',
+        from: { en: 'Hello', mi: 'Kia ora', fr: 'Bonjour' },
+      },
+    }
+  `}
+  data={`
+    // Change language to 'fr'
+    { user: { name: 'Aroha', language: 'mi' } }
+  `}
+/>
+
+## Missing values
+
+Real data has gaps, such as a form field left blank or a user without a middle name. So a reference to something that isn't there doesn't stop the evaluation — it returns `null`, and the expression carries on, handling that `null` as [How evaluation works](/concepts/evaluation/#null-handling) describes. If `null` isn't the appropriate value, you can supply a `default`.
+
+There are two ways, and they differ in how they treat a value stored as `null`:
+
+- **`get`'s `default`** replaces only a missing value. A value stored as `null` stays `null`, for where that means something, such as a field the user cleared. In the positional form, it comes after the path: `{ $get: ['customer.email', 'Missing'] }`.
+- **`firstNonNull`** gives the first of its values that isn't `null`, so it replaces a stored `null` too.
+
+<Expression
+  code={`
+    {
+      // Only the genuinely missing one takes the default
+      phoneOnFile: { $get: { path: 'customer.phone', default: 'Missing' } },
+      emailOnFile: { $get: { path: 'customer.email', default: 'Missing' } },
+      // Missing AND null are both passed over
+      phone: { $firstNonNull: ['$data.customer.phone', 'Not given'] },
+      email: { $firstNonNull: ['$data.customer.email', 'Not given'] },
+    }
+  `}
+  data={`
+    // Asked for a phone number, and has none; never asked for an email
+    { customer: { name: 'Aroha Ngata', phone: null } }
+  `}
+/>
+
+### When missing is a mistake
+
+A misspelt path is missing too, so it gives `null` just as quietly. When your data should always have the values an expression reads, the `strictDataPaths` option makes a missing path an error instead, which a `fallback` can catch like any other failure. A `get` with a `default` marks a value that's allowed to be missing:
+
+```ts title="strict.ts"
+import { FigTree } from 'fig-tree-evaluator'
+
+const fig = new FigTree({ strictDataPaths: true })
+const data = { customer: { name: 'Aroha Ngata' } }
+
+await fig.evaluate('$data.customer.nmae', { data }) // throws: missing-data-path
+
+await fig.evaluate(
+  { $upper: '$data.customer.nmae', fallback: 'Unknown' },
+  { data }
+) // => 'Unknown'
+
+await fig.evaluate(
+  { $get: { path: 'customer.email', default: null } },
+  { data }
+) // => null
+```
+
+Strict mode is part of the instance, so you can't turn it on for a single evaluation. If some of your data is checked and some isn't (records you stored yourself, say, and input straight from a form), make a strict copy with `with()`. It shares the original's operators and compile cache, so it costs almost nothing:
+
+```ts title="two-modes.ts"
+import { FigTree } from 'fig-tree-evaluator'
+declare const expression: string
+declare const record: Record<string, unknown>
+declare const formInput: Record<string, unknown>
+// ---cut---
+const fig = new FigTree()
+const strict = fig.with({ strictDataPaths: true })
+
+await strict.evaluate(expression, { data: record }) // a missing path throws
+await fig.evaluate(expression, { data: formInput }) // a missing path gives null
+```
+
+## Path syntax
+
+For the most part, paths are written as you'd write them in JavaScript, so `$d.user.name`, `$data.items[0].price` and `$data.flags["key.with.dots"]` are all valid paths, and `.0` works as well as `[0]`. There are a couple of extensions, though:
+
+- **`[*]`**: every element of an array. The rest of the path is read from each one, and the results come back as an array, with `null` wherever it's missing.
+- **A path as an array**: `get` also takes its path as an array of keys and indexes, each used exactly as written. That's handy when building a path from parts: `{ $get: { path: ['items', 0, 'price'] } }`.
+
+<Expression
+  code={`
+    {
+      firstItem: '$data.order.items[0].name',
+      // The sku of every item
+      skus: '$data.order.items[*].sku',
+      // The key has a dot in it, so it goes in quotes
+      newCheckout: '$data.flags["checkout.v2"]',
+    }
+  `}
+  data={`
+    {
+      order: {
+        items: [
+          { sku: 'TEA-01', name: 'Green tea' },
+          { sku: 'MUG-03', name: 'Mug' },
+        ],
+      },
+      flags: { 'checkout.v2': true },
+    }
+  `}
+/>
+
+## Every reference
+
+`$data` is one of six kinds of reference, each reading from a different place. The rest are explained where the things they read are:
+
+| Reference            | Short form | Reads                                     | Explained in                               |
+| -------------------- | ---------- | ----------------------------------------- | ------------------------------------------ |
+| `$data`              | `$d`       | the evaluation data                       | this page                                  |
+| `$vars`              | `$v`       | a variable declared above it              | [Variables](/concepts/variables/)          |
+| `$element`, `$index` | `$e`, `$i` | the current element, in `map`, `filter` … | [Iteration](/concepts/iteration/)          |
+| `$params`            | `$p`       | a fragment's arguments                    | [Fragments](/guides/fragments/)            |
+| `$error`             | `$err`     | the failure a fallback caught             | [Fallbacks and errors](/guides/fallbacks/) |
+
+Inside an iterator, `as` lets you name the element and index yourself: with `as: 'order'`, `$order` and `$orderIndex` are references within that iterator ([Iteration](/concepts/iteration/)).
+
+They all follow this page's rules: a reference is a whole string, or a `{{…}}` token in a `buildString` template, and its path uses the same syntax, so `$vars.country[0].name` works as you'd expect.

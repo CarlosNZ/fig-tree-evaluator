@@ -1,0 +1,339 @@
+---
+title: Prototype
+description: One example of each kind of element the docs site uses
+pagefind: false
+head:
+  - tag: meta
+    attrs:
+      name: robots
+      content: noindex
+banner:
+  content: |
+    Prototype — one page showing each kind of element proposed in
+    <code>docs-dev/doc-planning.md</code>. Content is illustrative.
+---
+
+import { Code, Tabs, TabItem, Aside } from '@astrojs/starlight/components'
+import Expression from '../../components/Expression.astro'
+import ExpressionTree from '../../components/ExpressionTree.astro'
+import OperatorReference from '../../components/OperatorReference.astro'
+import Playground from '../../components/playground/Playground.tsx'
+import Callout from '../../components/Callout.astro'
+
+**FigTree** evaluates expressions written as plain JSON. An expression is any JSON value; wherever it holds an operator node — `{ $plus: [1, 2] }`, `{ $if: … }` — that node is evaluated in place, and everything else passes through untouched. It is a sandboxed way to keep dynamic logic in configuration, a database row or a form definition, without ever executing code.
+
+<Expression
+  title="A whole config is an expression"
+  code={`
+    {
+      // Plain values pass through
+      card: 'profile',
+      // $-prefixed keys invoke operators; '$data.…' strings read the data
+      greeting: { $buildString: 'Hello {{$data.user.firstName}}' },
+      isAdult: { '$>=': ['$data.user.age', 18] },
+    }
+  `}
+  data={`
+    { user: { firstName: 'Mohini', age: 34 } }
+  `}
+/>
+
+The result above wasn't typed: the page ran the expression through FigTree when it was built. Every expression example on this site works that way.
+
+## Install
+
+<Tabs syncKey="pkg">
+  <TabItem label="pnpm">
+    ```sh
+    pnpm add fig-tree-evaluator
+    ```
+  </TabItem>
+  <TabItem label="npm">
+    ```sh
+    npm install fig-tree-evaluator
+    ```
+  </TabItem>
+  <TabItem label="yarn">
+    ```sh
+    yarn add fig-tree-evaluator
+    ```
+  </TabItem>
+</Tabs>
+
+## Using it from your code
+
+Code that runs in your application — the host — is shown in code blocks. Titles, line highlighting and inserted/deleted lines come from Expressive Code, and every TypeScript block is compiled against the library's types when the site builds ([below](#host-code-type-checked)).
+
+```ts title="evaluate.ts" {3,6}
+import { FigTree } from 'fig-tree-evaluator'
+
+const fig = new FigTree({ timeout: 5000 })
+
+const expression = { $buildString: 'Hello {{$data.user.name}}' }
+const greeting = await fig.evaluate(expression, { data: { user: { name: 'Ana' } } })
+// → 'Hello Ana'
+```
+
+```ts nocheck title="Upgrading from v2" del={1,3} ins={2,4}
+import { FigTreeEvaluator } from 'fig-tree-evaluator'
+import { FigTree } from 'fig-tree-evaluator'
+const fig = new FigTreeEvaluator({ objects: { user } })
+const fig = new FigTree()
+```
+
+<Aside type="tip" title="Element: host code blocks">
+  Expressive Code, as proposed under "Host code: code blocks", type-checked as below. A fragment
+  that can't compile, like the diff above with its old and new lines side by side, is marked
+  `nocheck`, and nothing checks it.
+</Aside>
+
+## Expressions, evaluated at build time
+
+The default way to show an expression: highlighted source, the data it reads, and the result the library gives — computed when the site builds. If the library's behaviour changes, the page changes with it; if an example stops evaluating, the build fails.
+
+<Expression
+  title="Decide something"
+  code={`
+    {
+      '$?': [
+        '$data.patron.isParentAttending',
+        { '$>=': ['$data.patron.age', 13] },
+        { '$>=': ['$data.patron.age', '$data.film.minAgeRating'] },
+      ],
+    }
+  `}
+  data={`
+    {
+      film: { title: 'Deadpool & Wolverine', minAgeRating: 17 },
+      patron: { age: 12, isParentAttending: true },
+    }
+  `}
+/>
+
+<Expression
+  title="When the data isn't there"
+  code={`
+    {
+      displayName: { $firstNonNull: ['$data.user.nickname', '$data.user.name', 'Anonymous'] },
+      contact: { $buildString: 'Phone: {{$data.user.phone}}' },
+      timezone: { $get: ['user.prefs.timezone', 'Pacific/Auckland'] },
+      ratio: { $divide: [1, 0], fallback: 'n/a' },
+    }
+  `}
+  data={`
+    { user: { name: 'Mohini', phone: null, prefs: { locale: 'en-NZ' } } }
+  `}
+/>
+
+An example can also document a failure. It declares that it throws, and shows the error the library actually raises:
+
+<Expression throws editor={false} title="No coercion" code={`{ $plus: [1, 'two'] }`} />
+
+<Aside type="tip" title="Element: static expression block (tier 1)">
+  `<Expression>` takes JSON5 source, so examples keep their comments. "Open in editor" opens the
+  example in a full-size editor over the page, comments and all, and closing it leaves the block
+  as it was. The link's address loads the example into the Playground page instead (for a new tab or a shared
+  link), as Biome's do.
+</Aside>
+
+## Expressions as trees
+
+An expression can also be drawn as the tree it is: each node with its operator and the result it gives, and its parameters below it, labelled where the expression names them. Like the expression blocks, every result is computed when the site builds.
+
+<ExpressionTree
+  label="A round node at the top, with two named parameters: value, a divide node that divides the total by the count, and decimals, 2."
+  code={`
+    {
+      $round: {
+        value: { $divide: ['$data.total', '$data.count'] },
+        decimals: 2,
+      },
+    }
+  `}
+  data={`
+    { total: 300, count: 7 }
+  `}
+/>
+
+<Aside type="tip" title="Element: expression tree">
+  `<ExpressionTree>` evaluates each node's subtree on its own with the example's data, so it suits
+  expressions without lazy branches or variables: a branch `if` doesn't take would still show a
+  result, and a node reading `$vars` from above can't be drawn. "Open in editor" opens the
+  expression in a full-size editor over the page, so a page needs no second copy of the example.
+</Aside>
+
+## Try it
+
+Where interaction teaches something, an example becomes a widget: JSON5 text, a preview of the FigTree editor beside it, and the data and result below. **Expand editor** (or a click on the preview) opens both editors side by side at full size; they edit the same expression, and the editor's ▶ buttons report in a toast. Edit a value in either pane, or change the data.
+
+<Playground
+  client:visible
+  id="playground"
+  readFromUrl
+  expression={`
+    {
+      // Each branch is lazy: only one of them runs
+      $if: {
+        condition: { '$>=': ['$data.order.total', 100] },
+        then: { $buildString: 'Free shipping for {{$data.order.customer}}' },
+        else: {
+          $buildString: [
+            'Spend %1 more for free shipping',
+            { $subtract: [100, '$data.order.total'] },
+          ],
+        },
+      },
+    }
+  `}
+  data={`
+    { order: { customer: 'Ana', total: 72 } }
+  `}
+/>
+
+<Aside type="tip" title="Element: the two-pane widget (tier 2)">
+  A React island mounted with `client:visible`: the editor and CodeMirror load only when the widget
+  scrolls into view. The text pane keeps its own text, so half-typed JSON5 shows a parse error
+  instead of breaking the tree; editing the tree regenerates the text (and says so if that drops
+  comments). On the page the widget keeps to the content column, so the tree is a shrunken,
+  read-only preview, left out on screens under about 500px; the overlay is where it's edited.
+</Aside>
+
+A page can hold several widgets; each loads when it's reached. This one is about fallbacks: make the division fail and the fallback takes over.
+
+<Playground
+  client:visible
+  id="playground-fallbacks"
+  expression={`
+    {
+      // Set the count to 0 in Data: the node fails, and its fallback stands in
+      $divide: ['$data.total', '$data.count'],
+      fallback: 'No orders yet',
+    }
+  `}
+  data={`
+    { total: 300, count: 4 }
+  `}
+/>
+
+## Callouts
+
+A passage that sits beside the main line goes in a callout. Each kind has one job, and a page picks the kind by what the passage is for, so the same look always means the same thing. Every kind has a default title, but a specific one helps a reader scanning the page.
+
+<Callout kind="note" title="Another way to write a node">
+  **Note**: worth knowing, but off the main line, such as another way to write something or a
+  related detail. The canonical form, `{ operator: 'plus', values: [1, 2, 3] }`, names everything,
+  and is the one tools work with.
+</Callout>
+
+<Callout kind="tip">
+  **Tip**: advice on doing something better, not just correctly. Named parameters say what each
+  value is for, which helps whoever reads a stored expression next.
+</Callout>
+
+<Callout kind="caution">
+  **Caution**: a gotcha that will bite if it's missed. A `$` key in data written inside an
+  expression is read as a node; put that data inside `literal`.
+</Callout>
+
+<Callout kind="danger">
+  **Danger**: security or data loss, and rare. Never build a SQL query by putting user input into
+  its text; pass the input as the query's values.
+</Callout>
+
+<Callout kind="why" title="Why unknown $ keys are errors">
+  **Why?**: a short design reason, linking into Under the hood for the full story. A `$` key is
+  always meant as a node, so a typo there fails loudly instead of quietly becoming data.
+</Callout>
+
+## Operator reference
+
+Reference entries are rendered from the operators' own definitions when the site builds, so names, aliases, types, defaults and null behaviours can't drift from the code. The [operators page](/reference/operators/) has them all, by category; another page can show a few, as here, with each one's category:
+
+<OperatorReference names={['plus', 'if', 'get', 'buildString']} showCategory />
+
+<Aside type="tip" title="Element: generated operator reference">
+  Built from `getCatalog(figTree)`, which joins the operators' definitions with `./catalog`'s
+  listings: the same data `pnpm generate:operators` renders for the published operators page. The
+  docs' own operator notes (`src/content/operator-notes/`) add to or replace an operator's
+  descriptions, and add longer notes: `if`, `get` and `buildString` here have them.
+</Aside>
+
+## Host code, type-checked
+
+Every `ts` and `tsx` block is compiled against fig-tree-evaluator's real type declarations when the site builds, unless it's marked `nocheck`. Hover over an identifier to see its type. A snippet that no longer compiles — a renamed option, a moved export — fails the build.
+
+```ts title="evaluate.ts"
+import { FigTree } from 'fig-tree-evaluator'
+
+const fig = new FigTree()
+const total = await fig.evaluate({ $plus: [1, 2, 3] })
+//    ^?
+```
+
+Setup a snippet needs but shouldn't show goes above a `// ---cut---` line, and `fig`, an instance with the default options, needs no setup at all (`twoslash/globals.d.ts`). The return type follows the options, so asking for a trace changes it:
+
+```ts title="trace.ts"
+const expression = { $buildString: 'Hello {{$data.name}}' }
+// ---cut---
+const { result, trace } = await fig.evaluate(expression, {
+  data: { name: 'Ana' },
+  trace: true,
+})
+```
+
+An error a snippet means to show is declared, and then rendered rather than failing the build:
+
+```ts title="options.ts"
+// @errors: 2353
+import { FigTree } from 'fig-tree-evaluator'
+// ---cut---
+const fig = new FigTree({ missingPathDefault: null })
+```
+
+<Aside type="tip" title="Element: type-checked host code">
+  Open question 3 in the planning doc, settled: `expressive-code-twoslash` declares support for an
+  older Expressive Code (0.41) than Starlight bundles (0.44), and works with it. Its version is
+  pinned, so an update can't change that unnoticed.
+</Aside>
+
+## Code colours
+
+Every colour the code blocks use, in one block per language: keys, strings, numbers, booleans and `null`, comments and punctuation in JSON5, and keywords, function names and types as well in TypeScript.
+
+```json5 title="Every JSON5 colour"
+{
+  // A line comment
+  /* A block comment */
+  unquoted: 'a single-quoted string',
+  'quoted key': "a double-quoted string",
+  numbers: [42, -2.5, 0x1f, 1e3],
+  literals: [true, false, null],
+  node: { $plus: ['$data.count', 2] },
+}
+```
+
+```ts title="Every TypeScript colour"
+// A line comment
+/* A block comment */
+import { FigTree } from 'fig-tree-evaluator'
+
+interface Settings {
+  timeout: number
+  label?: string
+}
+
+type Mode = 'strict' | 'lenient'
+
+export async function isLarge(settings: Settings, mode: Mode): Promise<boolean> {
+  const fig = new FigTree({ timeout: settings.timeout ?? 5000 })
+  const result = await fig.evaluate({ $plus: [1, -2.5, 0x1f] })
+  if (result === null || mode === 'lenient') return false
+  return typeof result === 'number' && result > 3
+}
+```
+
+<Aside type="tip" title="Element: code colours">
+  The colours come from `src/styles/palettes.mjs`, which sets one per role: keys, strings,
+  numbers, other literals, keywords, function names and types, and greys for comments and
+  punctuation. The playground's JSON5 pane uses the same colours.
+</Aside>

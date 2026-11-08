@@ -1,0 +1,145 @@
+---
+title: FigTree
+description: Dynamic logic for your config, written as plain JSON
+template: splash
+hero:
+  # The logo's icon, from the repo's images/logo/ (built by codegen/logo/)
+  image:
+    light: ../../../../images/logo/figtree-icon.svg
+    dark: ../../../../images/logo/figtree-icon-dark.svg
+  tagline: Dynamic logic for your config, written as plain JSON — evaluated safely, without ever running code.
+  actions:
+    - text: Get started
+      link: /getting-started/
+      icon: right-arrow
+    - text: Try it in the Playground
+      link: /playground/
+      variant: secondary
+    - text: GitHub
+      link: https://github.com/CarlosNZ/fig-tree-evaluator
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components'
+import Playground from '../../components/playground/Playground.tsx'
+
+FigTree lets you put real logic in places that can only hold data, like a config file, a database row or a form definition. Here's a form field that shows only for licensed drivers aged 16 or over, with help text that names the user's country. Change the data, or the expression, and watch the result follow:
+
+<Playground
+  client:visible
+  id="example"
+  expression={`
+    {
+      label: 'Driver licence number',
+      type: 'text',
+      // A $-prefixed key runs an operator
+      visible: {
+        // A '$data.…' string reads a value
+        $and: [{ '$>=': ['$data.age', 16] }, '$data.hasLicence'],
+      },
+      helpText: {
+        $buildString: 'Required for drivers in {{$data.country}}',
+      },
+    }
+  `}
+  data={`
+    { age: 34, hasLicence: true, country: 'New Zealand' }
+  `}
+/>
+
+That ran in your browser, through FigTree itself. Every example on this site is evaluated for real.
+
+## Why FigTree?
+
+<CardGrid>
+  <Card title="Sandboxed" icon="padlock">
+    An expression is JSON in and JSON out. It can only use the operators you register, so nothing in
+    it can execute code.
+  </Card>
+  <Card title="Strict, then forgiving" icon="approve-check-circle">
+    Unknown operators and malformed parameters are caught before anything runs. At runtime, any node
+    can carry a `fallback` for bad data or a failed lookup.
+  </Card>
+  <Card title="Lookups through your clients" icon="database">
+    HTTP, GraphQL and SQL operators use a client you pass in, so nothing you don't use ends up in
+    your bundle.
+  </Card>
+  <Card title="Built to extend" icon="puzzle">
+    Write fully typed custom operators, reuse logic as named fragments, and drop a visual editor into
+    your own app.
+  </Card>
+</CardGrid>
+
+It's a good fit wherever rules change more often than code: eligibility and pricing rules, feature-flag targeting, workflow conditions, and message templates whose sections depend on the recipient.
+
+## Quick start
+
+<Tabs syncKey="pkg">
+  <TabItem label="pnpm">
+    ```sh
+    pnpm add fig-tree-evaluator
+    ```
+  </TabItem>
+  <TabItem label="npm">
+    ```sh
+    npm install fig-tree-evaluator
+    ```
+  </TabItem>
+  <TabItem label="yarn">
+    ```sh
+    yarn add fig-tree-evaluator
+    ```
+  </TabItem>
+</Tabs>
+
+```ts
+import { FigTree } from 'fig-tree-evaluator'
+
+const fig = new FigTree()
+
+const visible = await fig.evaluate(
+  { '$>=': ['$data.age', 16] }, // the expression
+  { data: { age: 34 } } // the data it reads
+)
+// → true
+```
+
+FigTree is ESM-only, written in TypeScript with its types included, and needs Node 22.12 or later (or any modern browser).
+
+## Where next?
+
+<CardGrid>
+  <LinkCard
+    title="Writing expressions"
+    description="Nodes, operators, the data an expression reads, and how it's evaluated."
+    href="/concepts/expressions/"
+  />
+  <LinkCard
+    title="Adding FigTree to your app"
+    description="Options, fallbacks, I/O clients, caching and tracing, and the FigTree class."
+    href="/guides/setup/"
+  />
+  <LinkCard
+    title="Operator reference"
+    description="Every built-in operator: its parameters, types and examples."
+    href="/reference/operators/"
+  />
+  <LinkCard
+    title="Custom operators"
+    description="Write your own with defineOperator, typed end to end."
+    href="/custom-operators/writing/"
+  />
+  <LinkCard
+    title="Beyond evaluation"
+    description="Presenting operators, converting and analysing expressions: the catalog, format and authoring subpaths."
+    href="/tooling/overview/"
+  />
+  <LinkCard
+    title="Migrating from v2"
+    description="What changed, and the converter that updates your expressions."
+    href="/migrating/"
+  />
+</CardGrid>
+
+Using v2? Its docs are the README on the [`v2.x` branch](https://github.com/CarlosNZ/fig-tree-evaluator/tree/v2.x).

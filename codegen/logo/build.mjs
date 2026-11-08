@@ -37,7 +37,7 @@ const COLOURS = {
   light: { graph: '#3b6c34', headline: '#1b1a1f', background: '#7f8a7b' },
   dark: { graph: '#8bc57c', headline: '#eef0f3', background: '#73806f' },
 }
-const BACKGROUND_OPACITY = 0.5
+const BACKGROUND_OPACITY = 0.7
 
 // ── Lockup
 

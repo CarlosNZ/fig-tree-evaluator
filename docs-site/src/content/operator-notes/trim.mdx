@@ -1,0 +1,5 @@
+---
+description: "So `{ $trim: '  Kia ora  ' }` returns `'Kia ora'`."
+---
+
+[`split`](#op-split) and [`buildString`](#op-buildString) can trim their values themselves (`split` does by default), so you'll mostly need `trim` for text on its own, such as form input, where a field of only spaces should count as empty: `{ $if: [{ $trim: '$data.comment' }, 'Has a comment', 'No comment'] }` returns `'No comment'` for a comment of `'   '`.

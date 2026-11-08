@@ -1,0 +1,144 @@
+---
+title: Migrating from v2
+description: Upgrading from v2, converting stored expressions, and everything that changed
+---
+
+**FigTree v3** is rewritten from the ground up. Although it shares some of the syntax and concepts with v2, it is very different under the hood. It is not backwards compatible with v2, so both your app code and your stored expressions need to be updated before they can work with v3.
+
+There are a couple of converter functions for turning v2 expressions into v3 expressions, but it's not a lossless process, so some careful inspection and hand-fixing will be required.
+
+v3 is ESM only, and needs Node 22.12 or later.
+
+v1 expressions (the `children` syntax) aren't supported by v3. Convert them with v2's `convertV1ToV2` first.
+
+## Updating host code
+
+### The package's exports
+
+The functions and classes v2 exported, and what replaces each in v3:
+
+| v2                                                                                                                                     | v3                                                                                      |
+| -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `new FigTreeEvaluator(options)`                                                                                                        | `new FigTree(options)`                                                                  |
+| `evaluateExpression(expression, options)`                                                                                              | Removed: there's no standalone evaluate function                                        |
+| `isFigTreeExpression`, `isOperatorNode`, `isFragmentNode`                                                                              | `fig.isEvaluable(expression)`                                                           |
+| `convertToShorthand`, `convertFromShorthand`                                                                                           | `toShorthand()` and `toCanonical()`, in [`fig-tree-evaluator/format`](/tooling/format/) |
+| `SQLNodePostgres`, `SQLite`                                                                                                            | `PostgresConnection`, `SQLiteConnection`                                                |
+| `convertV1ToV2`, `isV1Node`, `isAliasString`, `isObject`, `preProcessShorthand`, `standardiseOperatorName`, `truncateString`, `dequal` | Removed                                                                                 |
+
+`AxiosClient`, `FetchClient`, `FigTreeError` and `isFigTreeError` keep their names.
+
+### Options
+
+| v2 option                                                                                                         | v3                                                                                                                                                                    |
+| ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data`                                                                                                            | `data`, but `data` passed to `evaluate()` replaces the instance's, rather than merging into it                                                                        |
+| `objects`                                                                                                         | `data`                                                                                                                                                                |
+| `functions`                                                                                                       | Custom operators, listed in `operators` ([Custom functions](#custom-functions))                                                                                       |
+| `fragments`                                                                                                       | `fragments`, set on the instance only, not per call. Convert the definitions with [`migrateV2Fragments()`](#converting-expressions)                                   |
+| `httpClient`                                                                                                      | `operators: [coreOperators, httpOperators(client)]` ([HTTP and SQL](/guides/http-and-sql/#adding-the-io-operators))                                                   |
+| `sqlConnection`                                                                                                   | `operators: [coreOperators, sqlOperators(connection)]`                                                                                                                |
+| `graphQLConnection`                                                                                               | `graphQL: { endpoint, headers }`, sent through the HTTP client                                                                                                        |
+| `baseEndpoint`, `headers`                                                                                         | `http: { baseEndpoint, headers }`                                                                                                                                     |
+| `returnErrorAsString`                                                                                             | Removed. For a similar effect, set `fallback: '$error.message'` in [`operatorDefaults`](/guides/fallbacks/#instance-wide-fallbacks) for the operators that might fail |
+| `caseInsensitive`                                                                                                 | `operatorDefaults: { equal: { caseInsensitive: true }, notEqual: { caseInsensitive: true } }`                                                                         |
+| `excludeOperators`                                                                                                | Build the `operators` list with [`operatorSet()`](/guides/setup/#choosing-operators)                                                                                  |
+| `useCache`                                                                                                        | Removed: the `http`, `graphQL` and `sql` operators cache by default, and `noCache` [turns it off](/guides/caching/#turning-caching-off)                               |
+| `maxCacheSize`                                                                                                    | `cache: { maxSize }`                                                                                                                                                  |
+| `maxCacheTime`                                                                                                    | `cache: { maxTime }`, still in seconds, but counted from when the result was stored, not when it was last read                                                        |
+| `allowJSONStringInput`                                                                                            | Removed: `JSON.parse()` the expression yourself                                                                                                                       |
+| `evaluateFullObject`, `noShorthand`, `skipRuntimeTypeCheck`, `nullEqualsUndefined`, `supportDeprecatedValueNodes` | Removed                                                                                                                                                               |
+
+`updateOptions()` merges `fragments` into the instance's, where v2 replaced them. `data` is still replaced whole.
+
+## Converting expressions
+
+The converter functions are in their own subpath, `fig-tree-evaluator/migrate`:
+
+- **`migrateV2Expression(expression, optionsV2)`** converts one expression, and returns `{ expression, issues }`.
+- **`migrateV2Fragments(optionsV2)`** converts the fragment definitions in `optionsV2.fragments`, and returns `{ fragments, issues }`.
+
+Pass your v2 options object as it is: the converter reads only the parts that change how an expression is read, such as the fragments and the custom functions' names.
+
+```ts title="migrate.ts"
+declare const optionsV2: Record<string, unknown>
+declare const storedExpression: unknown
+// ---cut---
+import { migrateV2Expression, migrateV2Fragments } from 'fig-tree-evaluator/migrate'
+
+const { fragments } = migrateV2Fragments(optionsV2)
+const { expression, issues } = migrateV2Expression(storedExpression, optionsV2)
+```
+
+Neither function throws, so to convert a whole store of expressions, run `migrateV2Expression()` over each one and keep the issues to review.
+
+The converter writes canonical form. To store the result as shorthand, pass it through [`toShorthand()`](/tooling/format/#tocanonical-and-toshorthand): `toShorthand(expression, fig)`, with `fig` your v3 instance.
+
+## The converter's report
+
+Each issue has a `path` to where it is in the v2 expression, a `message` saying what to check, a `code`, and one of three tags:
+
+- **`intentional-semantic-change`**: the node converted, but v3 can give a different result for some data, by design. Check it against the data it'll really see.
+- **`lossy-default`**: something v2 ignored or applied from outside the expression, such as an instance-wide setting, was dropped or couldn't be carried over. Check the result still does what you meant.
+- **`non-convertible`**: there's no v3 equivalent. The node is converted as closely as possible, or quoted unchanged in a `literal`, with a `//` note starting `v2 conversion:` saying what to do. Fix it by hand.
+
+An empty `issues` array means the conversion was entirely mechanical.
+
+### Custom functions
+
+The converter rewrites each custom function call as a call on an operator of the same name, such as `{ $getFullName: ['$data.first', '$data.last'] }`, and flags every one. It can't see your functions' code, so you'll need to wrap each custom function in a v3 [custom operator](/custom-operators/writing/) definition and register it.
+
+## What's changed
+
+### Operators
+
+While v2 operators had several aliases, v3 has a single canonical name for each operator and one symbolic alias where appropriate. Parameters (not listed here) also have just one name each.
+
+| v2 operator                                                | v3                  | Note                                                                                          |
+| ---------------------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------- |
+| `AND` (`and`, `&&`)                                        | `and`               |                                                                                               |
+| `OR` (`or`, `\|\|`)                                        | `or`                |                                                                                               |
+| `EQUAL` (`=`, `eq`)                                        | `equal` (`=`)       |                                                                                               |
+| `NOT_EQUAL` (`!=`, `ne`)                                   | `notEqual` (`!=`)   |                                                                                               |
+| `PLUS` (`+`, `concat`)                                     | `plus` (`+`)        |                                                                                               |
+| `SUBTRACT` (`-`, `minus`)                                  | `subtract` (`-`)    |                                                                                               |
+| `MULTIPLY` (`*`, `times`)                                  | `multiply` (`*`)    |                                                                                               |
+| `DIVIDE` (`/`, `÷`)                                        | `divide` (`/`)      |                                                                                               |
+| `GREATER_THAN` (`>`)                                       | `greaterThan` (`>`) | With `strict: false`, `greaterThanOrEqual` (`>=`)                                             |
+| `LESS_THAN` (`<`)                                          | `lessThan` (`<`)    | With `strict: false`, `lessThanOrEqual` (`<=`)                                                |
+| `CONDITIONAL` (`?`, `ifThen`)                              | `if` (`?`)          |                                                                                               |
+| `REGEX` (`regex`)                                          | `regex`             |                                                                                               |
+| `OBJECT_PROPERTIES` (`getData`, `objProps`)                | `get`               | Usually a `"$data.…"` string instead                                                          |
+| `STRING_SUBSTITUTION` (`stringSubstitution`, `substitute`) | `buildString`       |                                                                                               |
+| `SPLIT` (`split`)                                          | `split`             |                                                                                               |
+| `COUNT` (`count`)                                          | `length`            | Also counts a string's characters                                                             |
+| `GET` (`get`, `api`)                                       | `http`              |                                                                                               |
+| `POST` (`post`)                                            | `http`              | With `method: 'post'`                                                                         |
+| `GRAPHQL` (`graphQL`, `gql`)                               | `graphQL`           |                                                                                               |
+| `SQL` (`sql`, `pg`)                                        | `sql`               |                                                                                               |
+| `BUILD_OBJECT` (`buildObject`)                             | `buildObject`       |                                                                                               |
+| `MATCH` (`match`, `switch`)                                | `match`             |                                                                                               |
+| `CUSTOM_FUNCTIONS` (`customFunctions`, `function`)         | None                | Each function becomes an operator ([Custom functions](#custom-functions))                     |
+| `PASSTHRU` (`pass`, `_`)                                   | None                | Any value evaluates as itself; [`literal`](/reference/operators/#op-literal) stops evaluation |
+
+### Recycled names
+
+These names mean something different in v3. The converter handles them, but they matter when reading or editing expressions by hand.
+
+| Name      | v2                      | v3                                   |
+| --------- | ----------------------- | ------------------------------------ |
+| `!`       | `NOT_EQUAL`             | Alias for `not`, logical negation    |
+| `get`     | `GET` (an HTTP request) | Reads a value from data              |
+| `lower`   | `LESS_THAN`             | Lowercases a string                  |
+| `join`    | `PLUS`                  | Joins an array's items into a string |
+| `data`    | `OBJECT_PROPERTIES`     | Reserved, for `$data` references     |
+| `convert` | `PASSTHRU`              | Converts a value to another type     |
+
+### Results that differ on purpose
+
+- **No guessing at types.** `outputType` is gone, and the [`convert`](/reference/operators/#op-convert) operator that replaces it fails on a value it can't convert exactly, where v2 would pull `4.5` out of `"abc4.5xyz"`.
+- **Missing data is `null`, not an error,** so a v2 `fallback` that caught a missing path no longer runs. Set `strictDataPaths: true` to [make it an error](/concepts/data/#when-missing-is-a-mistake) again.
+- **The whole expression is evaluated,** including nodes inside plain objects, which v2 only looked inside with `evaluateFullObject`. The converter wraps any such object that v2 treated as data in `literal`.
+- **`null` is handled by rules each operator declares,** so a node given `null` can return something other than it did in v2 ([Null handling](/concepts/evaluation/#null-handling)).
+- **HTTP responses are returned unchanged.** v2 replaced any object in a response with only one key by that key's value, so a list of `{ name }` objects came back as a list of names.
+- **Smaller changes in a few operators,** such as `split` keeping a trailing empty piece. The converter flags each one.

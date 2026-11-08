@@ -1,0 +1,23 @@
+Keys are written as text, so `1` becomes `'1'`, and where two entries share a key, the later one wins.
+
+<Expression
+  title="A form's answers, keyed by question"
+  code={`
+    {
+      $buildObject: {
+        $map: [
+          '$data.answers',
+          { key: '$element.questionId', value: '$element.answer' },
+        ],
+      },
+    }
+  `}
+  data={`
+    {
+      answers: [
+        { questionId: 'q1', answer: 'Yes' },
+        { questionId: 'q2', answer: 'Blue' },
+      ],
+    }
+  `}
+/>

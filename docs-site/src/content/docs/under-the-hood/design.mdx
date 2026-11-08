@@ -1,0 +1,238 @@
+---
+title: Why FigTree is shaped this way
+description: The reasoning behind the design, for anyone deciding whether it fits
+sidebar:
+  order: 1
+---
+
+import Expression from '../../../components/Expression.astro'
+import ExpressionTree from '../../../components/ExpressionTree.astro'
+
+{/* NOTE: the page is a derivation. It starts from the simplest evaluator and adds each mechanism only once a problem forces it, so every section runs problem, then idea. A consequence stays in a section only where it's real, as plain prose with no "The cost:" label, and there's no closing list of trade-offs. The order and the arguments come from the "FigTree From First Principles" artifact (retired; its link is in docs-dev/artifacts.md), with the prose written fresh and every fact checked against the code: the artifact predates the compile naming, the extra node kinds, the built evaluator and caches, `nullBehavior` and the Phase 17 measurements. */}
+
+{/* NOTE (stage 1, agreed): the chapter's shared points each have one owner. This page gives the *why* of compiling once and of absence vs failure; the input never being modified appears here only as the cost of skeletons, and checking never throwing only as a clause in the strict section (Guarantees owns both promises). No comparisons of speed or size with v2, and no mention of v2 in The simplest evaluator: the point is that FigTree still works this way at its core. The editor component can be mentioned and linked, but is never one of the reasons for a design decision. */}
+
+This chapter covers the "why" of FigTree's design in detail — the problem it solves, and how it does that in an efficient way while providing certain guarantees with predictable, debuggable failure modes.
+
+Let's get into it...
+
+## Logic as data
+
+Business logic rules, such as which fields a form shows, when one is required, or who a request goes to for approval, usually change more often than the code around them, particularly in an application that's designed to be configured wildly differently for each organisation using it. They often need to be edited by people who aren't developers.
+
+Rules like these belong in _data_, such as a database row or a JSON file, where they can change without a deploy. The alternative is code that anticipates every variation, with a setting for each one, and it grows harder to manage with every organisation that needs something new.
+
+But a rule like "required if the applicant is under 18 and doesn't live in New Zealand" is a computation, not a value. Storing it as code to run would be the simplest answer, but it's a bad idea: anyone who can edit a rule could run any code they like in your app[^plugins], and you can't build a [visual expression editor](/editor/) over arbitrary code, which is what you'd want if non-developers are editing rules.
+
+FigTree represents computations like this as an _expression tree_ — a tree of operations, each working on the results of the ones below it, much like the [abstract syntax tree](https://en.wikipedia.org/wiki/Abstract_syntax_tree) a compiler builds from code — but written in plain JSON. Since it's only data, evaluating it never runs code from the rule itself, and a visual editor can be built over it.
+
+<ExpressionTree
+  label="An and node at the top, whose parameters are two comparisons: a less-than node comparing the applicant's age with 18, and a not-equal node comparing the applicant's country with New Zealand."
+  code={`
+    {
+      $and: [
+        { '$<': ['$data.age', 18] },
+        { '$!=': ['$data.country', 'New Zealand'] },
+      ],
+    }
+  `}
+  data={`
+    { age: 16, country: 'Australia' }
+  `}
+  dataPosition="below"
+/>
+
+[^plugins]: A plug-in is different. It's code too, but it extends what the app can _do_, where a rule decides how the app behaves with what it can already do. A plug-in is written by developers and installed deliberately, so it's reviewed and deployed like the app's own code; a rule is changed while the app is running. FigTree draws the same line: a host can add [operators of its own](/custom-operators/writing/), which are plug-ins in this sense, and a rule can only call them.
+
+## The simplest evaluator
+
+An evaluator for expressions like this one fits in about twenty lines. An object whose key starts with `$` is a node: evaluate its arguments, then hand them to the operator. A `$data.` string is a reference: look it up. Anything else is either a container, evaluated item by item, or a plain value, returned as it is:
+
+```ts title="evaluate.ts"
+declare const operators: Record<string, (args: unknown[]) => unknown>
+declare function lookUp(data: unknown, path: string): unknown
+// ---cut---
+function evaluate(value: unknown, data: unknown): unknown {
+  if (Array.isArray(value)) return value.map((item) => evaluate(item, data))
+
+  if (typeof value === 'string' && value.startsWith('$data.'))
+    return lookUp(data, value.slice('$data.'.length))
+
+  if (typeof value === 'object' && value !== null) {
+    const [key] = Object.keys(value)
+    if (key?.startsWith('$')) {
+      const args = (value as Record<string, unknown[]>)[key]
+      return operators[key.slice(1)](args.map((arg) => evaluate(arg, data)))
+    }
+    return Object.fromEntries(
+      Object.entries(value).map(([name, item]) => [name, evaluate(item, data)])
+    )
+  }
+
+  return value
+}
+```
+
+This works, and at its core it's how FigTree runs too. Everything additional is there to address a limitation of this simple evaluator — the rest of this page takes them one at a time.
+
+## Working out what everything is, once
+
+As the simple evaluator works through an expression, it has to work out what each value is before it can do anything with it. In the rule above, for example:
+
+```json5
+{
+  // Is '$and' an operator, or just a plain object key?
+  $and: [
+    // Which operator is '$<'? Is 18 the right type for it?
+    { '$<': ['$data.age', 18] },
+    // Is '$data.country' a data reference, or text?
+    { '$!=': ['$data.country', 'New Zealand'] },
+  ],
+}
+```
+
+There's a lot more it needs to figure out, but the point is that the answers never change from one evaluation to the next. And expressions are usually evaluated many times against changing data, such as a form's rules re-evaluated as the user fills it in, or a status label worked out for every order in a list. So the simple evaluator does the same work every time, for the same result.
+
+FigTree **compiles** an expression instead: it works out what everything is once, and keeps the answers in its [compile cache](/guides/caching/#compiling-once). Each node is stored with its operator's canonical name, and its parameters by name, even if they were written [positionally](/concepts/expressions/#parameters). A reference such as `'$data.order.total'` is stored as the path it reads in the data, already split into its parts (i.e. `['order', 'total']`). Evaluating then reads those answers, rather than asking the questions again. [Compile, check, evaluate](/under-the-hood/model/#compile) shows exactly what a compiled expression holds.
+
+On its own, the time this saves is modest: each answer is quick to find, and it only becomes meaningful over many evaluations of the same expression. The bigger payoff is having the answers at all. With them written down, FigTree can check an expression before it runs and tell its fixed parts from the parts that compute, and the sections below build on both.
+
+## Only what can change is computed
+
+FigTree treats any JSON value it's given as an expression, and many expressions mix dynamic parts with fixed values. That might be a whole configuration object with a few nodes in it, or a single rule whose arguments are partly fixed, such as the `18` in the rule above. The simple evaluator walks through and rebuilds all of it on every evaluation, the fixed parts included.
+
+So compiling also separates what's fixed from what isn't. A plain part with no node or reference anywhere inside it is fixed, and compiling keeps the expression's fixed shape, with a hole wherever a node or reference goes. Evaluating then fills in the holes:
+
+```js
+// As written
+{ title: 'Delivery', days: 2, message: { $if: [ … ] } }
+
+// Compiled: the fixed shape, with a hole where the node goes
+{ title: 'Delivery', days: 2, message: <hole> }
+
+// Evaluated: the same shape, with the hole filled in
+{ title: 'Delivery', days: 2, message: 'Free shipping' }
+```
+
+The node in a hole is compiled the same way, all the way down: each of its parameters is split into fixed parts and holes too, so in the rule above, `['$data.age', 18]` keeps the `18` and has a hole for the reference. Fixed parts, at any depth, are worked out once and then left alone: evaluating never walks into one, and the result reuses it as it is. Where a hole sits deep inside fixed structure, compiling has recorded where it is, so evaluating goes straight there. An evaluation therefore costs the number of evaluable nodes in the expression, not its size: a form definition with hundreds of fixed labels and settings and three dynamic values does the work of the three.
+
+And an expression with nothing to compute skips compiling altogether: a quick scan finds nothing to evaluate, and the value comes back as it is. So a host can pass every value through FigTree without first sorting out which ones need evaluating.
+
+Coming back "as it is" means the same objects. A fixed part of the result _is_ that part of the expression, and a value a reference reads _is_ the data's own object, not a copy. Copying them would hand back what this saves, so treat a result as read-only: changing it would change the expression or the data too ([What FigTree asks of the host](/under-the-hood/guarantees/#what-figtree-asks-of-the-host)).
+
+## What compiling is allowed to know
+
+Keeping a compiled expression brings a responsibility the simple evaluator never had: what compiling worked out for one evaluation has to still be true at the next. So compiling only uses what can't change between evaluations:
+
+| Compiling uses                                      | Only evaluating uses                                   |
+| --------------------------------------------------- | ------------------------------------------------------ |
+| The expression                                      | The data                                               |
+| The instance's operators, fragments and `operatorDefaults` | The rest of the options, such as `timeout` and `maxDepth` |
+
+Whether `$foo` is a node depends on whether there's an operator called `foo`, so changing the operators, fragments or `operatorDefaults` starts a new compile cache, while changing any other option leaves it as it is. Where a check depends on an option, compiling measures what it needs and leaves the comparison to the evaluation: it counts how deep the expression goes, and each evaluation compares that with `maxDepth`.
+
+## Operators that describe themselves
+
+In the simple evaluator, an operator is just a function: it takes its arguments and returns a value. Nothing outside it can know what it expects, such as how many arguments or of what type, without calling it and seeing what happens.
+
+So a FigTree operator _declares_ itself: its parameters, the type each one takes, how each is delivered to it, and what it returns. Compiling, checking and evaluating all read that declaration, and FigTree does the type checking from it, so the operator's own code is reduced to what it does with its (validated) inputs ([Writing an operator](/custom-operators/writing/)).
+
+## Strict where it can be, and forgiving where it has to be
+
+The simple evaluator only finds a mistake by running into it — a mistyped operator throws the first time the rule is evaluated, which might be in front of a user next week. An expression author wants to know about problems when they save the rule, but at that point there's no data to evaluate it with, and no user whose requests it could send.
+
+Compiling, though, has already resolved every operator, parameter and reference against the operators' declarations, so many mistakes are known without any data at all. FigTree can report those before anything runs, and leaves only what depends on the data for the evaluation:
+
+| Found before anything runs                       | Only found while it runs                       |
+| ------------------------------------------------ | ---------------------------------------------- |
+| An operator that doesn't exist                   | An HTTP request or database query that fails   |
+| A parameter the operator doesn't have            | A division by zero                             |
+| A value of the wrong type, written into the expression | A value of the wrong type, read from the data |
+| A variable that's read but never defined         | A missing value, where it isn't allowed         |
+
+[`validate()`](/guides/validation/#validating-before-you-store) reports every mistake it finds, rather than stopping at the first, and never throws however broken the expression is, so an expression author sees everything that needs fixing at once ([Checking never throws](/under-the-hood/guarantees/#checking-never-throws)).
+
+The two sides are handled differently. A mistake in the expression is a [static error](/guides/validation/#static-errors), which no fallback catches, since it can be fixed now. A problem in the data can't be fixed in advance, so it's handled while the expression runs, with null handling and fallbacks ([Absence isn't failure](#absence-isnt-failure)).
+
+## Not every argument is computed
+
+The simple evaluator computes every argument before calling the operator. For `plus` that makes sense, but for `if` both the `then` _and_ `else` branches are evaluated, and the one not taken can fail. This example works out an average order value: the simple evaluator would divide by zero, even though the condition should rule that branch out. FigTree doesn't run it:
+
+<Expression
+  code={`
+    {
+      $if: [
+        { '$>': ['$data.orders.count', 0] },
+        { $divide: ['$data.orders.total', '$data.orders.count'] },
+        0,
+      ],
+    }
+  `}
+  data={`
+    { orders: { count: 0, total: 0 } }
+  `}
+/>
+
+A branch could also send a request nobody needed, or read a field that only exists when the branch is taken. So an operator's declaration says how each of its parameters is delivered to it:
+
+| Delivered as                                       | Used by, for example                  |
+| -------------------------------------------------- | ------------------------------------- |
+| A value, worked out first (the default)            | Most parameters, such as `plus`'s and `equal`'s |
+| Something to run only if it's needed               | `if`'s branches, `get`'s `default`    |
+| A list or a map of things to run one by one        | `firstNonNull`, `match`               |
+| All at once, settled as soon as one decides it     | `and`, `or`                           |
+| Run once for each element of an array              | `map`, `filter`                       |
+| A fixed value, never computed                      | The iterators' `as`                   |
+
+A rarely taken branch is rarely tested, though. Compiling still checks it, but a problem only the data can reveal, such as a value of the wrong type, shows up only when that branch first runs.
+
+## Saying it once
+
+The simple evaluator has no way to say something once and use it twice. A rule that checks a customer's city and then addresses them by name needs the same customer record in both places, so it has to write the request out twice, and sends it twice. And logic that many expressions need, such as a price with tax, is copied into each one, so every copy has to be found and changed when the logic does.
+
+FigTree solves these two problems in two different ways.
+
+### Variables: a value worked out once
+
+A [variable](/concepts/variables/) names a value once, in a `vars` block, and anything inside the object that declares it can read it by name. It follows the same idea as the parameters above: it's worked out the first time something asks for it, and not at all if nothing does. And it's worked out _at most_ once, so a read that arrives while it's still being worked out waits for that same evaluation, rather than starting another ([A variable is computed at most once](/under-the-hood/guarantees/#a-variable-is-computed-at-most-once)).[^result-cache]
+
+[^result-cache]: This is different to the result cache ([Not repeating slow work](#not-repeating-slow-work)), which can only reuse a result _once a request has completed_, so two identical requests sent at the same moment are both sent.
+
+### Fragments: system-wide logic written once
+
+While a variable avoids duplication _within_ a single expression, a [fragment](/guides/fragments/) is a repeated block stored against the whole instance, with parameters of its own, available for any expression to call. Its body is compiled and checked once, when it's registered.
+
+That works because a body is sealed off from the expression that calls it: it can read the evaluation's data and its own parameters, but not the caller's variables or the element of an iterator it's called from.
+
+## Telling a reference from text
+
+The simple evaluator knows one kind of reference, a string starting `$data.`. FigTree has several, such as a variable, the element an iterator is on, or a fragment's parameter. JSON has no syntax to spare, so each has to be a string, marked with a `$`. And since text can start with a `$` too, the rule for which strings are references is precise, not just "starts with a `$`": a `$`, then a reference name, such as `data` (or its short form `d`), then the end of the string, a `.` or a `[`.
+
+| String              | Read as | Why                                             |
+| ------------------- | ------- | ----------------------------------------------- |
+| `'$data.user.name'` | A reference | `data`, then a `.`                          |
+| `'$d.total'`        | A reference | `d` is short for `data`                     |
+| `'$5 off'`          | Text    | `5` isn't a reference name                      |
+| `'$dataset'`        | Text, with a warning | The name doesn't end after `data`  |
+
+Compiling settles which strings are references, so it has to know every name in play before any data exists. That's why an iterator's `as` has to be written as a fixed string: once it's named, say, `order`, compiling reads `$order` inside that iterator as a reference. It's also why a string that arrives while the expression runs, from the data or a request, is never read as a reference ([Data is never evaluated](/under-the-hood/guarantees/#data-is-never-evaluated)).
+
+## Absence isn't failure
+
+The simple evaluator's answer to anything going wrong is to throw. But real data has gaps, such as a form field left blank or a user without a middle name, and if each gap threw, every optional field would need guarding. So a missing value is `null`, and the evaluation carries on ([Null handling](/concepts/evaluation/#null-handling)).
+
+A failure is something else: an operator that can't do its job, such as an HTTP request that errors, or an illegal arithmetic operation. An expression author can plan for one with a [fallback](/guides/fallbacks/) — the value a node returns if it fails. A failure no fallback catches makes the evaluation throw.
+
+## Not repeating slow work
+
+The simple evaluator does all of an expression's work every time it runs. For most operators that's fine: comparing two values costs next to nothing. But a request to another system is slow, and the same one is often sent many times — a form's rules, re-evaluated each time a field changes, might look up the same exchange rate every time, say.
+
+So FigTree keeps the results of slow operators, such as HTTP requests and database queries, in a **result cache**. The same request made again, from any expression, gets the stored result instead of being sent.
+
+A result is about the outside world, so it can go stale: each one expires, after 30 minutes by default ([Caching and compiling](/guides/caching/)).
+
+## Always asynchronous
+
+The simple evaluator returns its result straight away. FigTree can't: any node might send a request, and arguments can be deferred or raced, so evaluating always returns a promise, even for an expression that never waits on anything ([Recursive and async](/concepts/evaluation/#recursive-and-async)).
+
+So code that needs an answer straight away can't call FigTree directly. A custom [Ajv](https://ajv.js.org) keyword, for example, can only be asynchronous in an async schema, and form libraries such as JSON Forms run Ajv synchronously as the user types. A host there evaluates in a step of its own and passes the results in. A synchronous evaluation for expressions that never wait is being considered in [#244](https://github.com/CarlosNZ/fig-tree-evaluator/issues/244), so if you need one, say so there.

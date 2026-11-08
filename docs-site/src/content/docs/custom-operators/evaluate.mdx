@@ -1,0 +1,270 @@
+---
+title: The evaluate function
+description: 'Writing an operator''s evaluate function: its params and context, cancellation, caching, failing, and trace events'
+sidebar:
+  order: 3
+---
+
+import Callout from '../../../components/Callout.astro'
+import Expression from '../../../components/Expression.astro'
+
+An operator's `evaluate` function is where the real work happens. It's called with two arguments — `params` and `context` — and returns the result of the operation, or a promise of it. Most operators only need the parameter values (`params`), as `formatNumber` does in [A first operator](/custom-operators/writing/#a-first-operator).
+
+```ts
+import type { OperatorContext } from 'fig-tree-evaluator'
+declare namespace x {
+// ---cut---
+// params is typed from the parameter declarations
+function evaluate(params: Record<string, unknown>, context: OperatorContext): unknown | Promise<unknown>
+// ---cut-after---
+}
+```
+
+## `params`
+
+`params` holds the parameters' values, under their declared names, with every check from the declarations already applied ([What the engine does for you](/custom-operators/writing/#what-the-engine-does-for-you)), so `evaluate` can focus on the operation itself, rather than guarding its inputs. Checks specific to the operator, such as `divide` refusing a zero, are still up to `evaluate` ([Failing](#failing)).
+
+In TypeScript, their types come from the declarations too ([Typed `params`](/custom-operators/parameters/#typed-params)).
+
+A parameter that isn't evaluated up front ([Lazy parameters](/concepts/evaluation/#lazy-parameters)) doesn't arrive as a plain value, but as a **handle**, with its own `evaluate()` method (or an equivalent, in the other evaluation modes), which `evaluate` calls if and when it needs the value ([Lazy and per-element parameters](/custom-operators/lazy-parameters/)).
+
+<Callout kind="danger" title="Don't change what you're given">
+  When a parameter's value comes from `$data`, `evaluate` receives the actual object your app passed in as `data`, not a copy. Changing it in place changes your app's data too: `values.sort()`, for example, would reorder your app's own array. Build a new value instead, such as `[...values].sort()`.
+</Callout>
+
+## The context
+
+The second argument, `context`, holds what `evaluate` needs from the current evaluation:
+
+- **`options`**: the instance's options, with the call's laid over them. Most operators only need `options.data` — the evaluation's data. As with `params`, don't change it.
+- **`signal`**: aborts when the node's result is no longer wanted ([Cancellation](#cancellation)).
+- **`cache`**: the [result cache](/guides/caching/), accessed with `cache.memo` ([Caching](#caching)).
+- **`trace`**: records events in the trace, through `trace.note` ([Trace events](#trace-events)).
+
+The core `sql` operator uses the last three. Here's a simplified version of it:
+
+```ts title="sql.ts"
+import { defineOperator, type SqlConnection } from 'fig-tree-evaluator'
+
+export const sqlOperator = (connection: SqlConnection) =>
+  defineOperator({
+    name: 'sql',
+    category: 'io',
+    parameters: {
+      query: { type: 'string' },
+      values: { type: 'array', required: false },
+      timeout: { type: 'integer', required: false },
+    },
+    positionalParams: ['query', '...values'],
+    timeoutParam: 'timeout',
+    cache: true,
+    returns: 'array',
+    evaluate: async ({ query, values }, context) => {
+      const request = { text: query, values }
+      // Reuse the rows from an earlier query with the same text and values
+      return context.cache.memo(request, () => {
+        context.trace.note({ type: 'query', text: query })
+        // Cancel the query if its result is no longer wanted
+        return connection.query({ ...request, signal: context.signal })
+      })
+    },
+  })
+```
+
+### Settings of your own
+
+`sql` needs a database connection, which isn't one of FigTree's options, and the options don't take keys of their own: an unknown one is an `invalid-options` error. That's why `sql` above is wrapped in a function: it takes the connection and returns the definition, so `evaluate` can use the connection. The host calls it when registering the operator:
+
+```ts title="fig.ts"
+// @filename: sql.ts
+import type { SqlConnection, ValidatedOperatorDefinition } from 'fig-tree-evaluator'
+export declare const sqlOperator: (connection: SqlConnection) => ValidatedOperatorDefinition
+// @filename: fig.ts
+import type { SqlConnection } from 'fig-tree-evaluator'
+declare const connection: SqlConnection
+// ---cut---
+import { FigTree, coreOperators } from 'fig-tree-evaluator'
+import { sqlOperator } from './sql'
+
+const fig = new FigTree({ operators: [coreOperators, sqlOperator(connection)] })
+```
+
+The same goes for an API client.
+
+## Cancellation
+
+FigTree never waits on a result it no longer needs. When the evaluation is cancelled or runs out of time, or an `and` or `find` already has its answer, FigTree moves on without the node, whatever `evaluate` is doing. JavaScript can't interrupt code that's already running, though, so `evaluate` carries on until it's done, and its result is thrown away.
+
+For an operator that waits on something outside FigTree, such as a server or a database, in-flight requests _can_ be cancelled: just pass `context.signal` to whatever it awaits (as `sql` passes it to the connection, above).
+
+To let an expression put a time limit on a single node, as `timeout` does on `http` and `sql`, declare an `'integer'` parameter and name it in `timeoutParam`, as the `sql` definition above does. Its value, in milliseconds, is added to the signal as a timeout. Running out fails the node with `request-timeout`, an ordinary failure that the node's fallback can catch ([A request's own timeout](/guides/http-and-sql/#a-requests-own-timeout) has an example). The instance's own `timeout`, by contrast, gives up on the whole evaluation ([Limits](/guides/setup/#limits)).
+
+## Caching
+
+Slow operators (due to external API requests or heavy computation) can [cache their results](/guides/caching/). Declare `cache: true` in the definition, and wrap the slow part of `evaluate` in `context.cache.memo(key, fn)` — either one without the other caches nothing.
+
+The `key` says which result is which: a later call with an equal key gets the kept result back, without running `fn`. It can be any JSON-like data (anything else, such as a `Date`, doesn't work), and is compared by its _contents_, so two objects built separately with the same values are the same key. The key should include everything `fn`'s result depends on. Here's a simplified version of the core `http` operator:
+
+```ts title="http.ts"
+// @filename: mergeHeaders.ts
+export declare const mergeHeaders: (...sources: unknown[]) => Record<string, string>
+// @filename: http.ts
+// ---cut---
+import { defineOperator, resolvePath, type HttpClient } from 'fig-tree-evaluator'
+// Your own helper: merges headers, later ones overriding
+import { mergeHeaders } from './mergeHeaders'
+
+export const httpOperator = (client: HttpClient) =>
+  defineOperator({
+    name: 'http',
+    category: 'io',
+    parameters: {
+      url: { type: 'string' },
+      headers: { type: 'object', required: false },
+      returnPath: { type: 'string', required: false },
+      timeout: { type: 'integer', required: false },
+    },
+    positionalParams: ['url'],
+    timeoutParam: 'timeout',
+    cache: true,
+    returns: 'any',
+    evaluate: async ({ url, headers, returnPath }, context) => {
+      // The request as it's sent, including the instance's own settings
+      const request = {
+        method: 'get' as const,
+        url: new URL(url, context.options.http?.baseEndpoint).href,
+        // The instance's headers, then the node's
+        headers: mergeHeaders(context.options.http?.headers, headers),
+      }
+      const response = await context.cache.memo(request, () =>
+        client.request({ ...request, signal: context.signal })
+      )
+      // Picked from the response after it's arrived, so not in the key
+      if (returnPath === undefined) return response
+      const { found, value } = resolvePath(response, returnPath)
+      return found ? value : null
+    },
+  })
+```
+
+Its key is the request as it's actually sent:
+
+- **In the key:** everything that goes to the server, including the instance's `baseEndpoint` and headers, which `evaluate` reads from the options. Without the headers, a response fetched with one user's token would be handed to the next user.
+- **Not in the key:** whatever doesn't change the response. `returnPath` only picks part of it once it's arrived, and `timeout` only changes how long to wait, so two nodes reading different parts of one response can share the same key.
+
+When the result depends on every parameter and nothing else, `params` itself can be the key:
+
+```ts
+import type { OperatorContext } from 'fig-tree-evaluator'
+declare const context: OperatorContext
+declare const params: Record<string, unknown>
+declare const compute: (params: Record<string, unknown>) => Promise<unknown>
+// ---cut---
+const result = await context.cache.memo(params, () => compute(params))
+```
+
+`evaluate` doesn't need to check whether caching is [turned off](/guides/caching/#turning-caching-off) for the node (`memo` then just runs `fn`), or keep its keys apart from other operators' (FigTree stores them under the operator's name).
+
+<Callout kind="note" title="Calls at the same time">
+  The cache only holds results that have arrived, so two nodes asking for the same thing at the same time both run `fn`. To share one result within an expression, its author puts the node in a [variable](/concepts/variables/).
+</Callout>
+
+## Failing
+
+To fail the node, throw. A fallback catches the failure like any other and, without one, the evaluation throws. A plain `Error` fails with the code `operator-failure`. To give the failure a code, throw an `OperatorFailure`, like the core `divide` does for a division by zero error:
+
+```ts title="divide.ts"
+import { defineOperator, ErrorCodes, OperatorFailure } from 'fig-tree-evaluator'
+
+export const divide = defineOperator({
+  name: 'divide',
+  alias: '/',
+  category: 'math',
+  parameters: {
+    value: { type: ['number', 'null'] },
+    by: { type: ['number', 'null'] },
+  },
+  positionalParams: ['value', 'by'],
+  returns: 'number',
+  evaluate: ({ value, by }) => {
+    const result = value / by
+    // An infinity from finite numbers, such as a division by zero
+    if (Math.abs(result) === Infinity && Number.isFinite(value) && Number.isFinite(by))
+      throw new OperatorFailure(`produced a non-finite number (${result})`, {
+        code: ErrorCodes.nonFiniteResult,
+      })
+    return result
+  },
+})
+```
+
+`OperatorFailure` takes the message, and optionally an object with either or both of these fields:
+
+- **`code`**: one from [`ErrorCodes`](/api/errors/#errorcodes), or one of your own, such as `'no-rate'`. Without one, it's `operator-failure`.
+- **`errorData`**: an object with any detail a fallback might need, such as the `status` of a failed `http` request.
+
+FigTree puts the operator's name in front of the message, and a fallback reads all of it through [`$error`](/guides/fallbacks/#reading-the-failure-with-error):
+
+<Expression
+  title="A division by zero"
+  code={`
+    {
+      $divide: ['$data.total', '$data.orders'],
+      fallback: '$error',
+    }
+  `}
+  data={`
+    // Give it some orders to see the average
+    { total: 240, orders: 0 }
+  `}
+/>
+
+## Trace events
+
+`context.trace.note(event)` records an event in the trace, in the `events` of the node's entry ([Events](/guides/tracing/#events)). An event is any object with a string `type`, plus whatever else it carries. When tracing is off, `note` does nothing, so `evaluate` calls it without checking.
+
+A note is for something `evaluate` decides quietly, which the result doesn't show, but which someone debugging an expression would want to know. `sql`, above, notes each query it sends. And when `buildObject` is given the same key twice, the later value wins, without failing, so it notes the overwrite:
+
+```ts
+import type { OperatorContext } from 'fig-tree-evaluator'
+declare const context: OperatorContext
+declare const built: Record<string, unknown>
+declare const key: string
+// ---cut---
+if (Object.hasOwn(built, key)) context.trace.note({ type: 'key-overwrite', key })
+```
+
+Here, a form's custom field happens to share a name with a standard one:
+
+<Expression
+  trace
+  title="A key given twice"
+  code={`
+    {
+      $buildObject: [
+        { key: 'name', value: '$data.name' },
+        { key: '$data.customField', value: '$data.customValue' },
+      ],
+    }
+  `}
+  data={`
+    // Rename the custom field, and the event goes away
+    { name: 'Aroha Ngata', customField: 'name', customValue: 'Team Kōwhai' }
+  `}
+/>
+
+Give your events a `type` that won't be mistaken for a core one ([Events](/guides/tracing/#events) lists them).
+
+<Callout kind="caution" title="Keep secrets out">
+  FigTree records an event exactly as `evaluate` gives it, and hosts often log their traces, so leave secrets out. The core operators do the same: `http` records a request's header names but not their values, and `sql` a query's text but not its values.
+</Callout>
+
+## Operator helpers
+
+FigTree exports some of the functions its own operators use, so a custom operator can figure things out the same way the core ones do (as `http` above uses `resolvePath` for its `returnPath`):
+
+- **[`isTruthy()`](/api/exports/#istruthy)**: whether a value counts as true.
+- **[`compareValues()`](/api/exports/#comparevalues)**: which of two values comes first, as `greaterThan` decides it.
+- **[`renderText()`](/api/exports/#rendertext-array-and-object)**: a value as text, as `buildString` writes it.
+- **[`parsePath()`](/api/exports/#parsepath-and-wildcard)** and **[`resolvePath()`](/api/exports/#resolvepath)**: reading a path from a value, as `$data` references do.
+- **[`deepEqual()`](/api/exports/#deepequal)**: whether two values are equal, as `equal` decides it.

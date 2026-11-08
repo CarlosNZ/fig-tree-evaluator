@@ -1,0 +1,198 @@
+---
+title: Expressions and nodes
+description: What an expression is, and the nodes it's built from
+sidebar:
+  order: 1
+---
+
+import Callout from '../../../components/Callout.astro'
+import Expression from '../../../components/Expression.astro'
+import ExpressionTree from '../../../components/ExpressionTree.astro'
+
+A **FigTree expression** is a bit of plain JSON, structured as a _tree_, that can work something out. Most configuration is already JSON, and most of it is just data. The parts of an expression that compute are its _nodes_. When FigTree evaluates an expression, each node is replaced by its result, and everything else comes back exactly as it went in.
+
+## Any JSON value is an expression
+
+A string, a number, an array, a whole config file: any JSON value is an expression, and FigTree finds the nodes in it however deep they sit — everything else is left as-is.
+
+<Expression
+  title="A notification config"
+  code={`
+    {
+      template: 'order-shipped',
+      subject: { $buildString: 'Order {{$data.order.id}} is on its way' },
+      delivery: {
+        carrier: 'NZ Post',
+        estimatedDays: { $plus: ['$data.order.handlingDays', 2] },
+      },
+      tags: ['shipping', { $lower: '$data.order.region' }],
+    }
+  `}
+  data={`
+    { order: { id: 'A-1042', handlingDays: 1, region: 'Otago' } }
+  `}
+/>
+
+## Nodes
+
+The expression is a tree, and trees have nodes (as well as plain values at the leaves)[^node]. Each node names an _operator_, which says what to do (add, compare, build a string), and gives it the values to do it with: its **parameters**.
+
+In an expression, a node is an object with one key starting with `$`. The key names the operator, and its value holds the parameters:
+
+<Expression
+  code={`
+    {
+      total: { $plus: [1, 2, 3] },
+      // The same operator, by its alias
+      sameTotal: { '$+': [1, 2, 3] },
+    }
+  `}
+/>
+
+Alongside its operator, a node can carry only a few other keys, called **modifiers**, which affect how the node's result is computed:
+
+- **`fallback`**: the value to use if the node fails ([Fallbacks and errors](/guides/fallbacks/))
+- **`vars`**: values defined once and read anywhere below ([Variables](/concepts/variables/))
+- **`noCache`**: always fetch fresh results, never cached ones ([Turning caching off](/guides/caching/#turning-caching-off))
+- **`//`**: a comment ([below](#comments))
+
+<Callout kind="note" title="Another way to write a node">
+  This is the _shorthand_ form, the one for writing by hand. The _canonical_ form, `{ operator: 'plus', values: [1, 2, 3] }`, names everything, which makes it easier to work with in a visual editor, like the one in this site's playgrounds. The two mean the same thing: see [Shorthand and canonical forms](/concepts/forms/).
+</Callout>
+
+## Operators
+
+FigTree has 40-ish built-in operators, for logic, comparison, arithmetic, strings, arrays and objects. Each takes its own parameters: `if`, for example, takes a `condition`, and gives its `then` value when the condition holds and its `else` value when it doesn't.
+
+```json5
+{
+  $if: {
+    condition: true,
+    then: 'yes',
+    else: 'no', // optional
+  },
+}
+
+// The same, by position: [condition, then, else]
+{ $if: [true, 'yes', 'no'] }
+```
+
+Operator names are camelCase and exact: `$if` works, but `$If` and `$IF` don't.
+
+Several operators have symbolic aliases, such as `+` for `plus` and `=` for `equal`. The [operator reference](/reference/operators/) has them all, along with every operator's parameters.
+
+The HTTP and SQL operators join these when your app gives FigTree a client to use ([HTTP and SQL](/guides/http-and-sql/)), and you can add operators of your own ([Writing an operator](/custom-operators/writing/)).
+
+Your app can also register **fragments**: named, reusable expressions, called with a `$` key just like an operator, such as `{ $greet: { name: '$data.user.name' } }`. [Fragments](/guides/fragments/) shows how to define them.
+
+<Callout kind="caution" title="Every key prefixed with $ is checked">
+
+A key prefixed with `$` is always read as an operator, and checked before anything runs. A name FigTree doesn't know is an error, as is any other mistake in a node's shape, such as a parameter the operator doesn't have; [Checking expressions](/guides/validation/) shows how to find them as you write.
+
+So when an expression holds legitimate non-FigTree data that happen to have `$`-prefixed keys, such as a stored MongoDB query, put it inside `literal`, and FigTree leaves it as it is. The same goes for data with an `operator` or `fragment` key, since those mark a node written in [canonical form](/concepts/forms/):
+
+<Expression
+  code={`
+    {
+      // $match is a FigTree operator, so it would be read as one
+      stage: { $literal: { $match: { status: 'active' } } },
+      // $ne isn't, so it would be an error
+      filter: { $literal: { status: { $ne: 'closed' } } },
+      // operator marks a canonical node, so this would be an error too
+      phone: { $literal: { operator: 'Kōwhai Mobile', plan: 'Prepay' } },
+    }
+  `}
+/>
+
+</Callout>
+
+## Parameters
+
+An operator's parameters can be given in three ways, and the value of the `$`-prefixed key decides which:
+
+- **Named:** an object, with a key for each parameter.
+- **Positional:** an array, where each value's position says which parameter it is. The [operator reference](/reference/operators/) gives each operator's order.
+- **Single value:** anything else. It goes to the first parameter, and the rest keep their defaults, which suits operators that mostly need just one value, like `not` or `round`.
+
+<Expression
+  code={`
+    {
+      named: {
+        $if: {
+          condition: '$data.isMember',
+          then: 'Member price',
+          else: 'Standard price',
+        },
+      },
+      positional: { $if: ['$data.isMember', 'Member price', 'Standard price'] },
+      single: { $not: '$data.isMember' },
+    }
+  `}
+  data={`
+    { isMember: true }
+  `}
+/>
+
+Names say what each value is for, which helps whoever reads the expression next; the array is shorter. The result is the same either way. In [canonical form](/concepts/forms/), parameters are always given by name, as keys beside `operator`.
+
+## Nodes inside nodes: the tree
+
+This is how nodes grow into a tree: any parameter can be another node, and that node's parameters can be nodes too. This recursive structure is how small operators build up into complex logic, each node doing one simple thing and passing its result to its parent.
+
+Here's an expression that adds GST to a subtotal, rounds it to cents and puts the total in a sentence, drawn as a tree. Each box shows what it evaluates to:
+
+<ExpressionTree
+  label="A buildString node at the top, whose parameters are a template string and a round node. The round node rounds a plus node to 2 decimals. The plus node adds the subtotal to a multiply node, which multiplies the subtotal by 0.15."
+  code={`
+    {
+      $buildString: [
+        'Total incl. GST: $%1',
+        {
+          $round: [{ $plus: ['$data.subtotal', { $multiply: ['$data.subtotal', 0.15] }] }, 2],
+        },
+      ],
+    }
+  `}
+  data={`
+    { subtotal: 80.49 }
+  `}
+/>
+
+Results flow upwards: the leaves first, then each node once its parameters are ready, until the node at the top gives the expression's result. [How evaluation works](/concepts/evaluation/) has the details, including the operators that choose which of their parameters to evaluate at all.
+
+**Open in editor**, under the tree, opens the expression itself in an editor: change the subtotal in **Data** and the result follows.
+
+## Comments
+
+A `//` key is a comment, there purely for the benefit of whoever reads the expression. It's allowed in any object, whether a node or a plain object, and has no effect on the result:
+
+<Expression
+  code={`
+    {
+      '//': 'Shown on the product page',
+      label: 'Price',
+      value: { $multiply: ['$data.price', 1.15], '//': 'GST inclusive' },
+    }
+  `}
+  data={`
+    { price: 40 }
+  `}
+/>
+
+<Callout kind="tip">
+
+To include multi-line comments, put them in an array of strings:
+
+```json5
+{
+  '//': [
+    'Prices are stored excluding GST',
+    'GST is 15% in New Zealand',
+  ],
+  $multiply: ['$data.price', 1.15],
+}
+```
+
+</Callout>
+
+[^node]: Speaking strictly mathematically, every point in a tree is a node, the leaves included. FigTree uses "node" for the parts that compute something (strictly: "operator nodes"), and calls everything else a plain "value", whether it's a leaf or an object or array with nodes inside it.

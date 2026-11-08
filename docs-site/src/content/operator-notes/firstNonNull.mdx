@@ -1,0 +1,20 @@
+It skips only `null`, not other falsy values: `{ $firstNonNull: ['', 'Guest'] }` returns `''`. A missing value reads as `null` too ([Missing values](/concepts/data/#missing-values)), so it's skipped just the same.
+
+<Expression
+  title="The name to greet a customer by"
+  code={`
+    {
+      $firstNonNull: ['$data.nickname', '$data.firstName', 'Customer'],
+    }
+  `}
+  data={`
+    {
+      // Leave nickname out altogether, and the answer is the same
+      nickname: null,
+      // Remove firstName too, and the answer is 'Customer'
+      firstName: 'Aroha',
+    }
+  `}
+/>
+
+If a candidate fails, so does the node: a failure isn't skipped the way `null` is. To skip a candidate that might fail, give it a `fallback` of `null`.

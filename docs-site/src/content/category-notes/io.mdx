@@ -1,0 +1,3 @@
+These operators interact with external data sources, and need extra configuration, possibly including authentication. So they aren't included by default: add them with `httpOperators()` and `sqlOperators()`, and give each a client to make its requests with ([Adding the I/O operators](/guides/http-and-sql/#adding-the-io-operators)).
+
+It's not recommended to use these operators to change external state — FigTree is for evaluating expressions, not running commands. [HTTP and SQL](/guides/http-and-sql/) gives the full detail, including shared endpoints and headers, failures, timeouts and caching.

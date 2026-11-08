@@ -1,0 +1,30 @@
+---
+/**
+ * A link to a line of the library's source on GitHub, found by a snippet of
+ * it when the site is built (lib/sourceLink.ts), so the link follows the
+ * line as the code around it changes. A snippet that can't be found fails
+ * the build; in the dev server, it warns and links to the file instead.
+ */
+import { fileLink, sourceLink } from '../lib/sourceLink'
+
+interface Props {
+  /** The file, from the repo's root, such as `src/authoring/core.ts`. */
+  file: string
+  /** Text on the line to link to. */
+  find: string
+  /** Text on one line before it, where `find` alone is on several. */
+  after?: string
+}
+
+const { file, find, after } = Astro.props
+let href: string
+try {
+  href = sourceLink(file, find, after)
+} catch (error) {
+  if (!import.meta.env.DEV) throw new Error(`<SourceLink>: ${(error as Error).message}`)
+  console.warn(`<SourceLink>: ${(error as Error).message}`)
+  href = fileLink(file)
+}
+---
+
+<a href={href}><slot /></a>

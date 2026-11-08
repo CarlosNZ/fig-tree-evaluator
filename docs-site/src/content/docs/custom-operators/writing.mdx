@@ -1,0 +1,206 @@
+---
+title: Writing an operator
+description: Defining an operator with defineOperator() and registering it
+sidebar:
+  order: 1
+---
+
+import Callout from '../../../components/Callout.astro'
+import Expression from '../../../components/Expression.astro'
+import OperatorSource from '../../../components/OperatorSource.astro'
+
+Extend FigTree's built-in operator set by creating your own **custom operators** that are targeted to your application's specific needs.
+
+Custom operators are _first class_: once they're registered, FigTree can't tell them apart from its built-in operators.
+
+An operator is written in JavaScript (or TypeScript), as a single definition structure: the parameters it takes, and a function that does the actual evaluation. FigTree does everything else, from checking its inputs to catching its failures.
+
+<Callout kind="tip" title="Operator or fragment?">
+
+Before writing an operator, check whether a [fragment](/guides/fragments/) would do. The general rule is: if you can express it as a combination of existing operators, make a fragment; if you need new functionality that can't be composed from existing operators, write an operator.
+
+- **A fragment** is _data_, written in the same language as your expressions. Expression authors can read and change it, and it can be stored and updated alongside the expressions that call it, without releasing new code.
+- **An operator** is _code_, so it can call a library or a browser API (`Intl`, `crypto`), or do a calculation FigTree has no operators for, like trigonometry.
+
+</Callout>
+
+## A first operator
+
+Here's an example operator definition that formats a number for a locale, using JavaScript's `Intl.NumberFormat`:
+
+{/* TO-DO: reference published version of this once it's available */}
+
+<OperatorSource name="formatNumber" />
+
+It has two parameters: `value`, the number to format; and `locale`, which defaults to `'en-NZ'`. `positionalParams` lets an expression give the parameters [by position](/concepts/expressions/#parameters), in that order, without their names. And `evaluate` is the function that does the work — it receives the parameters' values, and returns the result.
+
+To use it, register it on your FigTree instance, along with the core operators:
+
+```ts title="fig.ts"
+// @filename: operators/formatNumber.ts
+import type { ValidatedOperatorDefinition } from 'fig-tree-evaluator'
+export declare const formatNumber: ValidatedOperatorDefinition
+// @filename: fig.ts
+// ---cut---
+import { FigTree, coreOperators } from 'fig-tree-evaluator'
+import { formatNumber } from './operators/formatNumber'
+
+const fig = new FigTree({ operators: [coreOperators, formatNumber] })
+
+await fig.evaluate({ $formatNumber: [83200000, 'de-DE'] }) // => '83.200.000'
+```
+
+Now it can be used in a normal expression, with its parameters given by name or by position, along with `$data` references, fallbacks and the rest:
+
+<Expression
+  customOperators
+  title="Formatting a number"
+  code={`
+    {
+      country: '$data.country',
+      population: {
+        $formatNumber: {
+          value: '$data.population',
+          locale: 'de-DE',
+        },
+      },
+      // The same two parameters, by position: [value, locale]
+      populationIN: { $formatNumber: ['$data.population', 'en-IN'] },
+      // locale left out, so it's the default, 'en-NZ'
+      populationNZ: { $formatNumber: '$data.population' },
+    }
+  `}
+  data={`
+    { country: 'Germany', population: 83200000 }
+  `}
+/>
+
+## What the engine does for you
+
+The `evaluate` function of `formatNumber` is a simple one-liner. It never checks what it's given — it doesn't need to: FigTree handles the parameters before calling it, and its result afterwards. So `evaluate` holds only the operator's own logic. That handling is the same work for every operator, so it's done _once_, in FigTree, rather than repeated in every operator. And anything wrong is dealt with the same way, in one place.
+
+Before calling `evaluate`, FigTree has already (among other things):
+
+- **Checked the types:** each value against its parameter's declared type. A value of the wrong type is a `type-check` error, whether it's written into the expression (static) or computed as it runs (runtime).
+- **Handled `null`:** the `value` parameter is declared as `['number', 'null']`, so `null` is allowed there, and by default it propagates — the node returns `null` without calling `evaluate` ([Null policy](/custom-operators/parameters/#null-policy)).
+- **Filled in defaults:** a parameter the node omits takes the definition's `default`, unless the instance sets a default of its own, such as `operatorDefaults: { formatNumber: { locale: 'de-DE' } }` ([Defaults for an operator](/guides/setup/#defaults-for-an-operator)).
+
+For example, a population that isn't a number fails before `evaluate` is called, which a fallback catches like any other failure:
+
+<Expression
+  customOperators
+  throws
+  title="The wrong type"
+  code={`
+    {
+      $formatNumber: '$data.population',
+      // Uncomment to catch the error
+      // fallback: 'Unknown',
+    }
+  `}
+  data={`
+    { country: 'Germany', population: '83 million' }
+  `}
+/>
+
+And Antarctica, which has no permanent population, gets `null`, where `Intl.NumberFormat` alone would have given it a population of `'0'`:
+
+<Expression
+  customOperators
+  title="A null value"
+  code={`
+    { $formatNumber: '$data.population' }
+  `}
+  data={`
+    { country: 'Antarctica', population: null }
+  `}
+/>
+
+After `evaluate` returns, FigTree checks the result as well, and turns an `undefined` into `null`, for example. And if `evaluate` throws, the node fails, so a fallback can catch it.
+
+## The definition
+
+Here is the full list of fields an operator definition can have. Four are required: `name`, `category`, `parameters` and `evaluate`.
+
+- **Naming:**
+  - **`name`**: what expressions call it, as in `$formatNumber`. It can be any string that doesn't start with `$`, contain `.`, `[` or `]`, or match a reserved word, such as `data` or `fallback`. It's case-sensitive.
+  - **`alias`**: a short, alternative name for it, as `+` is for `plus` ([Operators](/concepts/expressions/#operators)), following the same rules as `name`.
+  - **`category`**: one of `logic`, `comparison`, `math`, `string`, `array`, `data`, `io`, or `other` for an operator that fits none of them. FigTree never reads it: it's for tools, such as an editor that groups its operators by category.
+- **Inputs:**
+  - **`parameters`**: each parameter by name, with its type, default, and how it's evaluated ([Parameters](/custom-operators/parameters/)). An operator without any has `{}`.
+  - **`positionalParams`**: the parameters' names in order, for the positional shorthand ([Positional parameters](#positional-parameters)). Without it, the operator takes its parameters by name only.
+- **Evaluation:**
+  - **`evaluate`**: the function that does the actual evaluation work ([The evaluate function](/custom-operators/evaluate/)).
+  - **`cache`**: set to `true` if your operator would benefit from caching its results, such as one that sends a slow request, and `evaluate` chooses what to cache ([Caching](/custom-operators/evaluate/#caching)).
+  - **`timeoutParam`**: names the parameter that sets a time limit on the operator's work, as `timeout` does for `http` and `sql` ([Cancellation](/custom-operators/evaluate/#cancellation)). It's normally only needed for an operator that waits on something outside FigTree, such as an HTTP endpoint or a database.
+- **Static checks:**
+  - **`returns`**: the type of value it returns, so FigTree can tell, before anything runs, if its output could never be valid input for its parent node ([Declaring what it returns](/custom-operators/validate/#declaring-what-it-returns)).
+  - **`validate`**: a function for checks of your own, beyond the type checks FigTree already makes, on the parameter values written into an expression, such as `regex` checking that its pattern compiles. Like the type checks, it runs before anything is evaluated ([The `validate` hook](/custom-operators/validate/#the-validate-hook)).
+- **Your own:**
+  - **`metadata`**: anything your own tools need, such as the author's name or additional rules about where it can be used. FigTree never reads it, and `getOperators()` returns it as written.
+
+<Callout kind="note" title="No description or analysis">
+  A definition has no description. An operator's description, display name and colours go into a separate **catalog listing**, to avoid adding cruft to the runtime bundle ([Presenting your operator](/custom-operators/presenting/)). For the same reason, its **analysis** goes separately too: how it can fail, which `fallbackCoverage()` reads to check that an expression's fallbacks cover every failure. It's declared with `declareAnalysis()` ([Custom operators](/tooling/authoring/#custom-operators)).
+</Callout>
+
+### Positional parameters
+
+A parameter left out of `positionalParams` can only be given in the named form. The last entry can start with `...`, so it takes the rest of the array, as `plus` does with `['...values']`. A single value that isn't an array goes to the first entry, or, where that's a rest entry, to the rest parameter as it is, so `{ $plus: '$data.prices' }` adds up the whole array.
+
+<Callout kind="caution" title="An array is always positional">
+  If an operator's first parameter takes an array, an array written in its place is read as the parameters, not as that one value. Make the first entry a rest entry, as `plus` and [`length`](/reference/operators/#op-length) do, and the array goes to the parameter as a whole.
+</Callout>
+
+## `defineOperator()`
+
+`defineOperator()` is a provided factory function that checks a definition, and returns it ready to register. This ensures that any problems with your definition are reported as soon as `defineOperator()` runs, rather than sitting silently until an expression uses the operator.
+
+It reports every problem it finds at once, in one `invalid-definition` error, whose `issues` give each one its own code and a path into the definition:
+
+```ts
+import { defineOperator } from 'fig-tree-evaluator'
+
+const formatNumber = defineOperator({
+  name: 'formatNumber',
+  category: 'string',
+  parameters: {
+    // A null policy, on a type without null
+    value: { type: 'number', nullPolicy: 'accept' },
+    locale: { type: 'string', default: 'en-NZ' },
+  },
+  // Oops, typo -- doesn't match declared parameter name
+  positionalParams: ['value', 'locales'],
+  returns: 'string',
+  evaluate: ({ value, locale }) => new Intl.NumberFormat(locale).format(value),
+})
+// Throws invalid-definition, with two issues:
+// invalid-null-policy, at ['parameters', 'value', 'nullPolicy']
+// invalid-definition, at ['positionalParams', 1]
+```
+
+The `operators` option takes _only_ definitions that `defineOperator()` has returned. A plain object is an `invalid-options` error, even one with nothing wrong with it, which ensures that every operator is validated before it's registered.
+
+<Callout kind="tip" title="Typed parameters in TypeScript">
+  `defineOperator()` also uses the declarations to type the `params` that `evaluate` receives, so in `formatNumber`, `value` is a `number` and `locale` a `string` ([Typed `params`](/custom-operators/parameters/#typed-params)).
+</Callout>
+
+## Registering
+
+An operator is registered in the [`operators`](/api/options/#operators) option, along with `coreOperators`, as in the first example.
+
+Each name and alias has to be unique across the instance's operators and fragments, so an operator named `plus`, or a second `formatNumber`, is an `invalid-options` error, with a `duplicate-operator` issue. To use your own operator _in place_ of a core one, use `operatorSet()` ([Choosing operators](/guides/setup/#choosing-operators)).
+
+## An operator's obligations
+
+<Callout kind="caution" title="What FigTree can't enforce">
+
+FigTree makes certain [guarantees](/under-the-hood/guarantees/), and any custom operators you write should also honour them. Your definition sets out the operator's contract, and FigTree enforces what it can. But some requirements live within the operator's own code, so they're yours to keep:
+
+- [Don't change what you're given](/custom-operators/evaluate/#params): build a new value instead.
+- [Pass on `context.signal`](/custom-operators/evaluate/#cancellation) to anything outside FigTree that `evaluate` waits on.
+- [Make a cached result's key](/custom-operators/evaluate/#caching) include everything the result depends on.
+- [Keep secrets out](/custom-operators/evaluate/#trace-events) of trace events.
+- [In the `validate` hook](/custom-operators/validate/#what-the-hook-receives), check that a value is there, and of the right type, before using it.
+- [Declare every type `evaluate` can return](/custom-operators/validate/#declaring-what-it-returns) in `returns`, and no more.
+
+</Callout>

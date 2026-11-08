@@ -1,0 +1,3 @@
+For a value to fall back on, such as a nickname or else a first name, use [`firstNonNull`](#op-firstNonNull): `or` only ever returns `true` or `false`.
+
+If a value fails, `or` still returns `true` when another value is truthy, since that settles the answer anyway: `{ $or: [true, { $divide: [1, 0] }] }` returns `true`. If no other value is truthy, the node fails, as `{ $or: [false, { $divide: [1, 0] }] }` does. An empty list returns `false`.
