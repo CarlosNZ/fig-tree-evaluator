@@ -302,7 +302,7 @@ A field, parameter entry or key set to `undefined` is skipped, so it never erase
 
 A category's listing is its `categoryListings` entry with the `categories` override, or each in order, merged over it, `displayName`, `order` and `colors` each replaced, by the same rules.
 
-Values are handed out by reference, never copied: an object or array seed, sample or `metadata` value is copied before it is changed.
+Values are handed out by reference, never copied: an object or array seed, sample or `metadata` value is copied before it is changed. The package's own data — `operatorListings`, `categoryListings`, `typeSeeds` and `fragmentColors` — is deep-frozen, so changing one of its seeds or colour pairs in place throws instead of changing it for every later catalog. A host's listing maps, fragment listings and `metadata` are shared the same way but left unfrozen. A catalog entry's own top tiers are fresh, so replacing a value on one, such as its `colors`, is always allowed.
 
 ### `metadata`
 

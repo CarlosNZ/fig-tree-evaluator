@@ -36,7 +36,21 @@ import type { OperatorInfo } from '../introspect'
 import type { OperatorCategory } from '../operatorDefinition'
 import type { ExpectedType } from '../typeCheck'
 
-export const categoryListings: CategoryListingMap = {
+/**
+ * `value`, with it and every array and object in it frozen. The package's
+ * data is handed out by reference, and frozen it can't be changed through
+ * one catalog for every other. It is plain data, so nothing else needs a
+ * case.
+ */
+const deepFreeze = <T>(value: T): T => {
+  if (typeof value === 'object' && value !== null) {
+    Object.values(value).forEach(deepFreeze)
+    Object.freeze(value)
+  }
+  return value
+}
+
+export const categoryListings = deepFreeze<CategoryListingMap>({
   logic: {
     displayName: 'Logic & control',
     order: 0,
@@ -66,16 +80,16 @@ export const categoryListings: CategoryListingMap = {
   io: { displayName: 'I/O', order: 6, colors: { background: '#6e7a24', text: '#ffffff' } },
   // Where an operator that fits no other category goes, plugins' included
   other: { displayName: 'Other', order: 7, colors: { background: '#606e8a', text: '#ffffff' } },
-}
+})
 
 /**
  * The colours of a fragment whose listing gives none. One pair for every
  * fragment, so fragments read as one kind, as an operator reads by its
  * category.
  */
-export const fragmentColors: ColorPair = { background: '#38607e', text: '#ebdf5a' }
+export const fragmentColors = deepFreeze<ColorPair>({ background: '#38607e', text: '#ebdf5a' })
 
-export const typeSeeds: TypeSeeds = {
+export const typeSeeds = deepFreeze<TypeSeeds>({
   // Visible text rather than null, which an editor shows as nothing
   any: 'Replace me',
   string: 'Replace me',
@@ -86,13 +100,13 @@ export const typeSeeds: TypeSeeds = {
   array: [],
   object: {},
   null: null,
-}
+})
 
 // TO-DO: point each operator at its own section of the v3 README, once
 // that README has one per operator
 const DOCS = 'https://github.com/CarlosNZ/fig-tree-evaluator'
 
-export const operatorListings: ListingMap = {
+export const operatorListings = deepFreeze<ListingMap>({
   // ── Logic & control ────────────────────────────────────────────────────
   and: {
     displayName: 'Logical AND',
@@ -636,7 +650,7 @@ export const operatorListings: ListingMap = {
         'Returned exactly as written, including any keys prefixed with $ and $data strings inside it',
     },
   },
-}
+})
 
 /** The value under a key the map holds itself, not one it inherits. */
 const own = <T>(map: { [key: string]: T } | undefined, key: string): T | undefined =>

@@ -55,6 +55,9 @@ const PURE_CALLEES = [
   'coreDefinitions.map',
   'new Set',
   'Object.freeze',
+  // ./catalog's data, each export frozen on its own, so an import of one
+  // leaves the others out
+  'deepFreeze',
   // ./authoring's run: a promise that never settles, its executor empty
   'new Promise',
 ]

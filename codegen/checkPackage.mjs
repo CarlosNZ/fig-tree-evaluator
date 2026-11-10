@@ -10,7 +10,9 @@
  *     bundled from build/ with esbuild, carries none of the I/O toolkit, the
  *     inspector, `operatorSet()`, `defineOperator()`'s checks or any
  *     subpath; one importing only `{ isTruthy, parsePath }` carries none of
- *     those, the engine or the core operators. esbuild rather than rollup,
+ *     those, the engine or the core operators; and one importing only
+ *     `{ typeSeeds }` from ./catalog carries none of its other data or
+ *     `getCatalog`. esbuild rather than rollup,
  *     because rollup infers purity of its own and would pass a build whose
  *     `/*#__PURE__*\/` annotations had stopped matching, as esbuild and
  *     webpack would not. Absence is found by marker strings — string
@@ -109,6 +111,25 @@ const ENGINE_MARKERS = [
   },
 ]
 
+/**
+ * What a tool that wants only the types' starting values imports. Each of
+ * ./catalog's data exports is frozen by its own `deepFreeze` call, which a
+ * bundler drops with its export only by that callee's entry in
+ * rollup.config.mjs's PURE_CALLEES.
+ */
+const CATALOG_SEEDS = `
+import { typeSeeds } from './build/catalog/index.js'
+export default typeSeeds
+`
+
+/** What the catalog-seeds consumer must not carry from ./catalog. */
+const CATALOG_MARKERS = [
+  { part: 'operatorListings', markers: ['String builder'] },
+  { part: 'categoryListings', markers: ['Logic & control'] },
+  { part: 'fragmentColors', markers: ['#38607e'] },
+  { part: 'getCatalog()', markers: ['not an option: expected listings or categories'] },
+].map((group) => ({ ...group, entry: 'catalog/index' }))
+
 const failures = []
 const pass = (line) => console.log(`    ✓ ${line}`)
 const fail = (line) => {
@@ -201,6 +222,9 @@ await checkAbsent(engineOnly, 'engine-only', [...rootGroups(ROOT_MARKERS), ...su
 
 section('Tree-shaking: `{ isTruthy, parsePath }` alone')
 await checkAbsent(smallImport, 'small-import', rootGroups([...ROOT_MARKERS, ...ENGINE_MARKERS]))
+
+section("Tree-shaking: ./catalog's `{ typeSeeds }` alone")
+await checkAbsent(await bundle(CATALOG_SEEDS), 'catalog-seeds', CATALOG_MARKERS)
 
 // ── 3 · The packed package ────────────────────────────────────────────────
 

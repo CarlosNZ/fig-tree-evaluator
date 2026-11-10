@@ -220,6 +220,34 @@ describe('typeSeeds', () => {
   })
 })
 
+describe("the package's data is deep-frozen", () => {
+  /** The path to each array or object in `value`, itself included. */
+  const structures = (value: unknown, path: string): [string, object][] =>
+    typeof value === 'object' && value !== null
+      ? [
+          [path, value],
+          ...Object.entries(value).flatMap(([key, child]) => structures(child, `${path}.${key}`)),
+        ]
+      : []
+
+  test.each(
+    Object.entries({ operatorListings, categoryListings, typeSeeds, fragmentColors }).flatMap(
+      ([name, value]) => structures(value, name)
+    )
+  )('%s', (_, structure) => {
+    expect(Object.isFrozen(structure)).toBe(true)
+  })
+
+  test("a catalog's seeds and colours from the package can't be changed through it", () => {
+    const plus = catalogOperator('plus')
+    expect(() => (plus.parameters.values.seed as unknown[]).push(4)).toThrow(TypeError)
+    expect(() => {
+      plus.colors.background = '#000000'
+    }).toThrow(TypeError)
+    expect(operatorListings.plus.seeds!.values).toEqual([1, 2, 3])
+  })
+})
+
 describe('getCatalog', () => {
   // A host operator with no listing anywhere: every fallback shows on it
   const tally = defineOperator({
