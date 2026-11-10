@@ -249,6 +249,40 @@ test('a per-element type miss fails when that index is demanded', async () => {
   })
 })
 
+// ── an index the input doesn't have ─────────────────────────────────
+
+describe('an index the input does not have fails the node, before `each` runs', () => {
+  const at = (index: unknown) => iterator('at', (each) => each.evaluate(index as number))
+
+  test.each([2, -1, 0.5, NaN, '1'])('%p', async (index) => {
+    const spy = counter()
+    const fig = figWith([at(index), spy.definition])
+    await expect(fig.evaluate({ $at: [['a', 'b'], { $count: '$element' }] })).rejects.toMatchObject(
+      {
+        code: 'index-out-of-range',
+        message: `at – asked 'each' for element ${String(index)} of 'input' (length 2)`,
+        operator: 'at',
+      }
+    )
+    expect(spy.calls).toEqual([])
+  })
+
+  test("the node's own fallback catches it", async () => {
+    const fig = figWith([at(2)])
+    expect(await fig.evaluate({ $at: [['a', 'b'], '$element'], fallback: 'none' })).toBe('none')
+  })
+
+  test('an off-by-one in the body fails at the last element', async () => {
+    const withNext = iterator('withNext', (each, input) =>
+      Promise.all(input.map(async (_, i) => [await each.evaluate(i), await each.evaluate(i + 1)]))
+    )
+    const fig = figWith([withNext])
+    await expect(fig.evaluate({ $withNext: [['a', 'b'], '$element'] })).rejects.toMatchObject({
+      code: 'index-out-of-range',
+    })
+  })
+})
+
 test('an empty input demands nothing and drains immediately', async () => {
   const spy = counter()
   const drained = iterator('drained', async (each) => {

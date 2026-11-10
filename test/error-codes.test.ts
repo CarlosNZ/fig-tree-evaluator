@@ -56,6 +56,18 @@ const leaky = defineOperator({
   evaluate: ({ branch }) => branch as never,
 })
 
+/** A body that asks its `each` for an element past the input's end. */
+const overreach = defineOperator({
+  name: 'overreach',
+  category: 'other',
+  parameters: {
+    input: { type: 'array' },
+    each: { type: 'any', evaluationMode: 'perElement', over: 'input' },
+  },
+  positionalParams: ['input', 'each'],
+  evaluate: ({ input, each }) => each.evaluate(input.length),
+})
+
 /** Answers each I/O case by its URL. */
 const client: HttpClient = {
   request: async ({ url }) => {
@@ -102,6 +114,7 @@ const REACHES: Record<KnownFallbackErrorCode, Case> = {
   'request-failure': { expression: { $http: 'https://x.test/down', fallback: 0 } },
   'non-finite-result': { expression: { $divide: [1, '$data.by'], fallback: 0 }, data: { by: 0 } },
   'escaped-handle': { expression: { $leaky: 1, fallback: 0 } },
+  'index-out-of-range': { expression: { $overreach: [[1], '$element'], fallback: 0 } },
   'empty-aggregate': { expression: { $min: '$data.list', fallback: 0 }, data: { list: [] } },
   'missing-data-path': {
     expression: { $plus: ['$data.missing', 1], fallback: 0 },
@@ -134,6 +147,7 @@ const instance = (options: FigTreeOptions | undefined) => {
       sqlOperators(connection),
       sleep.definition,
       leaky,
+      overreach,
     ],
     fragments,
     ...options,

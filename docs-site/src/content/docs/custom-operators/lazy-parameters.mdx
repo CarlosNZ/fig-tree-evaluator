@@ -177,7 +177,7 @@ interface PerElement<T> {
 }
 ```
 
-`sortBy` asks for each element by index, with `evaluate(index)`. An iterator that can stop as soon as it can determine its answer, as `some` and `every` do, calls `settle()` on the whole array instead. It starts every element at once, and returns a stream of their results in the order they finish, the same stream a [`'race'`](#race) parameter receives.
+`sortBy` asks for each element by index, with `evaluate(index)`. The index must be one the array has, a whole number from 0 to its length − 1: any other fails the node with `index-out-of-range`. An iterator that can stop as soon as it can determine its answer, as `some` and `every` do, calls `settle()` on the whole array instead. It starts every element at once, and returns a stream of their results in the order they finish, the same stream a [`'race'`](#race) parameter receives.
 
 <Callout kind="note" title="Elements are type-checked">
   Unlike with [`'lazyElements'`](#lazyelements-and-lazyentries), the parameter's `type` definition here describes the value its expression gives for _each element_, not the whole array, so each one is type-checked.

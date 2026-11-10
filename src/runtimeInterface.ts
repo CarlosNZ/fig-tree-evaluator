@@ -41,6 +41,11 @@ export type SettlementStream = AsyncIterable<Settlement> & {
 /** A per-element parameter: a fresh scope per index, memoized per index. */
 export interface PerElement<T = unknown> {
   readonly [LAZY_HANDLE]: true
+  /**
+   * The element at `index`, an integer from 0 to the input's length - 1.
+   * Any other index rejects with `index-out-of-range`, a failure of the
+   * node, without evaluating anything.
+   */
   evaluate(index: number): Promise<T>
   /**
    * Every index at once, as settlements in completion order — the same

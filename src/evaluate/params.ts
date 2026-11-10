@@ -321,8 +321,16 @@ const perElementHandle = (
   const evaluate = (index: number): Promise<unknown> => {
     const existing = memo.get(index)
     if (existing !== undefined) return existing
-    const started = (async () =>
-      vet(
+    const started = (async () => {
+      // A position the input doesn't have is the body's bug: refused before
+      // `each` runs, as an ordinary failure of the node
+      if (!(Number.isInteger(index) && index >= 0 && index < collection.length))
+        throw nodeFailure(
+          node,
+          ErrorCodes.indexOutOfRange,
+          `asked '${name}' for element ${String(index)} of '${declared.over}' (length ${collection.length})`
+        )
+      return vet(
         // The index is what tells one element's instance from another's:
         // they share a static node, so it is the only thing that can
         // order them, and trace records an entry per element
@@ -330,7 +338,8 @@ const perElementHandle = (
         node,
         name,
         declared
-      ))()
+      )
+    })()
     // Attached where the promise is created, which is the only point early
     // enough: a body that demands an index and then resolves without
     // awaiting it must not leave an unhandled rejection behind. A later

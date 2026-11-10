@@ -219,7 +219,7 @@ interface LazyValue<T = Value> {
 }
 
 interface PerElement<T = Value> {
-  evaluate(index: number): Promise<T> // fresh binding scope per index; memoized per index
+  evaluate(index: number): Promise<T> // fresh binding scope per index; memoized per index; index-out-of-range unless 0 ≤ index < length, an integer
   settle(): SettlementStream // every index at once, as settlements (§ below)
 }
 
@@ -258,6 +258,7 @@ The flip side of the first-class principle: these live in the engine's layers, a
 - **Truthiness** at declared positions (#4) — one shared `isTruthy()`, booleans delivered.
 - **Boundary normalization**: body result `undefined` → `null`; the **`NaN` result guard** (#10) turns a `NaN` result from an operator whose `returns` names a number into a named runtime failure (code `non-finite-result`). An operator returning anything else hands a `NaN` from the data on as it is. An infinity is a number and passes; a body that can make one from finite operands refuses it itself, as the core arithmetic does, which is what keeps `divide` by zero an error (ruled October 2026, [#269](https://github.com/CarlosNZ/fig-tree-evaluator/issues/269)). _Both apply to the body's top-level result only (Phase 4): deep-walking every result would break the O(holes) cost model._
 - **Escaped-handle guard**, the same boundary's laziness sibling: a `LazyValue`, `PerElement` handle or settlement stream returned _as_ a body's result is always a bug — a lazy branch handed back instead of demanded — and fails loudly there rather than flowing out as an opaque value. (TypeScript flags it statically — § TypeScript ergonomics; the runtime guard covers plain-JS authors.)
+- **Index guard**, its other sibling: `PerElement.evaluate(i)` with an `i` that is not an integer from 0 to the input's length − 1 names an element the input doesn't have, so it fails the node with `index-out-of-range` before `each` runs, rather than evaluating `each` with `$element` null and an invented `$index` ([#234](https://github.com/CarlosNZ/fig-tree-evaluator/issues/234)). Only a host body can do it: the core iterators use `settle()`.
 - **Node machinery**: `fallback`, `vars` scoping, `noCache` gating, `trace` bookkeeping, abort threading and cancellation, `FigTreeError` wrapping and path tagging.
 
 **Shared primitives are importable.** The one-function requirements (implementation notes: `isTruthy`, the ordering comparator, the stringification renderer, the whitespace set, code-point segmentation, the path resolver) are exported for definition authors — a custom operator that renders text calls the same renderer `buildString` does, so the composite-value policy can't fork. Core bodies consume them through the same imports; nothing is privileged.

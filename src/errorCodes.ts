@@ -34,6 +34,7 @@ export const ErrorCodes = {
   requestFailure: 'request-failure', // anything else an I/O client throws: a network error, a non-compliant client
   nonFiniteResult: 'non-finite-result', // { $divide: [1, 0] } — NaN, or an infinity from finite numbers
   escapedHandle: 'escaped-handle', // a body returned a LazyValue / PerElement handle instead of demanding it — a host operator's bug, but an ordinary failure
+  indexOutOfRange: 'index-out-of-range', // a body called each.evaluate(5) over a two-element input — a host operator's bug, but an ordinary failure
   emptyAggregate: 'empty-aggregate', // { $plus: [] } with no mode pinned, { $min: [] } — no identity to return
   missingDataPath: 'missing-data-path', // a strictDataPaths miss; also the sample-data warning: a $data path absent from the supplied sample
   missingRequired: 'missing-required', // { $if: [true] } — a required parameter not supplied: a static error, and a runtime one for a dynamic-mode fragment call
@@ -112,6 +113,7 @@ export type KnownFallbackErrorCode = (typeof ErrorCodes)[
   | 'requestFailure'
   | 'nonFiniteResult'
   | 'escapedHandle'
+  | 'indexOutOfRange'
   | 'emptyAggregate'
   | 'missingDataPath'
   | 'missingRequired'

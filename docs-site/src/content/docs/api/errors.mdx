@@ -158,6 +158,7 @@ Runtime failures. A fallback catches each of these, and with none to catch it, `
 | `missing-data-path` | A missing path under `strictDataPaths`, in a reference or a `get`. Also the warning `validate()` gives for a path missing from its sample data                                                                  |
 | `missing-required`  | A fragment call that [passes its arguments as one object](/guides/fragments/#passing-the-arguments-as-one-object) leaving out a required one. Also the static error for any other missing required parameter |
 | `escaped-handle`    | A custom operator returning a lazy parameter without evaluating it: a bug in the operator                                                                                                                      |
+| `index-out-of-range` | A custom operator asking a [per-element parameter](/custom-operators/lazy-parameters/#perelement) for an element its array doesn't have, such as `evaluate(5)` on a two-item array: a bug in the operator    |
 
 A custom operator's own codes, thrown with `OperatorFailure`, reach a fallback in the same way.
 

@@ -1460,8 +1460,8 @@ describe('per-element walks', () => {
     expect(
       (await fallbackCoverage(hosts, { $divide: [1, { $find: [doubled, true] }] }, [all])).uncovered
     ).toEqual([])
-    // The engine binds no element, so it returns null and nothing fails; a
-    // hook giving the one element's value would say the root always does
+    // Without a gamut the node's output is not known, though its one
+    // element's is: the body asks for element 5, not that one
     const one = declareAnalysis(sixth, { failures: [] })
     const { uncovered } = await fallbackCoverage(
       hosts,

@@ -180,22 +180,23 @@ Both are open, `known codes | (string & {})`: a host operator throws codes of it
 
 **The fallback codes.** What the engine and the package's own operators can hand a fallback:
 
-| Code                | Raised by                                                                                                                                                                                      |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `type-check`        | a computed value failing a parameter's declared type or constraints; an operator's own operand check (`plus`'s mixed modes); an I/O operator's input checks; a fragment call's argument checks |
-| `operator-failure`  | a body throwing without a code: `convert`, `regex`, or any plain `Error`                                                                                                                       |
-| `request-timeout`   | a node's own `timeout` parameter expiring                                                                                                                                                      |
-| `http-status`       | an I/O client's non-2xx response                                                                                                                                                               |
-| `invalid-response`  | a response that is not JSON, or a GraphQL response of the wrong shape                                                                                                                          |
-| `graphql-errors`    | a GraphQL response carrying a non-empty `errors` array                                                                                                                                         |
-| `sql-error`         | anything a SQL driver or connection refuses                                                                                                                                                    |
-| `request-failure`   | anything else an I/O client throws                                                                                                                                                             |
-| `non-finite-result` | a `NaN` result from an operator declared to return a number, or an infinity arithmetic made from finite numbers                                                                                |
-| `escaped-handle`    | a body returning a lazy handle instead of demanding it: a host operator's bug, but an ordinary failure                                                                                         |
-| `empty-aggregate`   | an aggregate of nothing that has no identity (`min` of `[]`)                                                                                                                                   |
-| `missing-data-path` | a `strictDataPaths` miss, in a reference or in `get`                                                                                                                                           |
-| `missing-required`  | a dynamic-mode fragment call missing a required argument                                                                                                                                       |
-| `timeout`           | the whole-evaluation deadline. No fallback catches it, but a shielded one answers it (rule 3 of "`fallback` semantics" in [v3-api.md](v3-api.md)), so it is a fallback code too                |
+| Code                 | Raised by                                                                                                                                                                                      |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type-check`         | a computed value failing a parameter's declared type or constraints; an operator's own operand check (`plus`'s mixed modes); an I/O operator's input checks; a fragment call's argument checks |
+| `operator-failure`   | a body throwing without a code: `convert`, `regex`, or any plain `Error`                                                                                                                       |
+| `request-timeout`    | a node's own `timeout` parameter expiring                                                                                                                                                      |
+| `http-status`        | an I/O client's non-2xx response                                                                                                                                                               |
+| `invalid-response`   | a response that is not JSON, or a GraphQL response of the wrong shape                                                                                                                          |
+| `graphql-errors`     | a GraphQL response carrying a non-empty `errors` array                                                                                                                                         |
+| `sql-error`          | anything a SQL driver or connection refuses                                                                                                                                                    |
+| `request-failure`    | anything else an I/O client throws                                                                                                                                                             |
+| `non-finite-result`  | a `NaN` result from an operator declared to return a number, or an infinity arithmetic made from finite numbers                                                                                |
+| `escaped-handle`     | a body returning a lazy handle instead of demanding it: a host operator's bug, but an ordinary failure                                                                                         |
+| `index-out-of-range` | a body asking a `PerElement` handle for an element its input doesn't have: a host operator's bug, but an ordinary failure                                                                      |
+| `empty-aggregate`    | an aggregate of nothing that has no identity (`min` of `[]`)                                                                                                                                   |
+| `missing-data-path`  | a `strictDataPaths` miss, in a reference or in `get`                                                                                                                                           |
+| `missing-required`   | a dynamic-mode fragment call missing a required argument                                                                                                                                       |
+| `timeout`            | the whole-evaluation deadline. No fallback catches it, but a shielded one answers it (rule 3 of "`fallback` semantics" in [v3-api.md](v3-api.md)), so it is a fallback code too                |
 
 Never a fallback's: `aborted`, since the caller's signal cuts through every fallback and shielding answers only the deadline; static errors, since `evaluate()` refuses the expression before anything runs; static warnings and the registration codes. Engine bugs and cancellations carry no code at all: they are not `FigTreeError`s. The five I/O codes each promise their `errorData`, which "Client failures: codes and the enforced shape" in [v3-operator-contract.md](v3-operator-contract.md) lists, with which code each failure takes.
 
