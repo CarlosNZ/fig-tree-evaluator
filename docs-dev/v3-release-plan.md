@@ -2,16 +2,18 @@
 
 _Drafted November 2026, from a survey of this repo, the editor repo and the live hosting. It replaces the checklist that was Phase 18 in [v3-implementation-plan.md](v3-specs/v3-implementation-plan.md), putting it in order with instructions. Every item from that checklist is here, mapped in "Where the Phase 18 checklist went" at the end._
 
+_Brought up to date on 10 November 2026: the issue triage in 1.5 refreshed, the items done since marked, and 6.2 (the docs branch, merged in #294) recorded as done. What remains outside the issues is tracked as a checklist in #295._
+
 The release covers three things: **fig-tree-evaluator 3.0.0** on npm, **fig-tree-editor-react 3.0.0** on npm, and the **docs site** (with the Playground) live at its permanent address. They go out together. The editor's major version tracks the evaluator's (editor plan, "Goal and posture"), and the README and the editor both link into the site.
 
 ## The shape of it
 
 1. **Decisions** that change what the later steps do.
 2. **Finish the library** on `v3.0-dev`: the open rulings, the issue triage, the v2 retirement.
-3. **Finish the docs content** on `v3.0-docs`.
+3. **Finish the docs content** on `v3.0-dev`.
 4. **Finish the editor** on its `v3.0-dev`, in parallel with 2 and 3.
 5. **Set up hosting** for the site, still deploying nothing.
-6. **Branch surgery:** cut the maintenance branches, merge the docs branch into `v3.0-dev`, then `v3.0-dev` into `main` (both repos).
+6. **Branch surgery:** cut the maintenance branches, then merge `v3.0-dev` into `main` (both repos).
 7. **The release candidate:** evaluator and editor betas, the site live, links switched over, one to two weeks of soak.
 8. **Release day:** 3.0.0 of both, in a fixed order.
 9. **Afterwards:** cleanup, and the downstream apps.
@@ -58,17 +60,19 @@ The banner says the site documents the 3.0 release candidate and gives `npm inst
 
 ### 1.5 Which open v3 issues block 3.0
 
-The rule is **anything breaking goes in before 3.0.0; anything additive can wait for 3.x.** My reading of the open `v3` issues:
+The rule is **anything breaking goes in before 3.0.0; anything additive can wait for 3.x.** A behaviour counts as breaking to change later, so one in doubt is ruled before 3.0, even if the ruling is "as is". The open issues, as of 10 November 2026:
 
 - **Before 3.0:**
-  - #234: a bug in `PerElement.evaluate()`.
-  - #248: NaN truthiness. It's a behaviour, so it should be settled before 3.0 even if the decision is "as is".
-  - #286: deep-freezing `./catalog`'s data. Freezing later would break any host that mutates it.
   - #219: the review of message wording. Messages aren't contract, but a pass before 3.0 saves a run of 3.0.x changelog noise.
+  - #275: the remaining non-JSON values from host data. Items 1–3 (`0n` truthy, `convert` to string across opaque values, the `"<object>"` rendering) are behaviours; item 4 (`undefined` nested in data) can probably be ruled "as is", as #269 ruled `NaN` ("no deep searches").
+  - #231, question 2 only: whether an `Issue` may take a different shape depending on which method produced it. That is contract. Ruled "one shape everywhere", the rest of #231 is internal performance work and waits.
   - The two Phase 18 rulings: key order, and where subpath types export from (2.1, 2.2).
-- **After 3.0 (additive):** #292, #276, #275, #247, #244, #236, #235, #231, #200, #189, #183, #172, #149, #162, #159.
-- **Close now:** #281. Its branch is fully merged into `v3.0-dev`.
-- **v2 only, for the `v2.x` branch:** #202, #120, #116, #115, #132. Relabel the unlabelled ones `v2.x` or close them as superseded by v3.
+- **Done:** #234 (66b7694), #248 (closed as settled by #269), #286 (6bddedc), #281 (closed).
+- **After 3.0 (additive):** #292, #276, #293, #247, #244, #236, #235, #231 (apart from question 2), #189, #183, #172, #162, #159, #149.
+  - #183 changes the result cache's key format, so a host's persisted entries miss after that upgrade. A miss, not a break.
+  - #132 is not v2-only: on v3 a null `url` fails `type-check`, and a null in `query` or in a `buildString`-assembled URL still sends the request. Skipping the request until its inputs are there would be additive. Relabel it `v3`.
+- **#200:** every item but 5 is done. Close it, and move item 5 (`renameBinding` in `./format`, additive) to an issue of its own (4.5).
+- **v2 only:** #202 and #115, labelled `v2.x`. Close #120 for v3 (its `FetchClient` refuses a non-JSON success with `invalid-response` by design) and #116 (superseded by `get`'s `from` with `plus`, 3.3), or relabel them `v2.x`.
 
 ### 1.6 What happens to the benchmarks
 
@@ -97,7 +101,7 @@ Phase 18 item. Today every type exports from the root only.
 
 ### 2.3 The issues that block 3.0
 
-Fix the "before 3.0" set from 1.5, one PR each.
+Fix the "before 3.0" set from 1.5, one PR each. #234, #248 and #286 are done; #219, #275 and #231's question 2 remain.
 
 ### 2.4 Hand-migrate the complex expressions
 
@@ -143,11 +147,16 @@ Do this after 2.5, so it describes the repo as it ends up.
 
 Working rule 6. Add a "Phase 18" row to the size table in [v3-implementation-plan.md](v3-specs/v3-implementation-plan.md), measured on the last library commit before the beta.
 
+### 2.8 The implementation plan's loose ends
+
+- **Stable case ids for the differential** ("To sort out: stable case ids" under Phase 15 in [v3-implementation-plan.md](v3-specs/v3-implementation-plan.md)). Only needed before the corpus is next extracted, so it can wait for a v2 release that adds tests, but settle the scheme before then.
+- **Retroactive showcases for Phases 1–3** (working rule 7's TO-DO). Write them, or drop the TO-DO.
+
 ---
 
-## 3. Finish the docs content (on `v3.0-docs`)
+## 3. Finish the docs content (on `v3.0-dev`)
 
-The site already has every chapter. What's left:
+The site already has every chapter, and since #294 it lives on `v3.0-dev`: docs work branches from there like any other change. What's left:
 
 ### 3.1 Write the "Visual editor component" page
 
@@ -155,7 +164,7 @@ The site already has every chapter. What's left:
 
 ### 3.2 Finish the Playground
 
-The example blurbs are first drafts awaiting your edit pass (memory: next step on `docs-playground-improvements`). Then merge `docs-playground-improvements` into `v3.0-docs`.
+The new example set (747faa2) and the live form preview (599e2b1) are merged into `v3.0-dev`. The example blurbs were first drafts awaiting your edit pass; that pass is what's left, if it hasn't happened.
 
 ### 3.3 Fill the gaps from the Phase 18 README notes
 
@@ -316,9 +325,9 @@ These are Phase 11 items:
 - Remove `"private": true`, which stops any publish. The version stays `3.0.0-dev` until `pnpm release` sets the beta's.
 - The fig-tree peer range stays `^3.0.0-preview.15` until 7.2.
 
-### 4.5 Update #200
+### 4.5 Close #200
 
-Mark which of #200's editor-request items are in 3.0 and which are after it.
+Items 1–4 and 6 of #200's editor requests are done. Close it, and open item 5 (`renameBinding`, after a design pass: step 5 of [editor-requests-plan.md](editor-requests-plan.md)) as its own issue for 3.x.
 
 ---
 
@@ -385,13 +394,7 @@ Do these in order, in both repos, at the start of the release-candidate week.
 
 ### 6.2 Bring the docs branch into `v3.0-dev`
 
-`v3.0-docs` is 288 commits ahead of `v3.0-dev`, and it carries library changes as well as the site:
-
-- `src/catalog/index.ts`, the operator-description edits from the reference-docs pass. These ship in the package.
-- `README.md`, the new short v3 README.
-- `CLAUDE.md`, `package.json` (`docs:dev`), `.github/workflows/docs.yml`, the logo files.
-
-Merge `docs-playground-improvements` into `v3.0-docs`, then open a PR from `v3.0-docs` into `v3.0-dev`. Once that's merged, `v3.0-docs` has no reason to exist apart from `v3.0-dev`: further docs work branches from `v3.0-dev` like any other change.
+**Done** in #294: `v3.0-docs`, with `docs-playground-improvements` merged into it, is in `v3.0-dev`, and both branches are deleted. Further docs work branches from `v3.0-dev` like any other change.
 
 ### 6.3 Merge `v3.0-dev` into `main`, in the evaluator
 
@@ -407,7 +410,7 @@ They're all in `v2.x` from 6.1. In the merge:
 - **`CHANGELOG.md`:** keep both sets of entries, the v2 ones below.
 - **Behaviour:** for each of the five fixes, confirm v3 behaves correctly on the same input. The differential runs the published 2.23.2's tests, which include them, so `pnpm differential --check` passing is most of this check.
 
-Open it as a PR (`v3.0-dev` → `main`), not a local merge, so CI runs on the result. Use a merge commit, not a squash: squashing 398 commits into one would throw away v3's history.
+Open it as a PR (`v3.0-dev` → `main`), not a local merge, so CI runs on the result. Use a merge commit, not a squash: squashing v3's 700-odd commits into one would throw away its history.
 
 ### 6.4 Merge `v3.0-dev` into `main`, in the editor
 
@@ -471,7 +474,7 @@ In the editor repo:
 
 ### 7.4 Replace the placeholders
 
-- **`README.md`:** done on `docs-playground-improvements` (November 2026): its links point at `https://carlosnz.github.io/fig-tree-evaluator/`, and its two links to `/migrating/upgrading/` go to `/migrating/`, the page's real path. They 404 until the site is live (7.5), so check them all once it is.
+- **`README.md`:** done (November 2026): its links point at `https://carlosnz.github.io/fig-tree-evaluator/`, and its two links to `/migrating/upgrading/` go to `/migrating/`, the page's real path. They 404 until the site is live (7.5), so check them all once it is.
 - **`src/catalog/index.ts`:** point `DOCS` at the operator reference, and give each operator its own anchor. The entries render with `id="op-<name>"`, so `docUrl` becomes `https://carlosnz.github.io/fig-tree-evaluator/reference/operators/#op-<name>`. Delete the TO-DO comment above it. If the catalog's drift tests check `docUrl`, update them too.
 - **`package.json`:**
   - `homepage` goes from `…#readme` to `https://carlosnz.github.io/fig-tree-evaluator/`.
@@ -577,7 +580,7 @@ In this order, all on the same day:
 ## 9. Afterwards
 
 - **Delete merged branches.**
-  - Evaluator: `v3.0-dev`, `v3.0-docs`, `docs-playground-improvements`, `v3.0-doc-analysis-update` (memory notes a backup branch to delete), `v3-logo`, `232-dollar-key-errors`, `243-operator-catalog` and `281-non-recursive-format`. All but the docs branches are already fully merged.
+  - Evaluator, on origin: `v3.0-dev`, `v3.0-doc-analysis-update`, `v3-logo`, `232-dollar-key-errors`, `243-operator-catalog` and `281-non-recursive-format`. Locally, also the finished issue branches, `backup/v3.0-doc-analysis-update`, `new-fallback-coverage-spec`, `pr278` and the `t3/*` branches.
   - Editor: its `v3.0-dev`.
 
   Check each first:
@@ -589,6 +592,7 @@ In this order, all on the same day:
 - **Remove `v3.0-dev` from every remaining place.** Stage 6.5 has the list. Run `git grep v3.0-dev` once more. Specs that link to `/v2-src` files will have dead links after 2.5, which is acceptable in historical specs. Fix any in pages people still read.
 - **Retire the published artifacts.** The "FigTree v3 by Example", "Operators" and "From First Principles" artifacts (index in [artifacts.md](artifacts.md), copies in `docs-artifacts/`) are superseded by the site. Republish each with a line pointing to the site, or delete them. Then trim `docs-artifacts/` and `artifacts.md`.
 - **Open issues for anything parked.** The Phase 18 item "Review the parked items" currently finds nothing parked. Recheck, and make sure every "after 3.0" issue from 1.5 is labelled for 3.x.
+- **Close #295**, the checklist of this plan's items.
 - **Downstream apps** still on v2, which stay there safely, since their `^2` ranges never pick up 3.x:
   - Conforma (`conforma-web-app`);
   - `jsonforms-with-figtree-demo`, which is linked from the Playground's form example blurb (`playground/blurbs/form.md`).
