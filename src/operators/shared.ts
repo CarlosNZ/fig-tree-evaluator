@@ -66,7 +66,7 @@ const emptyArrayWarning =
           {
             severity: 'warning',
             parameter,
-            message: `An empty ${parameter} array is a dead expression — the result is always the identity`,
+            message: `An empty ${parameter} array`,
           },
         ]
       : []
@@ -88,7 +88,7 @@ export const fewerThanTwoWarning = (literalParams: Record<string, unknown>): Val
         {
           severity: 'warning',
           parameter: 'values',
-          message: 'Fewer than two values is a dead comparison — the result never varies',
+          message: 'Fewer than two values',
         },
       ]
     : []

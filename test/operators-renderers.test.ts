@@ -499,20 +499,22 @@ describe('buildString — the token findings are warnings, never errors', () => 
 
   test('a token above the count names the count', () => {
     expect(findings({ $buildString: ['%1 %2 %3', 'a', 'b'] })).toEqual([
-      unbound("'%3' binds to nothing and renders as its own text — there are only 2 substitutions"),
+      unbound(
+        "'%3' matches no substitution, so it's left as text — there are only 2 substitutions"
+      ),
     ])
   })
 
   test('one substitution is counted in the singular', () => {
     expect(findings({ $buildString: ['%1 %2', 'a'] })).toEqual([
-      unbound("'%2' binds to nothing and renders as its own text — there is only 1 substitution"),
+      unbound("'%2' matches no substitution, so it's left as text — there is only 1 substitution"),
     ])
   })
 
   test('a skipped number is one warning, naming the spare substitution', () => {
     expect(findings({ $buildString: ['%1 %3', 'a', 'b'] })).toEqual([
       unbound(
-        "'%3' binds to nothing and renders as its own text — there are only 2 substitutions, and substitution 2 is unused"
+        "'%3' matches no substitution, so it's left as text — there are only 2 substitutions, and substitution 2 is unused"
       ),
     ])
   })
@@ -520,12 +522,12 @@ describe('buildString — the token findings are warnings, never errors', () => 
   test('several spare substitutions are listed together', () => {
     expect(findings({ $buildString: ['%1 %5', 'a', 'b', 'c', 'd'] })).toEqual([
       unbound(
-        "'%5' binds to nothing and renders as its own text — there are only 4 substitutions, and substitutions 2, 3 and 4 are unused"
+        "'%5' matches no substitution, so it's left as text — there are only 4 substitutions, and substitutions 2, 3 and 4 are unused"
       ),
     ])
     expect(findings({ $buildString: ['%1 %4', 'a', 'b', 'c'] })).toEqual([
       unbound(
-        "'%4' binds to nothing and renders as its own text — there are only 3 substitutions, and substitutions 2 and 3 are unused"
+        "'%4' matches no substitution, so it's left as text — there are only 3 substitutions, and substitutions 2 and 3 are unused"
       ),
     ])
   })
@@ -533,7 +535,7 @@ describe('buildString — the token findings are warnings, never errors', () => 
   test('counting from zero says where numbering starts', () => {
     expect(findings({ $buildString: ['%0 %1', 'a', 'b'] })).toEqual([
       unbound(
-        "'%0' binds to nothing and renders as its own text — numbering starts at %1, and substitution 2 is unused"
+        "'%0' matches no substitution, so it's left as text — numbering starts at %1, and substitution 2 is unused"
       ),
     ])
   })
@@ -560,7 +562,7 @@ describe('buildString — the token findings are warnings, never errors', () => 
       })
     ).toEqual([
       unbound(
-        "'{{last}}' binds to nothing and renders as its own text, and substitution 'surname' is unused"
+        "'{{last}}' matches no substitution, so it's left as text, and substitution 'surname' is unused"
       ),
     ])
     expect(
@@ -569,7 +571,7 @@ describe('buildString — the token findings are warnings, never errors', () => 
       })
     ).toEqual([
       unbound(
-        "'{{nmae}}' binds to nothing and renders as its own text, and substitutions 'name' and 'age' are unused"
+        "'{{nmae}}' matches no substitution, so it's left as text, and substitutions 'name' and 'age' are unused"
       ),
     ])
   })
@@ -579,7 +581,7 @@ describe('buildString — the token findings are warnings, never errors', () => 
       findings({
         $buildString: { template: 'Hi {{first}} {{last}}', substitutions: { first: 'C' } },
       })
-    ).toEqual([unbound("'{{last}}' binds to nothing and renders as its own text")])
+    ).toEqual([unbound("'{{last}}' matches no substitution, so it's left as text")])
   })
 
   test('%0 can never bind, so it warns', () => {

@@ -263,10 +263,7 @@ const readShorthand = (
     }
     // The sibling rule: reserved modifiers only
     if (!SHORTHAND_SIBLINGS.has(key))
-      return fail(
-        ErrorCodes.malformedNode,
-        `'${key}' may not sit beside the shorthand key '${shorthandKey}' — reserved modifiers only`
-      )
+      return fail(ErrorCodes.malformedNode, `'${key}' may not sit beside '${shorthandKey}'`)
     // Dead on `literal`, so its value goes unchecked there, as in the compiler
     if (key === 'noCache' && value !== true && !isLiteral)
       return fail(ErrorCodes.malformedNode, NO_CACHE_VALUE)

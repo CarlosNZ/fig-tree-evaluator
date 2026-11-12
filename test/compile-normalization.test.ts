@@ -226,7 +226,7 @@ describe('a bare namespace as get’s from', () => {
     for (const path of paths) {
       const errors = errorsOf({ path, from: '$vars' })
       expect(errors.map((issue) => issue.code)).toEqual(['bare-vars'])
-      expect(errors[0].message).toContain('the path must be written out and start with a key')
+      expect(errors[0].message).toContain("needs a literal path that starts with a variable's name")
       expect(errors[0]).toMatchObject({ operator: 'get', parameter: 'from' })
     }
     expect(errorsOf({ from: '$vars' }).map((issue) => issue.code)).toContain('bare-vars')

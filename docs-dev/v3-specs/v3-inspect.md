@@ -409,7 +409,7 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
       "order": 36,
       "severity": "error",
       "code": "unrecognized-identifier",
-      "message": "'$colour' is not a registered operator or fragment — data with a '$' key goes inside 'literal'",
+      "message": "'$colour' is not a registered operator or fragment — use 'literal' to treat it as data",
       "path": ["extras", "$colour"]
     },
     {

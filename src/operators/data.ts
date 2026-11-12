@@ -111,7 +111,7 @@ const duplicateKeyWarnings = (literalParams: Record<string, unknown>) => {
       findings.push({
         severity: 'warning' as const,
         parameter: 'entries',
-        message: `Duplicate key '${rendered}' — the last entry wins and the earlier one is dead`,
+        message: `Duplicate key '${rendered}' — the last entry wins`,
       })
     }
     seen.add(rendered)

@@ -103,7 +103,7 @@ const visitInvocation = (
       node,
       disabled.length > 0
         ? `'noCache' is redundant — caching is already disabled for ${nameList(disabled)}`
-        : "'noCache' is dead — nothing beneath this node caches"
+        : "'noCache' has no effect — nothing beneath this node caches"
     )
   return { capable, effective: !own && (self || children.effective), disabled }
 }

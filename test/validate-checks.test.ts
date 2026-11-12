@@ -288,6 +288,13 @@ describe('as renaming', () => {
     expect(errorCodes(nested('order'))).toContain('invalid-as')
     expect(errorCodes(nested('orderIndex'))).toContain('invalid-as')
     expect(errorCodes(nested('item'))).toHaveLength(0)
+    // The inner index name clashing with an outer name
+    const inner = { operator: 'map', input: [2], as: 'order', each: 1 }
+    const { issues } = fig.validate({ operator: 'map', input: [1], as: 'orderIndex', each: inner })
+    const errors = issues.filter((issue) => issue.severity === 'error')
+    expect(errors.map((issue) => issue.message)).toEqual([
+      "'order' gives '$orderIndex', already in use by an enclosing 'as'",
+    ])
   })
 })
 

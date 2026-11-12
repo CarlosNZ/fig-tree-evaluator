@@ -37,7 +37,11 @@ describe('classifyObject', () => {
       { operator: 'plus', fragment: 'frag' },
       "'operator' and 'fragment'",
     ],
-    ['canonical beside shorthand', { operator: 'plus', $frag: {} }, "shorthand key '$frag'"],
+    [
+      'canonical beside shorthand',
+      { operator: 'plus', $frag: {} },
+      "'operator' may not sit beside '$frag'",
+    ],
     ['two shorthand keys', { $plus: [1], $frag: {} }, "found '$plus' and '$frag'"],
   ])('%s is malformed, with the compiler’s message', (_label, raw, fragment) => {
     const classified = classifyObject(raw, recognizes)
