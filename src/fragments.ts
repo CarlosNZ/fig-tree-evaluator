@@ -388,7 +388,7 @@ const validateDeclaration = (
   if (!isPlainObject(declared)) {
     addIssue(
       ErrorCodes.invalidDefinition,
-      `the declaration of '${parameter}' must be an object`,
+      `the declaration of '${parameter}' must be a plain object`,
       path
     )
     return undefined

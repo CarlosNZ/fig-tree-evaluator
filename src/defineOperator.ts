@@ -219,7 +219,7 @@ export function defineOperator(
     if (!isPlainObject(declaration)) {
       addIssue(
         ErrorCodes.invalidDefinition,
-        `the declaration for '${paramName}' must be a plain object`,
+        `the declaration of '${paramName}' must be a plain object`,
         paramPath,
         paramName
       )
