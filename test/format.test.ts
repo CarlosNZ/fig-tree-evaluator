@@ -279,6 +279,36 @@ describe('a malformed node stops the conversion', () => {
     expect(thrown({ vars: { x: { fragment: 'nope' } }, y: 1 }).path).toEqual(['vars', 'x'])
   })
 
+  test('a stray key on a fragment call is named an argument when the fragment declares it', () => {
+    const declaring = new FigTree({
+      fragments: {
+        greet: { expression: '$params.name', parameters: { name: { type: 'string' } } },
+      },
+    })
+    const message = (registry: Registry, expression: unknown) => {
+      try {
+        toCanonical(expression, registry)
+        return undefined
+      } catch (error) {
+        return (error as FigTreeError).message
+      }
+    }
+    expect(message(declaring, { fragment: 'greet', name: 'x' })).toBe(
+      "The 'name' argument must go in 'parameters'"
+    )
+    expect(message(declaring, { fragment: 'greet', falback: 1 })).toBe(
+      "'falback' is not a key of a fragment call"
+    )
+    // A snapshot that leaves out the parameters gets the plain message
+    const snapshot: Registry = {
+      getOperators: () => declaring.getOperators(),
+      getFragments: () => [{ name: 'greet' }],
+    }
+    expect(message(snapshot, { fragment: 'greet', name: 'x' })).toBe(
+      "'name' is not a key of a fragment call"
+    )
+  })
+
   test('nesting beyond the compiler’s ceiling', () => {
     let deep: unknown = 1
     for (let i = 0; i < 600; i++) deep = [deep]

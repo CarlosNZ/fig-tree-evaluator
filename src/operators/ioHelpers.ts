@@ -129,12 +129,14 @@ export const jsonHeaders = (hasBody: boolean): Record<string, string> => ({
   ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
 })
 
-const wireScalar = (value: unknown, at: string, kind: string): string => {
+const wireScalar = (value: unknown, at: string, kind: 'query' | 'header'): string => {
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
     return renderText(value)
+  const type = describeType(value)
   throw new OperatorFailure(
-    `${at} is ${describeType(value)} — a ${kind} value must be a string, number or boolean; ` +
-      'render it explicitly (join) or supply a fully-formed URL',
+    `${at} is ${type === 'array' || type === 'object' ? `an ${type}` : type} — a ${kind} ` +
+      'value must be a string, number or boolean' +
+      (kind === 'query' ? '; join it, or write the whole URL' : ''),
     { code: ErrorCodes.typeCheck }
   )
 }
@@ -193,18 +195,18 @@ export const drill = (value: unknown, returnPath: string | unknown[] | undefined
  */
 export const graphQLData = (response: unknown, url: string): unknown => {
   if (!isPlainObject(response))
-    throw invalidResponse('the GraphQL response was not an object', url, response)
+    throw invalidResponse('the response was not an object', url, response)
   const errors = (response as Record<string, unknown>).errors
   if (Array.isArray(errors) && errors.length > 0) {
     const first = (errors[0] as { message?: unknown } | null)?.message
     throw new OperatorFailure(
-      `the GraphQL response carried ${errors.length} error${errors.length === 1 ? '' : 's'}` +
+      `the response returned ${errors.length} error${errors.length === 1 ? '' : 's'}` +
         (typeof first === 'string' ? `: ${first}` : ''),
       { code: ErrorCodes.graphQLErrors, errorData: { errors } }
     )
   }
   if (!('data' in (response as Record<string, unknown>)))
-    throw invalidResponse('the GraphQL response carried neither data nor errors', url, response)
+    throw invalidResponse('the response had neither data nor errors', url, response)
   return (response as Record<string, unknown>).data ?? null
 }
 
@@ -271,8 +273,8 @@ const onlyColumn = (row: Record<string, unknown>, shape: string): unknown => {
   const values = Object.values(row)
   if (values.length !== 1)
     throw new OperatorFailure(
-      `shape: '${shape}' needs a single-column result — this row has ${values.length} ` +
-        'columns; name the one column you want in the SQL',
+      `shape: '${shape}' needs one column, but the row has ${values.length} — ` +
+        'select only the one you want',
       { code: ErrorCodes.typeCheck }
     )
   return values[0]

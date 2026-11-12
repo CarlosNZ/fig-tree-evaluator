@@ -231,7 +231,7 @@ const visitOperator = (state: CheckState, node: OperatorNode) => {
         state,
         'warning',
         ErrorCodes.deadBinding,
-        `'${node.name}' binds ${iterator.as === null ? '$element / $index' : `$${iterator.as}`} but its 'each' references neither`,
+        `'${node.name}' never reads ${iterator.as === null ? '$element or $index' : `$${iterator.as} or $${iterator.as}Index`} in its 'each'`,
         node.path,
         node.order,
         { operator: node.name }
@@ -390,7 +390,7 @@ const checkInstanceFallback = (
       state,
       'warning',
       ErrorCodes.fallbackMismatch,
-      `'${node.name}' falls back to its operatorDefaults fallback, which can never satisfy '${owner.label}.${name}': ${unfit.reason}`,
+      `The default fallback for '${node.name}' can never satisfy '${owner.label}.${name}': ${unfit.reason}`,
       node.path,
       node.order,
       { ...owner.extra, parameter: name }
@@ -695,7 +695,7 @@ const resolveVar = (state: CheckState, node: ReferenceNode) => {
     state,
     'error',
     ErrorCodes.unresolvedVar,
-    `'${node.raw}': no var '${name ?? ''}' is declared in scope`,
+    `'${node.raw}': no var '${name ?? ''}' in scope`,
     node.path,
     node.order
   )
@@ -715,7 +715,7 @@ const resolveParam = (state: CheckState, node: ReferenceNode) => {
       state,
       'error',
       ErrorCodes.unresolvedParam,
-      `'${node.raw}': $params is only available inside a fragment body`,
+      `'${node.raw}' is only available inside a fragment body`,
       node.path,
       node.order,
       { parameter }
@@ -756,7 +756,7 @@ const resolveBinding = (state: CheckState, node: ReferenceNode, namespace: 'elem
     state,
     'error',
     ErrorCodes.unresolvedBinding,
-    `'${node.raw}' resolves against no enclosing iterator here`,
+    `'${node.raw}' is only available inside an iterator`,
     node.path,
     node.order
   )
@@ -774,7 +774,7 @@ const resolveError = (state: CheckState, node: ReferenceNode) => {
     state,
     'error',
     ErrorCodes.unresolvedBinding,
-    `'${node.raw}' is only available inside the fallback of an operator node or fragment call`,
+    `'${node.raw}' is only available inside a fallback`,
     node.path,
     node.order
   )
@@ -800,7 +800,7 @@ const pushVars = (
           state,
           'warning',
           ErrorCodes.shadowedVar,
-          `'${name}' shadows a var of the same name from an enclosing scope`,
+          `'${name}' hides an outer var of the same name`,
           declaredAt,
           node.order
         )
@@ -836,7 +836,7 @@ const popVars = (state: CheckState, frame: VarsFrame | null) => {
         state,
         'warning',
         ErrorCodes.unreferencedVar,
-        `'${name}' is declared but never referenced in its scope`,
+        `'${name}' is declared but never used`,
         entry.declaredAt,
         entry.order
       )
@@ -856,9 +856,7 @@ const detectCycles = (state: CheckState, frame: VarsFrame) => {
       const ordered = members.sort((a, b) => declarationIndex.get(a)! - declarationIndex.get(b)!)
       const quoted = ordered.map((name) => `'${name}'`)
       const message =
-        quoted.length === 1
-          ? `${quoted[0]} depends on itself`
-          : `${listing(quoted)} form a vars cycle — a var may not depend on itself`
+        quoted.length === 1 ? `${quoted[0]} depends on itself` : `${listing(quoted)} form a cycle`
       const entry = frame.names.get(ordered[0])!
       emit(state, 'error', ErrorCodes.varCycle, message, entry.declaredAt, entry.order)
     }

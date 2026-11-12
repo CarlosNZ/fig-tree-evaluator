@@ -510,9 +510,6 @@ const runOnce = async (
   // The result boundary (`normalizeResult` in src/evaluate/operator.ts)
   if (result === undefined) return { value: null }
   if (Number.isNaN(result) && typeNamesNumber(definition.returns))
-    return own(
-      ErrorCodes.nonFiniteResult,
-      `${node.name} – produced a non-finite number (${String(result)})`
-    )
+    return own(ErrorCodes.nonFiniteResult, `${node.name} – returned NaN`)
   return { value: result }
 }

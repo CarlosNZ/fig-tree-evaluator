@@ -510,7 +510,7 @@ evaluate: async ({ value, branches, default: defaultBranch }) => {
   if (key !== null && key in branches) return branches[key].evaluate()
   if (defaultBranch) return defaultBranch.evaluate() // absent-key delivery: an omitted default is distinguishable from an explicit null
   throw new OperatorFailure(
-    `No branch matches ${key === null ? 'null' : `'${key}'`} and no default was supplied`
+    `No branch matches ${key === null ? 'null' : `'${key}'`}, and there is no default`
   )
 }
 ```

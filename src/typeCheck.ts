@@ -280,7 +280,7 @@ export const validateConstraintsShape = (declaration: unknown): TypeCheckResult 
     for (const [key, entry] of Object.entries(elementShape)) {
       if (!isPlainObject(entry)) return fail(`a declaration of '${key}'`, entry)
       if (entry.type !== undefined && !isExpectedType(entry.type))
-        return fail(`a vocabulary type for '${key}'`, entry.type)
+        return fail(`a valid type for '${key}'`, entry.type)
       if (entry.required !== undefined && typeof entry.required !== 'boolean')
         return fail(`a boolean 'required' for '${key}'`, entry.required)
       if (entry.constraints !== undefined) {

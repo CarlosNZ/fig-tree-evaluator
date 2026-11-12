@@ -169,8 +169,7 @@ describe('scope', () => {
       expect.objectContaining({
         code: 'unresolved-binding',
         path: ['fallback'],
-        message:
-          "'$err.message' is only available inside the fallback of an operator node or fragment call",
+        message: "'$err.message' is only available inside a fallback",
       }),
     ])
   })
@@ -853,7 +852,7 @@ describe('a fallback built only from literals and $error is static', () => {
         expect(() => defaulting(fallback)).toThrow(
           expect.objectContaining({
             code: 'invalid-options',
-            message: expect.stringMatching(/must be static/),
+            message: expect.stringMatching(/may hold only fixed values/),
           })
         )
     })

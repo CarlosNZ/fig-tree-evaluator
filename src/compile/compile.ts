@@ -623,7 +623,7 @@ const walkOperatorCanonical = (
         state,
         'error',
         ErrorCodes.malformedNode,
-        "'parameters' is reserved and unused on operator nodes",
+        "'parameters' is only for fragment calls",
         extendPath(path, key),
         order,
         { operator: node.name }
@@ -717,7 +717,7 @@ const compileNoCache = (
       state,
       'error',
       ErrorCodes.malformedNode,
-      "'noCache' takes only the literal true — it is settled before the subtree runs",
+      "'noCache' can only be true",
       extendPath(path, 'noCache'),
       order,
       node.kind === 'operator' ? { operator: node.name } : {}
@@ -1402,7 +1402,12 @@ const readAsBinding = (
   if (typeof value !== 'string' || recognizeReference(value).kind !== 'plain')
     return asError("'as' must be a literal name — a dynamic value cannot be statically resolved")
   const legality = checkNameLegality(value)
-  if (!legality.ok) return asError(`'${value}' is not a legal 'as' name — ${legality.reason}`)
+  if (!legality.ok)
+    return asError(
+      value === ''
+        ? "An 'as' name must be non-empty"
+        : `'${value}' is not a legal 'as' name — ${legality.reason}`
+    )
   // A binding is read as the token after a `$`, so it takes the namespaces'
   // shape: otherwise `as: '5'` would make every `'$5.00'` in its `each` a
   // reference
@@ -1669,7 +1674,9 @@ const walkFragmentCanonical = (
         state,
         'error',
         ErrorCodes.unknownNodeKey,
-        `'${key}' is not a key of a fragment call — arguments live only in 'parameters'`,
+        Object.hasOwn(state.registry.fragments.get(fragValue)?.parameters ?? {}, key)
+          ? `The '${key}' argument must go in 'parameters'`
+          : `'${key}' is not a key of a fragment call`,
         extendPath(path, key),
         order
       )
@@ -1695,7 +1702,7 @@ const walkFragmentShorthand = (
       state,
       'error',
       ErrorCodes.malformedNode,
-      `Fragments have no single-value or positional form — '$${name}' takes a named-arguments object`,
+      `'$${name}' takes an object of named arguments`,
       extendPath(path, `$${name}`),
       order
     )
@@ -1784,7 +1791,7 @@ const compileFragmentParameters = (
     state,
     'error',
     ErrorCodes.malformedNode,
-    "A fragment's 'parameters' must be a named-arguments object or a node computing one",
+    "A fragment call's 'parameters' must be a literal or computed object",
     path,
     order
   )
@@ -1826,7 +1833,9 @@ const compileVars = (
         state,
         'error',
         ErrorCodes.invalidName,
-        `'${name}' is not a legal var name — ${legality.reason}`,
+        name === ''
+          ? 'A var name must be non-empty'
+          : `'${name}' is not a legal var name — ${legality.reason}`,
         path,
         order
       )
@@ -1969,7 +1978,7 @@ const assembleContainer = (
         state,
         'warning',
         ErrorCodes.unreferencedVar,
-        'These vars are declared but never referenced in their scope',
+        'These vars are declared but never used',
         extendPath(path, 'vars'),
         order
       )

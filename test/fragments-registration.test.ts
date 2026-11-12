@@ -58,7 +58,7 @@ describe('the definition shape', () => {
   test('null is a removal, not a definition', () => {
     const fig = new FigTree({ fragments: { frag: null } as never })
     expect(fig.getFragments()).toEqual([])
-    expect(() => registry({ frag: null } as never)).toThrow(/must be a wrapper object/)
+    expect(() => registry({ frag: null } as never)).toThrow(/must be an object/)
   })
 
   test('a wrapper without an expression is refused', () => {
@@ -136,7 +136,7 @@ describe('registration names', () => {
   test('a fragment may not take an operator name', () => {
     const error = rejects({ plus: { expression: 1 } })
     expect(codes(error)).toEqual([ErrorCodes.duplicateOperator])
-    expect(error.message).toContain('one namespace')
+    expect(error.message).toContain('is already registered by')
   })
 
   test('a fragment may not take an operator alias', () => {
@@ -164,6 +164,7 @@ describe('parameter declarations', () => {
       ErrorCodes.invalidName,
       ['parameters', 'a.b'],
     ],
+    ['an empty parameter name', frag({ '': {} }), ErrorCodes.invalidName, ['parameters', '']],
     [
       'a declaration that is not an object',
       frag({ x: 5 }),
@@ -202,7 +203,7 @@ describe('parameter declarations', () => {
       'an unknown shape type',
       'object',
       { elementShape: { k: { type: 'strig' } } },
-      "expected a vocabulary type for 'k'",
+      "expected a valid type for 'k'",
     ],
     [
       'a bad shape required',
@@ -240,7 +241,7 @@ describe('parameter declarations', () => {
   test('required and default together is a contradiction', () => {
     const error = rejects(frag({ x: { type: 'string', required: true, default: 'a' } }))
     expect(codes(error)).toEqual([ErrorCodes.invalidDefinition])
-    expect(error.issues?.[0].message).toContain('could never apply')
+    expect(error.issues?.[0].message).toContain("so it can't have a default")
   })
 
   test('constraints are admitted, and checked against the default', () => {

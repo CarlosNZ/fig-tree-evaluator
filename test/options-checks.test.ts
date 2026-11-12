@@ -161,7 +161,7 @@ describe('trace and strictDataPaths take a boolean', () => {
     [
       'an instance option',
       'maxDepth',
-      "'maxDepth' is not a per-call option — a call may supply data, signal, timeout and trace; configure the rest at construction or via updateOptions()",
+      "'maxDepth' is not a per-call option — set it at construction or with updateOptions()",
       undefined,
     ],
   ])('%s is refused per call', async (_label, key, message, suggestion) => {

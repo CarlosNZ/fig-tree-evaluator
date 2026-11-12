@@ -39,17 +39,13 @@ export const checkOperatorEntry = (
   if (typeof entry === 'function') {
     addIssue(
       ErrorCodes.invalidOptions,
-      `${location} is a function — factories must be called: httpOperators(client)`,
+      `${location} is a function — call it first, as in httpOperators(client)`,
       path
     )
     return false
   }
   if (!isValidatedOperator(entry)) {
-    addIssue(
-      ErrorCodes.invalidOptions,
-      `${location} must be built with defineOperator() — a plain definition object is not accepted`,
-      path
-    )
+    addIssue(ErrorCodes.invalidOptions, `${location} must be built with defineOperator()`, path)
     return false
   }
   return true

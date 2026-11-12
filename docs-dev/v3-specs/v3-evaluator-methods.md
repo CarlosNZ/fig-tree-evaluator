@@ -429,7 +429,7 @@ fig.validate({
 //       suggestion: '$greaterThan',
 //       message: "'$graeterThan' is not a registered operator or fragment — did you mean '$greaterThan'?" },
 //     { severity: 'error', code: 'unresolved-var', path: ['else'],
-//       message: "'$vars.username': no var 'username' is declared in scope" },
+//       message: "'$vars.username': no var 'username' in scope" },
 //   ],
 // }
 ```

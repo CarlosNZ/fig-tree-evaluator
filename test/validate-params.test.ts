@@ -103,8 +103,8 @@ test('without the option, every $params read is the outside-a-body error', () =>
   for (const options of [undefined, {}, { params: undefined }] as (ValidateOptions | undefined)[]) {
     const result = fig.validate({ a: '$params.x', b: '$params' }, options)
     expect(errors(result).map((issue) => issue.message)).toEqual([
-      "'$params.x': $params is only available inside a fragment body",
-      "'$params': $params is only available inside a fragment body",
+      "'$params.x' is only available inside a fragment body",
+      "'$params' is only available inside a fragment body",
     ])
     expect(errors(result).map((issue) => issue.parameter)).toEqual(['x', undefined])
   }

@@ -140,7 +140,7 @@ test('a cache that is not true is refused at registration as well', () => {
       cache: false,
       evaluate: () => 1,
     })
-  ).toThrow(/literal true/)
+  ).toThrow(/can only be true/)
 })
 
 export const hostOff: FigTreeOptions = {

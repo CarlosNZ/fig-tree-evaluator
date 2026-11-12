@@ -7,10 +7,11 @@
 
 /**
  * What the conversions read from a registry: each operator's names and
- * positions, and each fragment's name. A `FigTree` satisfies it, and so does
- * an object serving `getOperators()` / `getFragments()` snapshots. It names
- * only these fields so that declaring it copies nothing else of `FigTree`'s
- * type graph into the subpath's declarations.
+ * positions, and each fragment's name and, optionally, its parameters, which
+ * let a misplaced argument be named as one. A `FigTree` satisfies it, and so
+ * does an object serving `getOperators()` / `getFragments()` snapshots. It
+ * names only these fields so that declaring it copies nothing else of
+ * `FigTree`'s type graph into the subpath's declarations.
  */
 export interface Registry {
   getOperators(): readonly {
@@ -19,7 +20,7 @@ export interface Registry {
     positionalParams?: readonly string[]
     restParam: string | null
   }[]
-  getFragments(): readonly { name: string }[]
+  getFragments(): readonly { name: string; parameters?: Record<string, unknown> }[]
 }
 
 /**

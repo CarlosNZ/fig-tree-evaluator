@@ -34,7 +34,7 @@ export const limitIssues = (artifact: CompileArtifact, options: EvaluationOption
     issues.push({
       severity: 'error',
       code: ErrorCodes.maxNodesExceeded,
-      message: `The expression holds ${artifact.nodeCount} evaluable nodes — maxNodes is ${options.maxNodes}`,
+      message: `The expression has ${artifact.nodeCount} nodes — maxNodes is ${options.maxNodes}`,
       path: [],
     })
   return issues
@@ -125,7 +125,7 @@ const sampleDataIssues = (reads: DataRead[], data: unknown): Issue[] => {
     issues.push({
       severity: 'warning',
       code: ErrorCodes.missingDataPath,
-      message: `'${renderDataReference(segments)}' is absent from the supplied sample data${readBy}`,
+      message: `'${renderDataReference(segments)}' is missing from the sample data${readBy}`,
       path: toNodePath(read.path),
     })
   }

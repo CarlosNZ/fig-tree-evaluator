@@ -194,10 +194,7 @@ export const callOptionIssue = (key: string, value: unknown): Issue | undefined 
     return test(value) ? undefined : error(`must be ${expects}`, [key])
   }
   if (Object.hasOwn(OPTION_RULES, key))
-    return error(
-      'is not a per-call option — a call may supply data, signal, timeout and trace; configure the rest at construction or via updateOptions()',
-      [key]
-    )
+    return error('is not a per-call option — set it at construction or with updateOptions()', [key])
   return unknownKeyIssue(key, Object.keys(CALL_OPTION_KEYS), [key])
 }
 

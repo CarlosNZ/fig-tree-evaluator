@@ -149,13 +149,13 @@ export const recognizeReference = (value: string, scope?: ReferenceScope): Refer
         kind: 'invalid',
         namespace,
         code: ErrorCodes.bareVars,
-        reason: "'$vars' must name a var — there is no whole-scope value",
+        reason: "'$vars' must name a var",
       }
     return { kind: 'reference', namespace, segments: [], drill: rest }
   }
 
   if (namespace === 'index')
-    return { kind: 'invalid', namespace, reason: "'$index' is bare-only — it cannot be drilled" }
+    return { kind: 'invalid', namespace, reason: "'$index' cannot be drilled into" }
 
   try {
     return { kind: 'reference', namespace, segments: parseDrill(rest), drill: rest }
@@ -175,7 +175,7 @@ const recognizeBinding = (
       return {
         kind: 'invalid',
         namespace,
-        reason: 'the index binding is bare-only — it cannot be drilled',
+        reason: 'an index cannot be drilled into',
       }
     return { kind: 'reference', namespace, segments: [], drill: rest, binding }
   }

@@ -71,7 +71,7 @@ export const match = declareOperator({
     if (key !== null && Object.hasOwn(branches, key)) return branches[key].evaluate()
     if (fallbackBranch !== undefined) return fallbackBranch.evaluate()
     throw new OperatorFailure(
-      `no branch matches ${key === null ? 'null' : `'${key}'`}, and no default was supplied`
+      `no branch matches ${key === null ? 'null' : `'${key}'`}, and there is no default`
     )
   },
 })

@@ -98,7 +98,7 @@ describe('buildRegistry — the brand is the entry ticket', () => {
     expect(hasIssue(error, { code: ErrorCodes.invalidOptions, pathTail: ['operators', 0] })).toBe(
       true
     )
-    expect(error.message).toMatch(/factories must be called/)
+    expect(error.message).toMatch(/call it first/)
   })
 
   it('reports every flattening problem in entry order, interleaved with collisions', () => {
@@ -114,12 +114,12 @@ describe('buildRegistry — the brand is the entry ticket', () => {
     expect(error.issues?.map(({ code, message, path }) => ({ code, message, path }))).toEqual([
       {
         code: ErrorCodes.invalidOptions,
-        message: 'operators[1][0] is a function — factories must be called: httpOperators(client)',
+        message: 'operators[1][0] is a function — call it first, as in httpOperators(client)',
         path: ['operators', 1, 0],
       },
       {
         code: ErrorCodes.duplicateOperator,
-        message: "'alpha' is already registered (by 'alpha') — one namespace, no silent precedence",
+        message: "'alpha' is already registered by 'alpha'",
         path: ['operators', 1, 1],
       },
       {
@@ -129,13 +129,12 @@ describe('buildRegistry — the brand is the entry ticket', () => {
       },
       {
         code: ErrorCodes.invalidOptions,
-        message:
-          'operators[2] must be built with defineOperator() — a plain definition object is not accepted',
+        message: 'operators[2] must be built with defineOperator()',
         path: ['operators', 2],
       },
       {
         code: ErrorCodes.invalidOptions,
-        message: 'operators[3] is a function — factories must be called: httpOperators(client)',
+        message: 'operators[3] is a function — call it first, as in httpOperators(client)',
         path: ['operators', 3],
       },
     ])

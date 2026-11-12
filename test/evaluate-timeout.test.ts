@@ -133,7 +133,7 @@ describe('timeout shielding', () => {
     const { fig } = setup([], { operatorDefaults: { sleep: { fallback } } })
     expect(await fig.evaluate({ $sleep: [300] }, { timeout: 30 })).toBe(fallback)
     expect(() => setup([], { operatorDefaults: { sleep: { fallback: { $USD: 0 } } } })).toThrow(
-      /must be static/
+      /may hold only fixed values/
     )
   })
 

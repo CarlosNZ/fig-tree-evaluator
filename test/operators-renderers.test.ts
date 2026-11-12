@@ -618,8 +618,7 @@ describe('buildString — the token findings are warnings, never errors', () => 
 // ── join ────────────────────────────────────────────────────────────
 
 describe('buildString — a statically-composite literal substitution is an error', () => {
-  const message =
-    'A composite element renders as a placeholder, never as text — drill in, or join it explicitly'
+  const message = 'An array or object renders as a placeholder, not text — drill in, or join it'
   const composite = (expression: unknown) => {
     const result = fig.validate(expression)
     expect(result.valid).toBe(false)

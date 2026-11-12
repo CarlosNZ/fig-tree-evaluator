@@ -316,7 +316,7 @@ describe('vars cycles, shadowing, unreferenced', () => {
     const cycles = issues.filter((issue) => issue.code === 'var-cycle')
     expect(cycles).toHaveLength(1)
     expect(cycles[0].path).toEqual(['vars', 'a'])
-    expect(cycles[0].message).toBe("'a' and 'b' form a vars cycle — a var may not depend on itself")
+    expect(cycles[0].message).toBe("'a' and 'b' form a cycle")
   })
 
   test('a self-cycle and a three-var cycle name their members', () => {
@@ -335,7 +335,7 @@ describe('vars cycles, shadowing, unreferenced', () => {
     expect(three.filter((issue) => issue.code === 'var-cycle')).toEqual([
       expect.objectContaining({
         path: ['vars', 'a'],
-        message: "'a', 'b' and 'c' form a vars cycle — a var may not depend on itself",
+        message: "'a', 'b' and 'c' form a cycle",
       }),
     ])
   })
@@ -685,6 +685,17 @@ describe('dead bindings', () => {
     )
     expect(warningCodes({ operator: 'map', input: [1], as: 'row', each: 1 })).toContain(
       'dead-binding'
+    )
+  })
+
+  test('the warning names both bindings, renamed or not', () => {
+    const message = (expression: object) =>
+      fig.validate(expression).issues.find((issue) => issue.code === 'dead-binding')?.message
+    expect(message({ operator: 'map', input: [1], each: 1 })).toBe(
+      "'map' never reads $element or $index in its 'each'"
+    )
+    expect(message({ operator: 'map', input: [1], as: 'row', each: 1 })).toBe(
+      "'map' never reads $row or $rowIndex in its 'each'"
     )
   })
 

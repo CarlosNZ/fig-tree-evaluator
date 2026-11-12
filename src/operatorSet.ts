@@ -92,7 +92,7 @@ export const operatorSet = (
     'evaluate' in options
   )
     refuse(
-      "The last argument has 'name' and 'evaluate' — if it is an operator, build it with defineOperator(); the options object comes last",
+      'The last argument looks like an operator — build it with defineOperator(), or pass the options last',
       [last]
     )
   if (!isPlainDataObject(options) || isValidatedOperator(options))
@@ -104,7 +104,7 @@ export const operatorSet = (
     if (!OPTION_KEYS.includes(key))
       addIssue(
         ErrorCodes.invalidOptions,
-        `Unknown option '${key}' — the options are only, except and replace`,
+        `'${key}' is not an option — use 'only', 'except' or 'replace'`,
         [key]
       )
 
@@ -145,12 +145,10 @@ export const operatorSet = (
     if (byName.has(name)) return name
     const canonical = aliasToName.get(name)
     if (canonical !== undefined) {
-      addIssue(
-        ErrorCodes.invalidOptions,
-        `Selectors take canonical names — use '${canonical}', not its alias '${name}'`,
-        path,
-        { operator: canonical, suggestion: canonical }
-      )
+      addIssue(ErrorCodes.invalidOptions, `'${name}' is an alias — use '${canonical}'`, path, {
+        operator: canonical,
+        suggestion: canonical,
+      })
       return undefined
     }
     const suggestion = nearestName(name, byName.keys())
@@ -315,7 +313,7 @@ export const operatorSet = (
         const suggestion = nearestName(name, byName.keys())
         addIssue(
           ErrorCodes.unknownOperator,
-          `'${name}' is not an operator in the input — to add a new operator, put it in the input`,
+          `'${name}' is not in the input set — only its operators can be replaced`,
           path,
           suggestion === undefined ? undefined : { suggestion }
         )

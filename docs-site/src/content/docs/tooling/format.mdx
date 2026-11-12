@@ -303,7 +303,7 @@ classifyObject({ operator: 'plus', values: [1, 2] }, recognizes)
 classifyObject({ $plus: [1, 2], fallback: 0 }, recognizes)
   // => { kind: 'shorthand', key: '$plus' }
 classifyObject({ $plus: [1], $multiply: [2] }, recognizes)
-  // => { kind: 'malformed', message: "One node, one invocation: …" }
+  // => { kind: 'malformed', message: "'$plus' and '$multiply' may not share a node" }
 classifyObject({ $plsu: [1, 2] }, recognizes)
   // => { kind: 'plain' }, since nothing is registered as 'plsu'
 ```
@@ -343,7 +343,7 @@ recognizeReference('$index.x')
 // => {
 //      kind: 'invalid',
 //      namespace: 'index',
-//      reason: "'$index' is bare-only — it cannot be drilled",
+//      reason: "'$index' cannot be drilled into",
 //    }
 ```
 

@@ -87,7 +87,7 @@ test('a finding carries its code, certainty, operator, parameter and message', a
     {
       path: [],
       code: ErrorCodes.nonFiniteResult,
-      message: 'divide – produced a non-finite number (Infinity)',
+      message: 'divide – division by 0',
       certainty: 'always',
       operator: 'divide',
       parameter: 'by',

@@ -281,23 +281,21 @@ const validateDefinition = (
   if (!legality.ok) {
     addIssue(
       ErrorCodes.invalidName,
-      `'${name}' is not a legal fragment name: ${legality.reason}`,
+      name === ''
+        ? 'A fragment name must be non-empty'
+        : `'${name}' is not a legal fragment name — ${legality.reason}`,
       at()
     )
     return undefined
   }
   if (isReservedRegistrationName(name)) {
-    addIssue(
-      ErrorCodes.reservedName,
-      `'${name}' is a reserved name and may not name a fragment`,
-      at()
-    )
+    addIssue(ErrorCodes.reservedName, `'${name}' can't be a fragment name`, at())
     return undefined
   }
   if (!isPlainObject(definition)) {
     addIssue(
       ErrorCodes.invalidDefinition,
-      `Fragment '${name}' must be a wrapper object: { expression, parameters?, listing?, metadata? }`,
+      `Fragment '${name}' must be an object: { expression, parameters?, listing?, metadata? }`,
       at()
     )
     return undefined
@@ -370,7 +368,9 @@ const validateDeclaration = (
   if (!legality.ok) {
     addIssue(
       ErrorCodes.invalidName,
-      `'${parameter}' is not a legal parameter name: ${legality.reason}`,
+      parameter === ''
+        ? 'A parameter name must be non-empty'
+        : `'${parameter}' is not a legal parameter name — ${legality.reason}`,
       path
     )
     return undefined
@@ -378,11 +378,7 @@ const validateDeclaration = (
   // Flat reservation: a reserved node key is reserved everywhere, even
   // where it could not collide
   if (RESERVED_NODE_KEYS.has(parameter)) {
-    addIssue(
-      ErrorCodes.reservedName,
-      `'${parameter}' is a reserved node key and may not name a parameter`,
-      path
-    )
+    addIssue(ErrorCodes.reservedName, `'${parameter}' can't be a parameter name`, path)
     return undefined
   }
   if (!isPlainObject(declared)) {
@@ -432,7 +428,7 @@ const validateDeclaration = (
   if (hasDefault && declared.required === true) {
     addIssue(
       ErrorCodes.invalidDefinition,
-      `'${parameter}' is declared required and also declares a default — the default could never apply`,
+      `'${parameter}' is required, so it can't have a default`,
       [...path, 'default']
     )
     return undefined
@@ -442,7 +438,7 @@ const validateDeclaration = (
     if (!fit.ok) {
       addIssue(
         ErrorCodes.typeCheck,
-        `The default for '${parameter}' does not satisfy its declared type: expected ${fit.expected}, got ${fit.actual}`,
+        `The default for '${parameter}' is the wrong type: expected ${fit.expected}, got ${fit.actual}`,
         [...path, 'default']
       )
       return undefined
@@ -505,7 +501,7 @@ const checkCycles = (compiled: Map<string, CompileArtifact>, addIssue: AddIssue)
     ([name, ...rest]) =>
       addIssue(
         ErrorCodes.fragmentCycle,
-        `Fragment '${name}' reaches itself: ${[name, ...rest, name].join(' → ')} — recursion is not supported`,
+        `Fragment '${name}' calls itself: ${[name, ...rest, name].join(' → ')}`,
         ['fragments', name]
       )
   )

@@ -152,7 +152,7 @@ describe('per-call options: four request-scoped keys, laid flat over the instanc
     )
     expect(error.code).toBe('invalid-options')
     expect(error.message).toMatch(/not a per-call option/)
-    expect(error.message).toMatch(/data, signal, timeout and trace/)
+    expect(error.message).toMatch(/set it at construction or with updateOptions/)
   })
 
   // An AbortSignal has no own enumerable properties, so merging it key by

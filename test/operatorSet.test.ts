@@ -226,7 +226,7 @@ const checks: {
     call: () => operatorSet(coreOperators, { except: ['regex', '+'] }),
     code: ErrorCodes.invalidOptions,
     path: ['except', 1],
-    message: "Selectors take canonical names — use 'plus', not its alias '+'",
+    message: "'+' is an alias — use 'plus'",
   },
   {
     id: 'a category with no operators in the input',
@@ -264,7 +264,7 @@ const checks: {
     call: () => operatorSet(coreOperators, { replace: op('uper', 'string') }),
     code: ErrorCodes.unknownOperator,
     path: ['replace'],
-    message: "'uper' is not an operator in the input — to add a new operator, put it in the input",
+    message: "'uper' is not in the input set — only its operators can be replaced",
   },
   {
     id: 'a replacement for an operator the selection removed',
@@ -307,7 +307,7 @@ const checks: {
     call: () => operatorSet(coreOperators, (() => ioOperators) as never, {}),
     code: ErrorCodes.invalidOptions,
     path: [1],
-    message: 'arguments[1] is a function — factories must be called',
+    message: 'arguments[1] is a function — call it first',
   },
   {
     id: 'an input argument that is a plain definition object',
@@ -385,14 +385,14 @@ const checks: {
       }),
     code: ErrorCodes.invalidOptions,
     path: [1],
-    message: "The last argument has 'name' and 'evaluate'",
+    message: 'The last argument looks like an operator',
   },
   {
     id: 'an unknown option key',
     call: () => operatorSet(coreOperators, { exclude: 'regex' } as never),
     code: ErrorCodes.invalidOptions,
     path: ['exclude'],
-    message: "Unknown option 'exclude' — the options are only, except and replace",
+    message: "'exclude' is not an option — use 'only', 'except' or 'replace'",
   },
   {
     id: 'a selector of the wrong shape',

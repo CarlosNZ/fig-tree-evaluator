@@ -187,13 +187,8 @@ export const divide = defineOperator({
   positionalParams: ['value', 'by'],
   returns: 'number',
   evaluate: ({ value, by }) => {
-    const result = value / by
-    // An infinity from finite numbers, such as a division by zero
-    if (Math.abs(result) === Infinity && Number.isFinite(value) && Number.isFinite(by))
-      throw new OperatorFailure(`produced a non-finite number (${result})`, {
-        code: ErrorCodes.nonFiniteResult,
-      })
-    return result
+    if (by === 0) throw new OperatorFailure('division by 0', { code: ErrorCodes.nonFiniteResult })
+    return value / by
   },
 })
 ```

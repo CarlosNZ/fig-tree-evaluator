@@ -107,7 +107,7 @@ describe('shape', () => {
         fig.evaluate({ $sql: { query: `SELECT * FROM people -- ${shape}`, shape } })
       )
       expect(error.code).toBe('type-check')
-      expect(error.message).toMatch(/single-column result/)
+      expect(error.message).toMatch(/needs one column/)
     }
   })
 

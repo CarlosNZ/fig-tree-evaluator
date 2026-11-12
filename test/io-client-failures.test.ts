@@ -374,7 +374,7 @@ describe('the operators’ own failures keep their codes', () => {
     const errors = [{ message: 'Cannot query field "a"' }]
     expect(await caught(answering({ errors }), OPERATORS[1].expression)).toMatchObject({
       code: 'graphql-errors',
-      message: 'graphQL – the GraphQL response carried 1 error: Cannot query field "a"',
+      message: 'graphQL – the response returned 1 error: Cannot query field "a"',
       errorData: { errors },
     })
   })

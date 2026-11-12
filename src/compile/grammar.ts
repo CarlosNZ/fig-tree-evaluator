@@ -75,9 +75,7 @@ export const classifyObject = (
   if (hasOperator) return OPERATOR
   if (hasFragment) return FRAGMENT
   if (shorthand.length >= 2)
-    return malformed(
-      `One node, one invocation: found ${shorthand.map((key) => `'${key}'`).join(' and ')}`
-    )
+    return malformed(`${shorthand.map((key) => `'${key}'`).join(' and ')} may not share a node`)
   if (shorthand.length === 1) return { kind: 'shorthand', key: shorthand[0] }
   return PLAIN
 }
