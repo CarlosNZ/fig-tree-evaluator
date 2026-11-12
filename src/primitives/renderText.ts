@@ -45,4 +45,4 @@ export const isComposite = (value: unknown): boolean => value !== null && typeof
  * authoring slip with no reading behind it.
  */
 export const COMPOSITE_RENDER_ERROR =
-  'a composite element renders as a placeholder, never as text — drill in, or join it explicitly'
+  'A composite element renders as a placeholder, never as text — drill in, or join it explicitly'

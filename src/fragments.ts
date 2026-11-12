@@ -237,7 +237,7 @@ export const registerFragments = (
     runStaticChecks(artifact, { fragmentParams: new Set(Object.keys(entry.parameters)) })
     for (const { issue } of artifact.issues)
       if (issue.severity === 'error')
-        addIssue(issue.code, `fragment '${name}': ${issue.message}`, [
+        addIssue(issue.code, `Fragment '${name}': ${issue.message}`, [
           'fragments',
           name,
           ...issue.path,
@@ -297,13 +297,13 @@ const validateDefinition = (
   if (!isPlainObject(definition)) {
     addIssue(
       ErrorCodes.invalidDefinition,
-      `fragment '${name}' must be a wrapper object: { expression, parameters?, listing?, metadata? }`,
+      `Fragment '${name}' must be a wrapper object: { expression, parameters?, listing?, metadata? }`,
       at()
     )
     return undefined
   }
   if (!('expression' in definition)) {
-    addIssue(ErrorCodes.invalidDefinition, `fragment '${name}' has no 'expression'`, at())
+    addIssue(ErrorCodes.invalidDefinition, `Fragment '${name}' has no 'expression'`, at())
     return undefined
   }
   for (const key of Object.keys(definition))
@@ -388,7 +388,7 @@ const validateDeclaration = (
   if (!isPlainObject(declared)) {
     addIssue(
       ErrorCodes.invalidDefinition,
-      `the declaration of '${parameter}' must be a plain object`,
+      `The declaration of '${parameter}' must be a plain object`,
       path
     )
     return undefined
@@ -442,7 +442,7 @@ const validateDeclaration = (
     if (!fit.ok) {
       addIssue(
         ErrorCodes.typeCheck,
-        `the default for '${parameter}' does not satisfy its declared type: expected ${fit.expected}, got ${fit.actual}`,
+        `The default for '${parameter}' does not satisfy its declared type: expected ${fit.expected}, got ${fit.actual}`,
         [...path, 'default']
       )
       return undefined
@@ -451,7 +451,7 @@ const validateDeclaration = (
     if (!constrained.ok) {
       addIssue(
         ErrorCodes.typeCheck,
-        `the default for '${parameter}' violates its declared constraints: expected ${constrained.expected}, got ${constrained.actual}`,
+        `The default for '${parameter}' violates its declared constraints: expected ${constrained.expected}, got ${constrained.actual}`,
         [...path, 'default']
       )
       return undefined
@@ -505,7 +505,7 @@ const checkCycles = (compiled: Map<string, CompileArtifact>, addIssue: AddIssue)
     ([name, ...rest]) =>
       addIssue(
         ErrorCodes.fragmentCycle,
-        `fragment '${name}' reaches itself: ${[name, ...rest, name].join(' → ')} — recursion is not supported`,
+        `Fragment '${name}' reaches itself: ${[name, ...rest, name].join(' → ')} — recursion is not supported`,
         ['fragments', name]
       )
   )

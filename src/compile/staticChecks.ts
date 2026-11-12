@@ -359,7 +359,7 @@ const checkSuppliedParam = (
         state,
         'warning',
         ErrorCodes.fallbackMismatch,
-        `this fallback can never satisfy ${at}: ${unfit.reason}`,
+        `This fallback can never satisfy ${at}: ${unfit.reason}`,
         fallback.path,
         fallback.order,
         extra
@@ -420,7 +420,7 @@ const findMismatch = (
       if (node.kind === 'fragmentCall' && node.entry === undefined) return
       const returns = staticType(node)
       if (typesIntersect(returns, declared.type)) return
-      const what = node.kind === 'operator' ? `'${node.name}'` : `fragment '${node.name}'`
+      const what = node.kind === 'operator' ? `'${node.name}'` : `Fragment '${node.name}'`
       return {
         code: ErrorCodes.returnsMismatch,
         reason: `${what} returns ${JSON.stringify(returns)}`,
@@ -560,7 +560,7 @@ const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
             state,
             'error',
             ErrorCodes.missingRequired,
-            `fragment '${node.name}' – requires '${name}'`,
+            `Fragment '${node.name}' – requires '${name}'`,
             node.path,
             node.order,
             { fragment: node.name, parameter: name }
@@ -578,7 +578,7 @@ const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
             state,
             'error',
             ErrorCodes.unknownNodeKey,
-            `fragment '${node.name}' declares no parameter '${name}'${didYouMean(suggestion)}`,
+            `Fragment '${node.name}' declares no parameter '${name}'${didYouMean(suggestion)}`,
             argument.path,
             argument.order,
             { parameter: name, suggestion }

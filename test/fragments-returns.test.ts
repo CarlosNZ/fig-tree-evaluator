@@ -77,7 +77,7 @@ describe('the feeding check at a call', () => {
         operator: 'round',
         parameter: 'value',
       })
-      expect(issue.message).toContain("fragment 'shout' returns")
+      expect(issue.message).toContain("Fragment 'shout' returns")
     }
   })
 

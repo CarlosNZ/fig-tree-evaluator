@@ -395,7 +395,7 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
     {
       "severity": "error",
       "code": "max-nodes",
-      "message": "the expression holds 22 evaluable nodes — maxNodes is 20",
+      "message": "The expression holds 22 evaluable nodes — maxNodes is 20",
       "path": []
     },
     {

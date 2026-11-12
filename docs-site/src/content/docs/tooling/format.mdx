@@ -303,7 +303,7 @@ classifyObject({ operator: 'plus', values: [1, 2] }, recognizes)
 classifyObject({ $plus: [1, 2], fallback: 0 }, recognizes)
   // => { kind: 'shorthand', key: '$plus' }
 classifyObject({ $plus: [1], $multiply: [2] }, recognizes)
-  // => { kind: 'malformed', message: "one node, one invocation: …" }
+  // => { kind: 'malformed', message: "One node, one invocation: …" }
 classifyObject({ $plsu: [1, 2] }, recognizes)
   // => { kind: 'plain' }, since nothing is registered as 'plsu'
 ```

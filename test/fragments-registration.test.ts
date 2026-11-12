@@ -188,6 +188,33 @@ describe('parameter declarations', () => {
     ])
   })
 
+  test.each([
+    ['not an object', 'array', 5, 'expected a constraints object, got number'],
+    [
+      'an unknown key',
+      'array',
+      { lengthh: 2 },
+      'expected one of length, homogeneous, elementShape',
+    ],
+    ['a bad homogeneous', 'array', { homogeneous: 'x' }, 'expected a non-empty array of basic'],
+    ['a bad shape entry', 'object', { elementShape: { k: 5 } }, "expected a declaration of 'k'"],
+    [
+      'an unknown shape type',
+      'object',
+      { elementShape: { k: { type: 'strig' } } },
+      "expected a vocabulary type for 'k'",
+    ],
+    [
+      'a bad shape required',
+      'object',
+      { elementShape: { k: { required: 'yes' } } },
+      "expected a boolean 'required' for 'k'",
+    ],
+  ])('malformed constraints (%s) say what was expected', (_label, type, constraints, expected) => {
+    const error = rejects(frag({ x: { type, constraints } }))
+    expect(error.issues?.[0].message).toContain(expected)
+  })
+
   test('an unknown declaration key is refused', () => {
     const error = rejects(frag({ x: { type: 'string', defualt: 'a' } }))
     expect(codes(error)).toEqual([ErrorCodes.invalidDefinition])
@@ -253,7 +280,7 @@ describe('body compilation', () => {
     const error = rejects({ frag: { expression: { operator: 'flibble' } } })
     expect(codes(error)).toEqual([ErrorCodes.unknownOperator])
     expect(error.issues?.[0].path).toEqual(['fragments', 'frag', 'expression'])
-    expect(error.issues?.[0].message).toContain("fragment 'frag'")
+    expect(error.issues?.[0].message).toContain("Fragment 'frag'")
   })
 
   test('a malformed node in a body fails registration', () => {
@@ -393,7 +420,7 @@ describe('batch semantics', () => {
     const { issues } = error as FigTreeError
     expect(issues?.map((issue) => issue.code)).toEqual([ErrorCodes.unrecognizedIdentifier])
     expect(issues?.[0].message).toMatch(
-      /^fragment 'outer': '\$inner' is not a registered operator or fragment/
+      /^Fragment 'outer': '\$inner' is not a registered operator or fragment/
     )
     expect(issues?.[0].path).toEqual(['fragments', 'outer', 'expression', '$inner'])
     // And the instance is as it was

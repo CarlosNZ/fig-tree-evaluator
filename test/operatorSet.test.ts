@@ -226,14 +226,14 @@ const checks: {
     call: () => operatorSet(coreOperators, { except: ['regex', '+'] }),
     code: ErrorCodes.invalidOptions,
     path: ['except', 1],
-    message: "selectors take canonical names — use 'plus', not its alias '+'",
+    message: "Selectors take canonical names — use 'plus', not its alias '+'",
   },
   {
     id: 'a category with no operators in the input',
     call: () => operatorSet(coreOperators, { only: { category: 'io' } }),
     code: ErrorCodes.invalidOptions,
     path: ['only'],
-    message: "no operator in the input has category 'io'",
+    message: "No operator in the input has category 'io'",
   },
   {
     id: "a category's except naming an operator outside that category",
@@ -285,7 +285,7 @@ const checks: {
     call: () => operatorSet(coreOperators, { replace: [myUpper, op('upper', 'string')] }),
     code: ErrorCodes.duplicateOperator,
     path: ['replace', 1],
-    message: "two replacements for 'upper'",
+    message: "Two replacements for 'upper'",
   },
   {
     id: 'two operators with one name in the input',
@@ -293,14 +293,14 @@ const checks: {
     code: ErrorCodes.duplicateOperator,
     path: [1],
     message:
-      "two operators named 'upper' in the input — to swap one for the other, pass it as 'replace'",
+      "Two operators named 'upper' in the input — to swap one for the other, pass it as 'replace'",
   },
   {
     id: 'the same definition twice in the input',
     call: () => operatorSet(coreOperators, coreOperators, {}),
     code: ErrorCodes.duplicateOperator,
     path: [1, 0],
-    message: "two operators named 'and' in the input",
+    message: "Two operators named 'and' in the input",
   },
   {
     id: 'an input argument that is a function',
@@ -356,14 +356,14 @@ const checks: {
     call: () => (operatorSet as (...args: unknown[]) => unknown)(coreOperators),
     code: ErrorCodes.invalidOptions,
     path: [0],
-    message: 'the last argument must be the options object',
+    message: 'The last argument must be the options object',
   },
   {
     id: 'a last argument that is a definition (the options missing)',
     call: () => (operatorSet as (...args: unknown[]) => unknown)(coreOperators, myUpper),
     code: ErrorCodes.invalidOptions,
     path: [1],
-    message: 'the last argument must be the options object',
+    message: 'The last argument must be the options object',
   },
   ...[
     { kind: 'a Date', value: new Date() },
@@ -374,7 +374,7 @@ const checks: {
     call: () => (operatorSet as (...args: unknown[]) => unknown)(coreOperators, value),
     code: ErrorCodes.invalidOptions,
     path: [1],
-    message: 'the last argument must be the options object',
+    message: 'The last argument must be the options object',
   })),
   {
     id: 'a last argument that looks like an unbuilt definition',
@@ -385,35 +385,35 @@ const checks: {
       }),
     code: ErrorCodes.invalidOptions,
     path: [1],
-    message: "the last argument has 'name' and 'evaluate'",
+    message: "The last argument has 'name' and 'evaluate'",
   },
   {
     id: 'an unknown option key',
     call: () => operatorSet(coreOperators, { exclude: 'regex' } as never),
     code: ErrorCodes.invalidOptions,
     path: ['exclude'],
-    message: "unknown option 'exclude' — the options are only, except and replace",
+    message: "Unknown option 'exclude' — the options are only, except and replace",
   },
   {
     id: 'a selector of the wrong shape',
     call: () => operatorSet(coreOperators, { except: ['regex', 42 as never] }),
     code: ErrorCodes.invalidOptions,
     path: ['except', 1],
-    message: 'a selector is an operator name or { category, except? }',
+    message: 'A selector is an operator name or { category, except? }',
   },
   {
     id: 'a category selector with an unknown key',
     call: () => operatorSet(coreOperators, { except: { category: 'math', drop: 'plus' } as never }),
     code: ErrorCodes.invalidOptions,
     path: ['except'],
-    message: 'a selector is an operator name or { category, except? }',
+    message: 'A selector is an operator name or { category, except? }',
   },
   {
     id: 'a result with no operators',
     call: () => operatorSet(coreOperators, { only: [] }),
     code: ErrorCodes.invalidOptions,
     path: [],
-    message: 'the selection leaves no operators',
+    message: 'The selection leaves no operators',
   },
 ]
 
@@ -444,7 +444,7 @@ describe('operatorSet — checks', () => {
       {
         code: ErrorCodes.invalidOptions,
         path: ['except'],
-        message: "no operator in category 'math' is among the operators 'only' kept",
+        message: "No operator in category 'math' is among the operators 'only' kept",
       },
     ])
   })
@@ -502,7 +502,7 @@ describe('operatorSet — checks', () => {
       {
         code: ErrorCodes.invalidOptions,
         path: [2],
-        message: 'the last argument must be the options object',
+        message: 'The last argument must be the options object',
       },
     ])
   })

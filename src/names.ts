@@ -51,8 +51,7 @@ export const isReservedRegistrationName = (name: string): boolean =>
 export type NameLegalityResult = { ok: true } | { ok: false; reason: string }
 
 /** The one legality rule. Reservation is checked separately. */
-export const checkNameLegality = (name: unknown): NameLegalityResult => {
-  if (typeof name !== 'string') return { ok: false, reason: 'a name must be a string' }
+export const checkNameLegality = (name: string): NameLegalityResult => {
   if (name === '') return { ok: false, reason: 'a name must be non-empty' }
   if (name.startsWith('$')) return { ok: false, reason: "a name may not start with '$'" }
   if (/[.[\]]/.test(name)) return { ok: false, reason: "a name may not contain '.', '[' or ']'" }

@@ -540,7 +540,7 @@ describe('buildString — the token findings are warnings, never errors', () => 
 
   test('a skipped number within range leaves only the unused substitution', () => {
     expect(findings({ $buildString: ['%1 %3', 'a', 'b', 'c'] })).toEqual([
-      unused('substitution 2 is never named by the template'),
+      unused('Substitution 2 is never named by the template'),
     ])
   })
 
@@ -617,7 +617,7 @@ describe('buildString — the token findings are warnings, never errors', () => 
 
 describe('buildString — a statically-composite literal substitution is an error', () => {
   const message =
-    'a composite element renders as a placeholder, never as text — drill in, or join it explicitly'
+    'A composite element renders as a placeholder, never as text — drill in, or join it explicitly'
   const composite = (expression: unknown) => {
     const result = fig.validate(expression)
     expect(result.valid).toBe(false)

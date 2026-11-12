@@ -153,7 +153,7 @@ const readCanonicalOperator = (
 ): OperatorRead | LiteralRead => {
   const spelling = raw.operator
   if (typeof spelling !== 'string')
-    return fail(ErrorCodes.malformedNode, "the 'operator' value must be a literal string")
+    return fail(ErrorCodes.malformedNode, "The 'operator' value must be a literal string")
   if (spelling === 'literal') return readCanonicalLiteral(raw, fail)
   const operator = lookup.operators.get(spelling)
   if (operator === undefined)
@@ -206,7 +206,7 @@ const readCanonicalFragment = (
 ): FragmentRead => {
   const name = raw.fragment
   if (typeof name !== 'string')
-    return fail(ErrorCodes.malformedNode, "the 'fragment' value must be a literal string")
+    return fail(ErrorCodes.malformedNode, "The 'fragment' value must be a literal string")
   if (!lookup.fragments.has(name))
     return fail(ErrorCodes.unknownFragment, `'${name}' names no registered fragment`)
 
@@ -240,7 +240,7 @@ const checkFragmentParameters = (value: unknown, lookup: Lookup, fail: Fail) => 
   if (typeof value === 'string' && recognizeReference(value).kind === 'reference') return
   fail(
     ErrorCodes.malformedNode,
-    "a fragment's 'parameters' must be a named-arguments object or a node computing one"
+    "A fragment's 'parameters' must be a named-arguments object or a node computing one"
   )
 }
 
@@ -279,7 +279,7 @@ const readShorthand = (
     if (!isPlainDataObject(payload))
       return fail(
         ErrorCodes.malformedNode,
-        `fragments have no single-value or positional form — '${shorthandKey}' takes a named-arguments object`
+        `Fragments have no single-value or positional form — '${shorthandKey}' takes a named-arguments object`
       )
     return { kind: 'fragment', name, slots, parameters: payload, fromPayload: true }
   }

@@ -186,7 +186,7 @@ export const hooked = (
 const failed = (node: OperatorNode, what: string, cause?: unknown): FigTreeError =>
   new FigTreeError({
     code: ErrorCodes.invalidDefinition,
-    message: `the analysis of '${node.name}' ${what}`,
+    message: `The analysis of '${node.name}' ${what}`,
     path: toNodePath(node.path),
     operator: node.name,
     ...(cause !== undefined ? { cause } : {}),

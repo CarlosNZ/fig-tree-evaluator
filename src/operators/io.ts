@@ -252,7 +252,7 @@ const bodyFindings = (method: unknown, body: unknown) =>
         {
           severity: 'error' as const,
           parameter: 'body',
-          message: "a GET carries no body — add method: 'post', or drop the body",
+          message: "A GET carries no body — add method: 'post', or drop the body",
         },
       ]
     : []

@@ -402,7 +402,7 @@ const walk = (state: WalkState, raw: unknown, path: LinkedPath, depth: number): 
       state,
       'error',
       ErrorCodes.depthCeiling,
-      `the expression nests deeper than the engine's ceiling of ${DEPTH_CEILING} levels — descent stopped here`,
+      `The expression nests deeper than the engine's ceiling of ${DEPTH_CEILING} levels — descent stopped here`,
       path,
       order
     )
@@ -646,7 +646,7 @@ const nonLiteralName = (
     state,
     'error',
     ErrorCodes.malformedNode,
-    `the '${key}' value must be a literal string`,
+    `The '${key}' value must be a literal string`,
     path,
     order
   )
@@ -1085,14 +1085,14 @@ const reportTemplateFace = (
     warn(ErrorCodes.unboundToken, `'${raw}' binds to nothing and renders as its own text${detail}`)
   const unused = (spare: string[]) => {
     for (const label of spare)
-      warn(ErrorCodes.unusedSubstitution, `substitution ${label} is never named by the template`)
+      warn(ErrorCodes.unusedSubstitution, `Substitution ${label} is never named by the template`)
   }
 
   if (face.mode === 'array' || face.mode === 'dynamic') {
     if (tokens.some((token) => token.kind === 'named' && token.body.startsWith('$')))
       warn(
         ErrorCodes.inertReferenceToken,
-        `a reference token needs the named face — beside ${
+        `A reference token needs the named face — beside ${
           face.mode === 'array' ? 'positional substitutions' : 'a dynamically supplied map'
         } it is not recognized and renders as its own text`
       )
@@ -1688,7 +1688,7 @@ const walkFragmentShorthand = (
       state,
       'error',
       ErrorCodes.malformedNode,
-      `fragments have no single-value or positional form — '$${name}' takes a named-arguments object`,
+      `Fragments have no single-value or positional form — '$${name}' takes a named-arguments object`,
       extendPath(path, `$${name}`),
       order
     )
@@ -1777,7 +1777,7 @@ const compileFragmentParameters = (
     state,
     'error',
     ErrorCodes.malformedNode,
-    "a fragment's 'parameters' must be a named-arguments object or a node computing one",
+    "A fragment's 'parameters' must be a named-arguments object or a node computing one",
     path,
     order
   )
@@ -1802,7 +1802,7 @@ const compileVars = (
       state,
       'error',
       ErrorCodes.invalidVars,
-      "a 'vars' block must be an object of name → expression entries",
+      "A 'vars' block must be an object of name → expression entries",
       varsPath,
       order
     )
@@ -1962,7 +1962,7 @@ const assembleContainer = (
         state,
         'warning',
         ErrorCodes.unreferencedVar,
-        'this vars block declares names nothing in its scope references',
+        'This vars block declares names nothing in its scope references',
         extendPath(path, 'vars'),
         order
       )

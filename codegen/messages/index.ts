@@ -2,7 +2,8 @@
  * Every message the library writes, with what the tests make of it.
  *
  *   pnpm messages           run the suite, write out/messages.md
- *   pnpm messages --check   the same, then fail on a message nothing produced
+ *   pnpm messages --check   the same, then fail on a message nothing produced,
+ *                           or one that opens what a reader sees in lowercase
  *
  * The v3 suite runs under jest.config.mjs here, which wraps each message
  * in src/ (find.mjs) to record the text it produces. The page lists every
@@ -12,6 +13,11 @@
  * longer text that holds it, a message or an assembly. A message nothing
  * produced is listed first, unless unreached.ts accepts it with a reason.
  * The page is rewritten each run, and not committed.
+ *
+ * A message that opens what a reader sees starts with a capital, as the
+ * errors of JavaScript runtimes do; a part placed after a prefix, such as
+ * an operator's failure after its name, starts lowercase. Code and quoted
+ * names open as they are written.
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -181,6 +187,54 @@ const holdersOf = (strings: Message[], produced: Map<string, Produced[]>) => {
   }
 }
 
+/**
+ * Starts with a lowercase word that is not code: `declareAnalysis()`,
+ * `inspect()` and `v2` are names, so stay as they are
+ */
+const LOWERCASE_OPENING = /^[a-z]+\b(?!\()/
+
+/**
+ * The messages that open what a reader sees, yet start lowercase. A text
+ * opens what it ends up in when the longest text holding it, from the same
+ * test if any, starts with it or has it after a line break; one nothing
+ * holds stands alone. A message seen after a prefix anywhere, as an
+ * operator's failure is in `match – ${message}`, is a part, and may stay
+ * lowercase: its texts that open nothing are ones the code built and then
+ * dropped, such as a failure the coverage walk catches.
+ */
+const lowercaseOpenings = (
+  messages: Message[],
+  strings: Message[],
+  produced: Map<string, Produced[]>
+): Message[] => {
+  const all: Holder[] = []
+  for (const by of strings)
+    for (const each of produced.get(by.id) ?? []) all.push({ text: each.text, by, produced: each })
+  const outermost = (part: Produced, of: Message): string => {
+    let same: string | undefined
+    let any: string | undefined
+    for (const { text, by, produced: holder } of all) {
+      if (by.id === of.id || text.length <= part.text.length || !text.includes(part.text)) continue
+      if (holder.test === part.test && holder.testPath === part.testPath)
+        same = same === undefined || text.length > same.length ? text : same
+      any = any === undefined || text.length > any.length ? text : any
+    }
+    return same ?? any ?? part.text
+  }
+  const opens = (part: Produced, of: Message) => {
+    const whole = outermost(part, of)
+    return whole.startsWith(part.text) || whole.includes(`\n${part.text}`)
+  }
+  return messages.filter((message) => {
+    const texts = produced.get(message.id) ?? []
+    return (
+      LOWERCASE_OPENING.test(message.template) &&
+      texts.length > 0 &&
+      texts.every((part) => opens(part, message))
+    )
+  })
+}
+
 // ── The page ──────────────────────────────────────────────────────────
 
 const entry = (
@@ -298,6 +352,7 @@ const main = () => {
   const strays = [...produced.keys()].filter((id) => !ids.has(id))
 
   const { page, missing } = renderPage(messages, assemblies, produced, passed)
+  const lowercase = lowercaseOpenings(messages, strings, produced)
   mkdirSync(OUT, { recursive: true })
   writeFileSync(PAGE, page)
 
@@ -312,9 +367,14 @@ const main = () => {
   for (const accepted of stale)
     out(`  stale in unreached.ts: ${accepted.file}  ${accepted.message}`)
   for (const id of strays) out(`  recorded for an unknown message: ${id}`)
+  if (lowercase.length > 0) out(`${lowercase.length} open what a reader sees, but start lowercase:`)
+  for (const message of lowercase) out(`  ${message.file}:${message.line}  ${message.template}`)
   out(`Wrote ${PAGE.slice(ROOT.length + 1)}`)
 
-  if (check && (!passed || missing.length > 0 || stale.length > 0 || strays.length > 0))
+  if (
+    check &&
+    (!passed || missing.length > 0 || stale.length > 0 || strays.length > 0 || lowercase.length > 0)
+  )
     process.exitCode = 1
 }
 

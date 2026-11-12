@@ -92,7 +92,7 @@ export class Walk {
     if (this.depth > DEPTH_CEILING)
       this.fail(
         ErrorCodes.depthCeiling,
-        `the expression nests deeper than the engine's ceiling of ${DEPTH_CEILING} levels`
+        `The expression nests deeper than the engine's ceiling of ${DEPTH_CEILING} levels`
       )
     if (typeof value === 'string') return this.writer.string(value)
     if (Array.isArray(value)) return value.map((element, i) => this.child(element, i))

@@ -51,7 +51,7 @@ export const emptyAggregateError = (literalParams: Record<string, unknown>): Val
         {
           severity: 'error',
           parameter: 'values',
-          message: 'an empty values array has no result — supply at least one value',
+          message: 'An empty values array has no result — supply at least one value',
         },
       ]
     : []
@@ -66,7 +66,7 @@ const emptyArrayWarning =
           {
             severity: 'warning',
             parameter,
-            message: `an empty ${parameter} array is a dead expression — the result is always the identity`,
+            message: `An empty ${parameter} array is a dead expression — the result is always the identity`,
           },
         ]
       : []
@@ -88,7 +88,7 @@ export const fewerThanTwoWarning = (literalParams: Record<string, unknown>): Val
         {
           severity: 'warning',
           parameter: 'values',
-          message: 'fewer than two values is a dead comparison — the result never varies',
+          message: 'Fewer than two values is a dead comparison — the result never varies',
         },
       ]
     : []

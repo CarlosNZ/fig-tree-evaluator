@@ -114,13 +114,13 @@ const FROM_ANY: [string, unknown, string][] = [
   // cut through every fallback
   [
     'a FigTreeError coded timeout',
-    new FigTreeError({ code: 'timeout', message: 'evaluation exceeded its timeout', path: [] }),
-    'evaluation exceeded its timeout',
+    new FigTreeError({ code: 'timeout', message: 'Evaluation exceeded its timeout', path: [] }),
+    'Evaluation exceeded its timeout',
   ],
   [
     'a FigTreeError coded aborted',
-    new FigTreeError({ code: 'aborted', message: 'evaluation was aborted', path: [] }),
-    'evaluation was aborted',
+    new FigTreeError({ code: 'aborted', message: 'Evaluation was aborted', path: [] }),
+    'Evaluation was aborted',
   ],
 ]
 

@@ -104,7 +104,7 @@ export function defineOperator(
 
   // ── Structural gate — without these, nothing else can be checked ──────
   if (!isPlainObject(definition)) {
-    addIssue(ErrorCodes.invalidDefinition, 'a definition must be a plain object', [])
+    addIssue(ErrorCodes.invalidDefinition, 'A definition must be a plain object', [])
     throw issuesError(ErrorCodes.invalidDefinition, issues)
   }
   const def = definition as unknown as OperatorDefinition & Record<string, unknown>
@@ -170,7 +170,7 @@ export function defineOperator(
     if (value === EvaluationData) {
       addIssue(
         ErrorCodes.invalidDefinition,
-        "the EvaluationData sentinel is legal only as a parameter 'default'",
+        "The EvaluationData sentinel is legal only as a parameter 'default'",
         path,
         parameter
       )
@@ -219,7 +219,7 @@ export function defineOperator(
     if (!isPlainObject(declaration)) {
       addIssue(
         ErrorCodes.invalidDefinition,
-        `the declaration of '${paramName}' must be a plain object`,
+        `The declaration of '${paramName}' must be a plain object`,
         paramPath,
         paramName
       )
@@ -280,7 +280,7 @@ export function defineOperator(
     if (hasDefault && d.required === true)
       addIssue(
         ErrorCodes.invalidDefinition,
-        `a 'default' contradicts 'required: true' — a default implies the parameter is optional`,
+        `A 'default' contradicts 'required: true' — a default implies the parameter is optional`,
         at('default'),
         paramName
       )
@@ -432,17 +432,17 @@ export function defineOperator(
       if (isRest && i !== entries.length - 1)
         addIssue(
           ErrorCodes.invalidDefinition,
-          `the rest entry '${entry}' must be the last positional entry`,
+          `The rest entry '${entry}' must be the last positional entry`,
           ['positionalParams', i]
         )
       if (!(entryName in declarations))
         addIssue(
           ErrorCodes.invalidDefinition,
-          `positional entry '${entry}' names no declared parameter`,
+          `Positional entry '${entry}' names no declared parameter`,
           ['positionalParams', i]
         )
       if (seen.has(entryName))
-        addIssue(ErrorCodes.invalidDefinition, `duplicate positional entry '${entry}'`, [
+        addIssue(ErrorCodes.invalidDefinition, `Duplicate positional entry '${entry}'`, [
           'positionalParams',
           i,
         ])
@@ -476,7 +476,7 @@ export function defineOperator(
           if (targetType !== undefined && !typeAdmitsArray(targetType))
             addIssue(
               ErrorCodes.invalidDefinition,
-              `the 'over' target '${target}' must admit an array`,
+              `The 'over' target '${target}' must admit an array`,
               [...paramPath, 'over'],
               paramName
             )
@@ -505,7 +505,7 @@ export function defineOperator(
       if (d[field] !== undefined && d[field] !== false)
         addIssue(
           field === 'truthiness' ? ErrorCodes.invalidDefinition : ErrorCodes.invalidNullPolicy,
-          `a 'replacesNullAt' parameter takes no '${field}' — its value never reaches the operator`,
+          `A 'replacesNullAt' parameter takes no '${field}' — its value never reaches the operator`,
           [...paramPath, field],
           paramName
         )
@@ -513,7 +513,7 @@ export function defineOperator(
     if (type !== undefined && typeNamesNull(type))
       addIssue(
         ErrorCodes.invalidDefinition,
-        `a 'replacesNullAt' parameter's type may not include 'null' — a null there means no replacement`,
+        `A 'replacesNullAt' parameter's type may not include 'null' — a null there means no replacement`,
         [...paramPath, 'type'],
         paramName
       )
@@ -523,7 +523,7 @@ export function defineOperator(
     if (d.evaluationMode !== 'lazy')
       addIssue(
         ErrorCodes.invalidDefinition,
-        `a 'replacesNullAt' parameter must declare evaluationMode: 'lazy'`,
+        `A 'replacesNullAt' parameter must declare evaluationMode: 'lazy'`,
         path,
         paramName
       )
@@ -531,14 +531,14 @@ export function defineOperator(
     if (holderRequired)
       addIssue(
         ErrorCodes.invalidDefinition,
-        `a 'replacesNullAt' parameter must be optional`,
+        `A 'replacesNullAt' parameter must be optional`,
         path,
         paramName
       )
     if ('default' in d)
       addIssue(
         ErrorCodes.invalidDefinition,
-        `a 'replacesNullAt' parameter may not carry a 'default' — it is presence-sensitive by construction`,
+        `A 'replacesNullAt' parameter may not carry a 'default' — it is presence-sensitive by construction`,
         path,
         paramName
       )
@@ -597,7 +597,7 @@ export function defineOperator(
         ['timeoutParam']
       )
     else if (effectiveTypes[def.timeoutParam] !== 'integer')
-      addIssue(ErrorCodes.invalidDefinition, `the 'timeoutParam' target must be 'integer'-typed`, [
+      addIssue(ErrorCodes.invalidDefinition, `The 'timeoutParam' target must be 'integer'-typed`, [
         'timeoutParam',
       ])
   }
@@ -630,7 +630,7 @@ const compileNullPolicies = (
     if (literalUnionParams.length !== 1) {
       report(
         ErrorCodes.invalidNullPolicy,
-        `a conditional 'nullPolicy' requires exactly one literal-union parameter in the definition — found ${literalUnionParams.length}`,
+        `A conditional 'nullPolicy' requires exactly one literal-union parameter in the definition — found ${literalUnionParams.length}`,
         path,
         paramName
       )
@@ -648,7 +648,7 @@ const compileNullPolicies = (
       } catch (error) {
         report(
           ErrorCodes.invalidNullPolicy,
-          `the conditional 'nullPolicy' threw during compilation for member ${JSON.stringify(member)}: ${String(error)}`,
+          `The conditional 'nullPolicy' threw during compilation for member ${JSON.stringify(member)}: ${String(error)}`,
           path,
           paramName
         )
@@ -658,7 +658,7 @@ const compileNullPolicies = (
       if (typeof policy !== 'string' || !NULL_POLICY_VALUES.has(policy)) {
         report(
           ErrorCodes.invalidNullPolicy,
-          `the conditional 'nullPolicy' must return 'propagate' or 'accept' for every member — got ${JSON.stringify(policy)} for ${JSON.stringify(member)}`,
+          `The conditional 'nullPolicy' must return 'propagate' or 'accept' for every member — got ${JSON.stringify(policy)} for ${JSON.stringify(member)}`,
           path,
           paramName
         )

@@ -190,7 +190,7 @@ const validateOperatorDefaults = (
     if (!isPlainObject(defaults)) {
       addIssue(
         ErrorCodes.invalidOptions,
-        `the defaults for '${operatorName}' must be a plain object`,
+        `The defaults for '${operatorName}' must be a plain object`,
         path,
         operatorName
       )
@@ -212,7 +212,7 @@ const validateOperatorDefaults = (
           if (fallback === undefined) {
             addIssue(
               ErrorCodes.invalidOptions,
-              `the default fallback for '${operatorName}' must be static, built only from literals and $error reads — it is never evaluated`,
+              `The default fallback for '${operatorName}' must be static, built only from literals and $error reads — it is never evaluated`,
               keyPath,
               operatorName
             )
@@ -223,7 +223,7 @@ const validateOperatorDefaults = (
           if (value !== true) {
             addIssue(
               ErrorCodes.invalidOptions,
-              `the 'noCache' modifier takes only the literal true`,
+              `The 'noCache' modifier takes only the literal true`,
               keyPath,
               operatorName
             )
@@ -268,7 +268,7 @@ const validateOperatorDefaults = (
       if (!fit.ok) {
         addIssue(
           ErrorCodes.typeCheck,
-          `the default for '${operatorName}.${key}' does not satisfy its declared type: expected ${fit.expected}, got ${fit.actual}`,
+          `The default for '${operatorName}.${key}' does not satisfy its declared type: expected ${fit.expected}, got ${fit.actual}`,
           keyPath,
           operatorName
         )
@@ -279,7 +279,7 @@ const validateOperatorDefaults = (
       if (!constrained.ok) {
         addIssue(
           ErrorCodes.typeCheck,
-          `the default for '${operatorName}.${key}' violates its declared constraints: expected ${constrained.expected}, got ${constrained.actual}`,
+          `The default for '${operatorName}.${key}' violates its declared constraints: expected ${constrained.expected}, got ${constrained.actual}`,
           keyPath,
           operatorName
         )

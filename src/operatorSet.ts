@@ -92,11 +92,11 @@ export const operatorSet = (
     'evaluate' in options
   )
     refuse(
-      "the last argument has 'name' and 'evaluate' — if it is an operator, build it with defineOperator(); the options object comes last",
+      "The last argument has 'name' and 'evaluate' — if it is an operator, build it with defineOperator(); the options object comes last",
       [last]
     )
   if (!isPlainDataObject(options) || isValidatedOperator(options))
-    refuse('the last argument must be the options object', [last])
+    refuse('The last argument must be the options object', [last])
   if (args.length === 1) refuse(noInput, [])
   const { only, except, replace } = options as Record<string, unknown>
 
@@ -104,7 +104,7 @@ export const operatorSet = (
     if (!OPTION_KEYS.includes(key))
       addIssue(
         ErrorCodes.invalidOptions,
-        `unknown option '${key}' — the options are only, except and replace`,
+        `Unknown option '${key}' — the options are only, except and replace`,
         [key]
       )
 
@@ -122,7 +122,7 @@ export const operatorSet = (
       if (byName.has(name)) {
         addIssue(
           ErrorCodes.duplicateOperator,
-          `two operators named '${name}' in the input — to swap one for the other, pass it as 'replace'`,
+          `Two operators named '${name}' in the input — to swap one for the other, pass it as 'replace'`,
           path,
           { operator: name }
         )
@@ -147,7 +147,7 @@ export const operatorSet = (
     if (canonical !== undefined) {
       addIssue(
         ErrorCodes.invalidOptions,
-        `selectors take canonical names — use '${canonical}', not its alias '${name}'`,
+        `Selectors take canonical names — use '${canonical}', not its alias '${name}'`,
         path,
         { operator: canonical, suggestion: canonical }
       )
@@ -166,7 +166,7 @@ export const operatorSet = (
   const badShape = (path: Path) =>
     addIssue(
       ErrorCodes.invalidOptions,
-      'a selector is an operator name or { category, except? }',
+      'A selector is an operator name or { category, except? }',
       path
     )
 
@@ -189,7 +189,7 @@ export const operatorSet = (
     if (members === undefined) {
       addIssue(
         ErrorCodes.invalidOptions,
-        `no operator in the input has category '${category}'`,
+        `No operator in the input has category '${category}'`,
         path
       )
       return undefined
@@ -284,7 +284,7 @@ export const operatorSet = (
         ErrorCodes.invalidOptions,
         typeof selector === 'string'
           ? `'${selector}' is not among the operators 'only' kept`
-          : `no operator in category '${(selector as { category: string }).category}' is among the operators 'only' kept`,
+          : `No operator in category '${(selector as { category: string }).category}' is among the operators 'only' kept`,
         path,
         typeof selector === 'string' ? { operator: selector } : undefined
       )
@@ -305,7 +305,7 @@ export const operatorSet = (
       if (!checkOperatorEntry(value, path, location, addIssue)) continue
       const { name } = value
       if (replacements.has(name)) {
-        addIssue(ErrorCodes.duplicateOperator, `two replacements for '${name}'`, path, {
+        addIssue(ErrorCodes.duplicateOperator, `Two replacements for '${name}'`, path, {
           operator: name,
         })
         continue
@@ -335,7 +335,7 @@ export const operatorSet = (
     .filter(({ name }) => kept.has(name) && !removed.has(name))
     .map((definition) => replacements.get(definition.name) ?? definition)
   if (issues.length === 0 && result.length === 0)
-    addIssue(ErrorCodes.invalidOptions, 'the selection leaves no operators', [])
+    addIssue(ErrorCodes.invalidOptions, 'The selection leaves no operators', [])
 
   if (issues.length > 0) throw issuesError(ErrorCodes.invalidOptions, issues, issues[0].operator)
   return result
