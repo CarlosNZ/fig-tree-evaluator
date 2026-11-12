@@ -234,6 +234,7 @@ describe('validateConstraintsShape — validating constraint declarations (Phase
     expect(validateConstraintsShape({ homogeneous: [] }).ok).toBe(false)
     expect(validateConstraintsShape({ homogeneous: ['text'] }).ok).toBe(false)
     expect(validateConstraintsShape({ elementShape: [] }).ok).toBe(false)
+    expect(validateConstraintsShape({ elementShape: { key: 5 } }).ok).toBe(false)
     expect(validateConstraintsShape({ elementShape: { key: { type: 'text' } } }).ok).toBe(false)
     expect(validateConstraintsShape({ elementShape: { key: { required: 'yes' } } }).ok).toBe(false)
   })

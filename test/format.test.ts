@@ -7,7 +7,7 @@
  * lists values only, so the types are checked here, where `pnpm typecheck`
  * fails if one goes missing.
  */
-import { FigTree, isFigTreeError, type FigTreeError } from '../src'
+import { FigTree, coreOperators, defineOperator, isFigTreeError, type FigTreeError } from '../src'
 import type {
   CanonicalOptions,
   NameOptions,
@@ -185,7 +185,17 @@ test('the option types accept what the spec lists', () => {
 })
 
 describe('a malformed node stops the conversion', () => {
-  const fig = new FigTree({ fragments: { greet: { expression: 'hi' } } })
+  // Every core operator has a positional form, so only a host's can lack one
+  const named = defineOperator({
+    name: 'named',
+    category: 'other',
+    parameters: { value: { type: 'any' } },
+    evaluate: ({ value }) => value,
+  })
+  const fig = new FigTree({
+    operators: [coreOperators, [named]],
+    fragments: { greet: { expression: 'hi' } },
+  })
   const thrownBy = (convert: () => unknown): FigTreeError => {
     try {
       convert()
@@ -253,6 +263,8 @@ describe('a malformed node stops the conversion', () => {
     ],
     ['surplus positional arguments', { $not: [1, 2] }, 'positional-arity'],
     ['a positional payload with no positions', { $abs: [1, 2] }, 'positional-arity'],
+    ['a positional payload for no positional form', { $named: [1] }, 'positional-arity'],
+    ['a single payload for no positional form', { $named: 1 }, 'positional-arity'],
     ['a reserved key in a named payload', { $abs: { value: 1, fallback: 0 } }, 'unknown-node-key'],
     ['parameters in a named payload', { $abs: { value: 1, parameters: {} } }, 'unknown-node-key'],
   ])('%s', (_label, expression, code) => {

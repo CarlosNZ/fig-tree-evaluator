@@ -932,6 +932,26 @@ describe("OBJECT_PROPERTIES' `fallback` beside `outputType`", () => {
       ],
       differs: { v2: { value: '12' }, v3: { value: 12 } },
     },
+    {
+      name: 'a computed type',
+      input: {
+        operator: 'getData',
+        property: 'nope',
+        fallback: 'N/A',
+        outputType: { operator: 'getData', property: 't' },
+      },
+      data: { t: 'number' },
+      expected: {
+        operator: 'convert',
+        value: { operator: 'get', path: 'nope', default: 'N/A' },
+        to: '$data.t',
+      },
+      issues: [
+        { code: 'fallback-converted', path: ['fallback'] },
+        { code: 'output-type', path: ['outputType'] },
+      ],
+      differs: { v2: { value: 'N/A' }, v3: { error: true } },
+    },
   ]
   test.each(EXAMPLES)('$name', (example) => check(example))
 

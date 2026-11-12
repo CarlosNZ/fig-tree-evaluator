@@ -5,7 +5,7 @@
  * skeleton splicing, `$data` references, the static-error gate, the probe
  * fast path and the per-call limits.
  */
-import { FigTree, FigTreeError, type CallOptions } from '../src'
+import { FigTree, FigTreeError, defineOperator, type CallOptions } from '../src'
 import { boomOp, echoOp, spyOp } from './fixtures/evalOperators'
 
 const fig = new FigTree({ operators: [echoOp(), boomOp()] })
@@ -244,6 +244,22 @@ describe('the static-error gate', () => {
     expect(error.code).toBe('positional-arity')
     expect(error.issues!.length).toBeGreaterThan(0)
     expect(error.issues![0].code).toBe('positional-arity')
+  })
+
+  test('an operator with no positional form takes only a named payload', async () => {
+    // Every core operator has a positional form, so only a host's can lack one
+    const named = defineOperator({
+      name: 'named',
+      category: 'other',
+      parameters: { value: { type: 'any' } },
+      evaluate: ({ value }) => value,
+    })
+    const hosts = new FigTree({ operators: [[named]] })
+    for (const payload of [1, [1]]) {
+      const error = await rejection(hosts.evaluate({ $named: payload }))
+      expect([error.code, error.path]).toEqual(['positional-arity', ['$named']])
+    }
+    expect(await hosts.evaluate({ $named: { value: 1 } })).toBe(1)
   })
 
   test('the first error in tree order is the one thrown', async () => {

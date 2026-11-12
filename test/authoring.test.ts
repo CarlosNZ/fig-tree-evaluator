@@ -569,6 +569,29 @@ describe('type checks between nodes', () => {
     expect((await checks(places)).uncovered).toEqual([])
   })
 
+  test("a per-element parameter's result is checked against its declared type", async () => {
+    // Every core per-element parameter is `any`, so only a host's can fail
+    const doubleAll = defineOperator({
+      name: 'doubleAll',
+      category: 'array',
+      parameters: {
+        items: { type: 'array' },
+        each: { type: 'number', evaluationMode: 'perElement', over: 'items' },
+      },
+      returns: 'array',
+      evaluate: async ({ items, each }) =>
+        (await Promise.all(items.map((_, i) => each.evaluate(i)))).map((n) => n * 2),
+    })
+    const hosts = new FigTree({ operators: [coreOperators, [doubleAll]] })
+    /** The findings on `each` itself, over elements one of which is text */
+    const eachChecks = async (each: unknown) =>
+      (
+        await checks({ $doubleAll: { items: [{ n: 1 }, { n: 'x' }], each } }, hosts)
+      ).uncovered.filter((finding) => finding.parameter === 'each')
+    expect(await eachChecks('$element.n')).toEqual([typeCheck([], 'each')])
+    expect(await eachChecks({ $multiply: ['$element.n', 2] })).toEqual([])
+  })
+
   test("a var's reference is what its definition returns", async () => {
     expect((await checks({ $multiply: ['$vars.n', 2], vars: { n: 3 } })).uncovered).toEqual([])
     expect((await checks({ $multiply: ['$vars.n', 2], vars: { n: 'x' } })).uncovered).toEqual([

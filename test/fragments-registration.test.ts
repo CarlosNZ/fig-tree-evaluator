@@ -44,6 +44,17 @@ describe('the definition shape', () => {
   // Through the instance, `null` is the option merge's removal marker, and
   // at construction there is nothing to remove. The registry itself, which
   // never sees a removal, still refuses it
+  test.each([
+    ['an array', []],
+    ['a number', 5],
+  ])('a fragments option that is %s is refused', (_label, fragments) => {
+    const error = rejects(fragments as never)
+    expect(error.code).toBe(ErrorCodes.invalidOptions)
+    expect(error.issues?.map(({ code, path }) => ({ code, path }))).toEqual([
+      { code: ErrorCodes.invalidOptions, path: ['fragments'] },
+    ])
+  })
+
   test('null is a removal, not a definition', () => {
     const fig = new FigTree({ fragments: { frag: null } as never })
     expect(fig.getFragments()).toEqual([])
@@ -138,6 +149,43 @@ describe('registration names', () => {
 describe('parameter declarations', () => {
   const frag = (parameters: Record<string, unknown>) => ({
     frag: { expression: 1, parameters },
+  })
+
+  test.each([
+    [
+      'parameters that are not an object',
+      { frag: { expression: 1, parameters: [] } },
+      ErrorCodes.invalidDefinition,
+      ['parameters'],
+    ],
+    [
+      'an illegal parameter name',
+      frag({ 'a.b': {} }),
+      ErrorCodes.invalidName,
+      ['parameters', 'a.b'],
+    ],
+    [
+      'a declaration that is not an object',
+      frag({ x: 5 }),
+      ErrorCodes.invalidDefinition,
+      ['parameters', 'x'],
+    ],
+    [
+      'a required that is not a boolean',
+      frag({ x: { required: 'yes' } }),
+      ErrorCodes.invalidDefinition,
+      ['parameters', 'x', 'required'],
+    ],
+    [
+      'malformed constraints',
+      frag({ x: { type: 'array', constraints: { length: 'two' } } }),
+      ErrorCodes.invalidDefinition,
+      ['parameters', 'x', 'constraints'],
+    ],
+  ])('%s is refused', (_label, fragments, code, path) => {
+    expect(rejects(fragments).issues?.map((issue) => [issue.code, issue.path])).toEqual([
+      [code, ['fragments', 'frag', ...path]],
+    ])
   })
 
   test('an unknown declaration key is refused', () => {

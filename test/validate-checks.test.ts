@@ -43,6 +43,25 @@ describe('literal parameter values vs declared types, constraints included', () 
   test('dynamic values pass untouched — runtime territory', () => {
     expect(errorCodes({ $format: { template: '$data.t' } })).toHaveLength(0)
   })
+
+  test('a literal parameter refuses a computed value', () => {
+    // The core's one literal parameter is `as`, which has its own check
+    const pickKey = defineOperator({
+      name: 'pickKey',
+      category: 'other',
+      parameters: { from: { type: 'object' }, key: { type: 'string', evaluationMode: 'literal' } },
+      evaluate: ({ from, key }) => (from as Record<string, unknown>)[key],
+    })
+    const hosts = new FigTree({ operators: [compileOps(), [pickKey]] })
+    const codes = (key: unknown) =>
+      hosts
+        .validate({ $pickKey: { from: { a: 1 }, key } })
+        .issues.filter((issue) => issue.severity === 'error')
+        .map((issue) => issue.code)
+    expect(codes({ $plus: ['a', 'b'] })).toEqual(['type-check'])
+    expect(codes('$data.k')).toEqual(['type-check'])
+    expect(codes('a')).toEqual([])
+  })
 })
 
 describe('missing required / unknown parameter', () => {
@@ -187,6 +206,12 @@ describe('as renaming', () => {
     }
     for (const as of ['item', '_item', 'élément', 'line item', 'my-item', 'x1']) {
       expect(errorCodes({ operator: 'map', input: [1], as, each: 1 })).toEqual([])
+    }
+  })
+
+  test('as must be a legal name: not empty, and without . [ or ]', () => {
+    for (const as of ['', 'a.b', 'row[0]', 'x]']) {
+      expect(errorCodes({ operator: 'map', input: [1], as, each: 1 })).toContain('invalid-as')
     }
   })
 
@@ -444,6 +469,29 @@ describe('operator validate hooks', () => {
     )
     for (const helper of ['parsePath', 'checkType', 'checkConstraints', 'renderText']) {
       expect(probe?.message).toContain(helper)
+    }
+  })
+
+  test("a hook that throws is the node's error, carrying what it threw", () => {
+    // Host code can throw anything; no core hook throws
+    for (const thrown of [new Error('mode must be set'), 'mode must be set']) {
+      const fussy = defineOperator({
+        name: 'fussy',
+        category: 'other',
+        parameters: { value: { type: 'any' } },
+        positionalParams: ['value'],
+        validate: () => {
+          throw thrown
+        },
+        evaluate: ({ value }) => value,
+      })
+      const hosts = new FigTree({ operators: [compileOps(), [fussy]] })
+      const issues = hosts.validate({ $fussy: 1 }).issues
+      expect(issues.map(({ code, path, operator }) => ({ code, path, operator }))).toEqual([
+        { code: 'operator-validate', path: [], operator: 'fussy' },
+      ])
+      // The hook's own text, not the library's wording
+      expect(issues[0].message).toContain('mode must be set')
     }
   })
 

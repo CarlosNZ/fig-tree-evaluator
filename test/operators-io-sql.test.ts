@@ -111,6 +111,19 @@ describe('shape', () => {
     }
   })
 
+  it('refuses a row that is not an object under the single-column shapes', async () => {
+    // A connection breaking the rows-as-objects contract, as pg's
+    // `rowMode: 'array'` would
+    const arrays = { query: async () => [['Ada'], ['Grace']] as never }
+    const fig = new FigTree({ operators: [coreOperators, sqlOperators(arrays)] })
+    for (const shape of ['column', 'firstValue']) {
+      const error = await rejection<FigTreeError>(
+        fig.evaluate({ $sql: { query: 'SELECT name FROM people', shape } })
+      )
+      expect(error.code).toBe('operator-failure')
+    }
+  })
+
   it('validates a literal shape at authoring time', () => {
     const report = withDb(db()).validate({ $sql: { query: 'SELECT 1', shape: 'row' } })
     expect(report.valid).toBe(false)

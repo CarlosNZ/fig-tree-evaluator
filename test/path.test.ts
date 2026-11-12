@@ -15,6 +15,8 @@ describe('parsePath', () => {
     expect(() => parsePath('a[')).toThrow(/invalid path/)
     expect(() => parsePath('a["unterminated]')).toThrow(/invalid path/)
     expect(() => parsePath('a[x]')).toThrow(/invalid path/)
+    // An escape with nothing after it
+    expect(() => parsePath('a["x\\')).toThrow(/invalid path/)
   })
 })
 

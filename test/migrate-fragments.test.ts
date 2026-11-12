@@ -1394,6 +1394,12 @@ describe("a call's `useCache`", () => {
       expected: { fragment: 'recorded' },
       issues: [{ code: 'cache-opt-in', path: ['useCache'] }],
     },
+    {
+      name: 'a computed value keeps v2’s default, which caches here, and says so',
+      input: { fragment: 'fetchRate', useCache: '$data.cache' },
+      expected: { '//': expect.stringContaining(NOTE), fragment: 'fetchRate' },
+      issues: [{ code: 'deciding-value', path: ['useCache'] }],
+    },
   ])('$name', ({ input, expected, issues = [] }) => {
     const result = convert(input, options)
     expect(result.expression).toEqual(expected)
@@ -1413,6 +1419,17 @@ describe("a call's `useCache`", () => {
     expect(convert({ fragment: 'elsewhere', useCache: true }, {}).expression).toEqual({
       fragment: 'elsewhere',
     })
+  })
+
+  test('without the definition, a computed value keeps the host’s default, and says so', () => {
+    // v2's `useCache: false` option left the call uncached
+    const result = convert({ fragment: 'elsewhere', useCache: '$data.cache' }, { useCache: false })
+    expect(result.expression).toEqual({
+      '//': expect.stringContaining(NOTE),
+      fragment: 'elsewhere',
+      noCache: true,
+    })
+    expect(raised(result.issues)).toEqual([{ code: 'deciding-value', path: ['useCache'] }])
   })
 
   test('the issue names what to change', () => {
