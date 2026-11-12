@@ -624,7 +624,7 @@ const runValidateHook = (state: CheckState, node: OperatorNode) => {
       state,
       'error',
       ErrorCodes.operatorValidate,
-      `'${node.name}' validate hook threw: ${(error as Error).message}`,
+      `'${node.name}' validate hook threw: ${error instanceof Error ? error.message : String(error)}`,
       node.path,
       node.order,
       { operator: node.name }
