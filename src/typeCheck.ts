@@ -278,11 +278,11 @@ export const validateConstraintsShape = (declaration: unknown): TypeCheckResult 
   if (elementShape !== undefined) {
     if (!isPlainObject(elementShape)) return fail('an object of declarations', elementShape)
     for (const [key, entry] of Object.entries(elementShape)) {
-      if (!isPlainObject(entry)) return fail(`a declaration for "${key}"`, entry)
+      if (!isPlainObject(entry)) return fail(`a declaration of '${key}'`, entry)
       if (entry.type !== undefined && !isExpectedType(entry.type))
-        return fail(`a vocabulary type for "${key}"`, entry.type)
+        return fail(`a vocabulary type for '${key}'`, entry.type)
       if (entry.required !== undefined && typeof entry.required !== 'boolean')
-        return fail(`a boolean "required" for "${key}"`, entry.required)
+        return fail(`a boolean 'required' for '${key}'`, entry.required)
       if (entry.constraints !== undefined) {
         const nested = validateConstraintsShape(entry.constraints)
         if (!nested.ok) return nested
@@ -307,7 +307,7 @@ const checkElementShape = (
     const required = declaration.required !== false // required by default
 
     if (!present) {
-      if (required) return { ok: false, expected: `property "${key}"`, actual: 'missing' }
+      if (required) return { ok: false, expected: `property '${key}'`, actual: 'missing' }
       continue
     }
     const checked = checkDeclared(element[key], declaration)

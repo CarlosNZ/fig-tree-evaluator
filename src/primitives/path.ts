@@ -81,12 +81,12 @@ export const parsePath = (path: string): PathSegment[] => {
 
 const parseBracket = (path: string, start: number): { segment: PathSegment; next: number } => {
   let i = start + 1
-  if (i >= path.length) throw invalidPath(path, 'unterminated "["')
+  if (i >= path.length) throw invalidPath(path, "unterminated '['")
   const ch = path[i]
 
   // Wildcard projection: [*]
   if (ch === '*') {
-    if (path[i + 1] !== ']') throw invalidPath(path, 'expected "]" after "[*"')
+    if (path[i + 1] !== ']') throw invalidPath(path, "expected ']' after '[*'")
     return { segment: WILDCARD, next: i + 2 }
   }
 
@@ -105,7 +105,7 @@ const parseBracket = (path: string, start: number): { segment: PathSegment; next
         continue
       }
       if (c === quote) {
-        if (path[i + 1] !== ']') throw invalidPath(path, 'expected "]" after quoted key')
+        if (path[i + 1] !== ']') throw invalidPath(path, "expected ']' after quoted key")
         return { segment: str, next: i + 2 }
       }
       str += c
@@ -123,11 +123,11 @@ const parseBracket = (path: string, start: number): { segment: PathSegment; next
   if (digits.length > 0 && path[i] === ']') {
     return { segment: Number(digits), next: i + 1 }
   }
-  throw invalidPath(path, 'expected a number, "*", or a quoted key inside "[…]"')
+  throw invalidPath(path, "expected a number, '*', or a quoted key inside '[…]'")
 }
 
 const invalidPath = (path: string, detail: string): Error =>
-  new Error(`Invalid path "${path}": ${detail}`)
+  new Error(`invalid path '${path}': ${detail}`)
 
 const normalizePath = (path: string | PathSegment[]): PathSegment[] =>
   Array.isArray(path) ? path : parsePath(path)

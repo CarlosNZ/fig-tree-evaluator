@@ -21,8 +21,11 @@ export const ROOT = join(import.meta.dirname, '..', '..')
  */
 const EXCLUDED = [/^src\/catalog\//, /^src\/dev\//, /\.generated\.ts$/, /^src\/version\.ts$/]
 
-/** Two words in a row, in the fixed text: prose rather than a name or key */
-const PROSE = /[a-z]{2,}[,:;]? +[a-z']{2,}/i
+/**
+ * A word followed by another, or by a quoted token, in the fixed text:
+ * prose rather than a name or key
+ */
+const PROSE = /[a-z]{2,}[,:;]? +(?:[a-z']{2,}|["'`‘])/i
 
 /** Separates a template's fixed parts, so no space appears between them */
 const HOLE = '\u0000'
