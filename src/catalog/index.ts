@@ -468,7 +468,7 @@ export const operatorListings = deepFreeze<ListingMap>({
     parameterDescriptions: {
       value: 'The string to search',
       pattern: 'The regular expression, as a string',
-      flags: 'Any of i, m, s and u',
+      flags: "The flags as one string, any of i, m, s and u, such as 'im'",
       mode: "'test' returns true or false, 'extract' the first match, 'match' every match, and 'replace' the string with every match replaced",
       noMatchDefault: "What 'extract' returns when nothing matches",
       replacement:
@@ -499,7 +499,7 @@ export const operatorListings = deepFreeze<ListingMap>({
       input: 'The array to iterate over',
       as: "A name to use in place of element: 'order' gives $order and $orderIndex",
       nullInputDefault: 'Used as the array when input is null, such as []',
-      each: 'An expression, evaluated for each element, which it reads as $element',
+      each: 'An expression evaluated for each element, which it reads as $element',
     },
   },
   filter: {
