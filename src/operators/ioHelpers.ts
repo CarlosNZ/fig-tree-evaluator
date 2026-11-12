@@ -12,7 +12,8 @@
  * operators agree: **the memo unit is everything that can fail because of
  * the network or the driver; pure reshaping of a successful payload sits
  * outside it.** So `returnPath`, `shape` and `noRowDefault` are outside,
- * and graphQL's `errors` check is inside.
+ * and graphQL's `errors` check and sql's check of the connection's rows
+ * are inside.
  */
 import { invalidResponse } from '../clients/failures'
 import { OperatorFailure } from '../OperatorFailure'
@@ -210,6 +211,36 @@ export const graphQLData = (response: unknown, url: string): unknown => {
 export type SqlShape = 'rows' | 'firstRow' | 'column' | 'firstValue'
 
 /**
+ * What a `SqlConnection` promises: an array of rows, each an object.
+ * Checked as the answer arrives, inside the memo unit, so a connection
+ * that breaks the promise fails the same way under every `shape`, and its
+ * answer is never cached. Unchecked, `'rows'` would hand the broken answer
+ * on, and `'firstRow'` would read a missing or null first row as "no row".
+ *
+ * A broken connection is the host's wiring, which nothing in the
+ * expression can fix, so it fails as `request-failure`: the code a
+ * connection's malformed throw already becomes (`clientFailure`).
+ *
+ * Any non-null, non-array object is a row: node:sqlite's rows have a null
+ * prototype, and some drivers build theirs from a class.
+ */
+export const connectionRows = (answer: unknown): Record<string, unknown>[] => {
+  if (!Array.isArray(answer))
+    throw new OperatorFailure(
+      `the connection must answer with an array of rows, received ${describeType(answer)}`,
+      { code: ErrorCodes.requestFailure }
+    )
+  for (const row of answer) {
+    if (!isPlainObject(row))
+      throw new OperatorFailure(
+        `each row from the connection must be an object, received ${describeType(row)}`,
+        { code: ErrorCodes.requestFailure }
+      )
+  }
+  return answer
+}
+
+/**
  * The declarative reshape that replaced v2's `single` / `flatten`
  * booleans and their runtime magic (`vals.length <= 1 ? vals[0] : vals`,
  * whose result shape depended on how many columns happened to arrive).
@@ -236,8 +267,7 @@ export const reshape = async (
   }
 }
 
-const onlyColumn = (row: unknown, shape: string): unknown => {
-  if (!isPlainObject(row)) throw new OperatorFailure('a row was not an object')
+const onlyColumn = (row: Record<string, unknown>, shape: string): unknown => {
   const values = Object.values(row)
   if (values.length !== 1)
     throw new OperatorFailure(

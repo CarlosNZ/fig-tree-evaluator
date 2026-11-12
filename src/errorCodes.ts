@@ -31,7 +31,7 @@ export const ErrorCodes = {
   invalidResponse: 'invalid-response', // a 200 whose body is not JSON, or a GraphQL body with neither data nor errors
   graphQLErrors: 'graphql-errors', // a GraphQL response carrying a non-empty `errors` array
   sqlError: 'sql-error', // a SQL driver or connection refused the query
-  requestFailure: 'request-failure', // anything else an I/O client throws: a network error, a non-compliant client
+  requestFailure: 'request-failure', // anything else an I/O client throws: a network error, a non-compliant client; also a SQL connection answering with anything but rows as objects
   nonFiniteResult: 'non-finite-result', // { $divide: [1, 0] } — NaN, or an infinity from finite numbers
   escapedHandle: 'escaped-handle', // a body returned a LazyValue / PerElement handle instead of demanding it — a host operator's bug, but an ordinary failure
   indexOutOfRange: 'index-out-of-range', // a body called each.evaluate(5) over a two-element input — a host operator's bug, but an ordinary failure

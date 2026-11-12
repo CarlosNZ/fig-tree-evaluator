@@ -36,6 +36,7 @@ import type { OperatorContext } from '../runtimeInterface'
 import type { HttpClient, SqlConnection } from '../types'
 import {
   assembleUrl,
+  connectionRows,
   drill,
   graphQLData,
   isNonEmpty,
@@ -219,14 +220,20 @@ export const sqlDefinition = (connection: SqlConnection) =>
     returns: 'any',
     evaluate: async ({ query, values, shape, noRowDefault }, context) => {
       const request = { text: query, ...(isNonEmpty(values) ? { values } : {}) }
-      const rows = await context.cache.memo(request, () => {
+      const rows = await context.cache.memo(request, async () => {
         // The statement, never its bound values: those carry row data,
         // which is the same reason pg's `detail` / `hint` stay out of
         // `errorData` (src/clients/failures.ts)
         context.trace.note({ type: 'query', text: request.text })
-        return fromClient(() => connection.query({ ...request, signal: context.signal }), 'sql')
+        const answer = await fromClient(
+          () => connection.query({ ...request, signal: context.signal }),
+          'sql'
+        )
+        // Inside the unit, as graphQL's `errors` check is: a broken answer
+        // is a failure, and failures are never cached
+        return connectionRows(answer)
       })
-      return reshape(rows as Record<string, unknown>[], shape as SqlShape, noRowDefault)
+      return reshape(rows, shape as SqlShape, noRowDefault)
     },
   })
 
