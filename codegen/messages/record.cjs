@@ -14,13 +14,20 @@ const RAW = join(__dirname, 'out', 'raw')
 /** id → text → { count, test } (the first test to produce the text) */
 const seen = new Map()
 
+/**
+ * Bounds on what one test file keeps of a string: an assembly on a hot
+ * path can make thousands of distinct texts, and the page needs a few
+ */
+const MAX_TEXTS = 100
+const MAX_LENGTH = 4000
+
 globalThis.__msg = (id, value) => {
-  const text = String(value)
+  const text = String(value).slice(0, MAX_LENGTH)
   let texts = seen.get(id)
   if (texts === undefined) seen.set(id, (texts = new Map()))
   const entry = texts.get(text)
   if (entry !== undefined) entry.count++
-  else {
+  else if (texts.size < MAX_TEXTS) {
     const state = globalThis.expect?.getState?.()
     texts.set(text, { count: 1, test: state?.currentTestName ?? null })
   }

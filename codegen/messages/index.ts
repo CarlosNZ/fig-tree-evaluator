@@ -7,9 +7,11 @@
  * The v3 suite runs under jest.config.mjs here, which wraps each message
  * in src/ (find.mjs) to record the text it produces. The page lists every
  * message by file, linked to its line: how it reads in the source, and up
- * to three texts the suite made of it. A message nothing produced is
- * listed first, unless unreached.ts accepts it with a reason. The page is
- * rewritten each run, and not committed.
+ * to three texts the suite made of it. A message whose every text sits
+ * inside a longer one is a part, and each of its texts shows the shortest
+ * longer text that holds it, a message or an assembly. A message nothing
+ * produced is listed first, unless unreached.ts accepts it with a reason.
+ * The page is rewritten each run, and not committed.
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -24,6 +26,7 @@ const PAGE = join(OUT, 'messages.md')
 const EXAMPLES = 3
 
 interface Message {
+  kind: 'message' | 'assembly'
   id: string
   file: string
   line: number
@@ -125,50 +128,113 @@ const slug = (heading: string): string =>
 
 const hasHoles = (message: Message) => message.template.includes('${')
 
-const source = (produced: Produced): string => {
+const testOf = (produced: Produced): string => {
   const test = produced.test === null ? '' : ` › ${produced.test}`
   const where = `${produced.testPath ?? 'unknown test file'}${test}`
   return where.length > 100 ? `${where.slice(0, 99)}…` : where
 }
 
-const entry = (message: Message, produced: Produced[] | undefined, accepted?: Unreached) => {
-  const lines: string[] = []
+const clipped = (text: string, limit = 300) =>
+  text.length > limit ? `${text.slice(0, limit - 1)}…` : text
+
+// ── Parts ─────────────────────────────────────────────────────────────
+
+interface Holder {
+  text: string
+  by: Message
+  produced: Produced
+}
+
+/**
+ * Every text any message or assembly produced, for finding what holds a
+ * part. A text is held by another only when that one is strictly longer.
+ */
+const holdersOf = (strings: Message[], produced: Map<string, Produced[]>) => {
+  const all: Holder[] = []
+  for (const by of strings)
+    for (const each of produced.get(by.id) ?? []) all.push({ text: each.text, by, produced: each })
+  // Shortest first, so the first match is the nearest whole
+  all.sort((a, b) => a.text.length - b.text.length)
+  /** The shortest longer text holding this one, from the same test if any */
+  return (part: Produced, of: Message): Holder | undefined => {
+    let any: Holder | undefined
+    for (const holder of all) {
+      if (holder.by.id === of.id || holder.text.length <= part.text.length) continue
+      if (!holder.text.includes(part.text)) continue
+      if (holder.produced.test === part.test && holder.produced.testPath === part.testPath)
+        return holder
+      any ??= holder
+    }
+    return any
+  }
+}
+
+// ── The page ──────────────────────────────────────────────────────────
+
+const entry = (
+  message: Message,
+  produced: Produced[] | undefined,
+  holderOf: (part: Produced, of: Message) => Holder | undefined,
+  accepted?: Unreached
+) => {
   const times = produced?.reduce((sum, { count }) => sum + count, 0) ?? 0
+  const holders = produced?.map((each) => holderOf(each, message))
+  const isPart = holders !== undefined && holders.every((holder) => holder !== undefined)
   const status =
     produced === undefined
       ? accepted === undefined
-        ? ' — **never produced**'
-        : ` — never produced: ${prose(accepted.reason)}`
-      : ` — ×${times}`
-  if (!hasHoles(message)) {
-    lines.push(`- ${link(message)}${status}`, `  ${prose(message.template)}`)
-    return lines
+        ? ' · **never produced**'
+        : ` · never produced: ${prose(accepted.reason)}`
+      : ` · produced ×${times}${isPart ? ' · only ever part of a longer message' : ''}`
+  const lines = [
+    `- ${link(message)}${status}`,
+    `  - source: ${hasHoles(message) ? code(message.template) : prose(message.template)}`,
+  ]
+  // A literal produces only itself, so a whole one needs no examples
+  const shown = hasHoles(message) || isPart ? (produced ?? []).slice(0, EXAMPLES) : []
+  for (const [i, example] of shown.entries()) {
+    lines.push(`  - produced: ${prose(example.text)} — _${prose(testOf(example))}_`)
+    const holder = isPart ? holders![i] : undefined
+    if (holder !== undefined)
+      lines.push(`    - in full: ${prose(clipped(holder.text))} (${link(holder.by)})`)
   }
-  lines.push(`- ${link(message)}${status}`, `  ${code(message.template)}`)
-  for (const example of produced?.slice(0, EXAMPLES) ?? [])
-    lines.push(`  - ${prose(example.text)}`, `    <br>_from ${prose(source(example))}_`)
-  if (produced !== undefined && produced.length > EXAMPLES)
-    lines.push(`  - _and ${produced.length - EXAMPLES} more_`)
+  if (shown.length > 0 && produced!.length > EXAMPLES)
+    lines.push(`  - _and ${produced!.length - EXAMPLES} more_`)
   return lines
 }
 
 const matches = (accepted: Unreached, message: Message) =>
   accepted.file === message.file && accepted.message === message.template
 
-const renderPage = (messages: Message[], produced: Map<string, Produced[]>, passed: boolean) => {
+const renderPage = (
+  messages: Message[],
+  assemblies: Message[],
+  produced: Map<string, Produced[]>,
+  passed: boolean
+) => {
   const files = [...new Set(messages.map(({ file }) => file))]
   const missing = messages.filter(
     (message) =>
       !produced.has(message.id) && !unreached.some((accepted) => matches(accepted, message))
   )
+  const holderOf = holdersOf([...messages, ...assemblies], produced)
   const failures = passed ? '' : ' (**which had failures**)'
   const lines = [
     '# Library messages',
     '',
     `_Generated by \`pnpm messages\` from a run of the v3 suite${failures}. ` +
-      'Every message string in src/ outside src/catalog, by file and line: how it reads in ' +
-      'the source, how many times the suite produced it, and up to ' +
-      `${EXAMPLES} of the texts it made. Rewritten each run, and not committed._`,
+      'Every message string in src/ outside src/catalog, by file and line. Rewritten each ' +
+      'run, and not committed._',
+    '',
+    'Each entry is one string in the source:',
+    '',
+    '- **The heading line:** its file and line, how many times the suite produced it, and ' +
+      'whether it is only ever part of a longer message.',
+    '- **source:** how it reads in the source, each `${…}` hole showing the code that fills it.',
+    `- **produced:** up to ${EXAMPLES} of the texts the suite made of it, each with the first ` +
+      'test that made it.',
+    '- **in full:** for a part, the nearest longer text that held it, and where that is put ' +
+      'together.',
     '',
     `${messages.length} messages in ${files.length} files. ${messages.length - missing.length} produced or accepted as unreachable, ${missing.length} never produced.`,
     '',
@@ -191,6 +257,7 @@ const renderPage = (messages: Message[], produced: Map<string, Produced[]>, pass
         ...entry(
           message,
           produced.get(message.id),
+          holderOf,
           unreached.find((accepted) => matches(accepted, message))
         )
       )
@@ -209,14 +276,16 @@ const main = () => {
 
   const passed = runSuite()
   const produced = readProduced()
-  const messages = (allMessages() as Message[]).map((message) => ({
+  const strings = (allMessages() as Message[]).map((message) => ({
     ...message,
     template: message.template.replace(/\s*\n\s*/g, ' '),
   }))
-  const ids = new Set(messages.map(({ id }) => id))
+  const messages = strings.filter(({ kind }) => kind === 'message')
+  const assemblies = strings.filter(({ kind }) => kind === 'assembly')
+  const ids = new Set(strings.map(({ id }) => id))
   const strays = [...produced.keys()].filter((id) => !ids.has(id))
 
-  const { page, missing } = renderPage(messages, produced, passed)
+  const { page, missing } = renderPage(messages, assemblies, produced, passed)
   mkdirSync(OUT, { recursive: true })
   writeFileSync(PAGE, page)
 

@@ -8,6 +8,11 @@
  * string in it, whose fixed text holds two words in a row. A chain counts
  * as one message, its parts not separately; a template's holes are
  * searched for messages of their own, which nest inside it.
+ *
+ * A template or chain with holes but no prose of its own is an assembly:
+ * `${header}\n${message}` puts messages together without adding words.
+ * Assemblies are recorded but not listed, so a message that only ever
+ * appears inside a longer one can show the whole of it.
  */
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
@@ -97,17 +102,23 @@ const isFixedPosition = (node) => {
 }
 
 /**
- * The messages in one file's source text, in source order: each with its
- * id (`file:line:column`), its line, its span in the text, and how it
- * reads. A message inside another's hole comes after it.
+ * The messages and assemblies in one file's source text, in source order:
+ * each with its kind, its id (`file:line:column`), its line, its span in
+ * the text, and how it reads. One inside another's hole comes after it.
  */
 export const findMessages = (text, path) => {
   const source = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true)
   const found = []
-  const record = (node, template) => {
+  const consider = (node) => {
+    const { fixed, template } = textOf(node, source)
+    if (PROSE.test(fixed)) record(node, template, 'message')
+    else if (fixed.includes(HOLE)) record(node, template, 'assembly')
+  }
+  const record = (node, template, kind) => {
     const start = node.getStart(source)
     const { line, character } = source.getLineAndCharacterOfPosition(start)
     found.push({
+      kind,
       id: `${path}:${line + 1}:${character + 1}`,
       file: path,
       line: line + 1,
@@ -127,23 +138,19 @@ export const findMessages = (text, path) => {
       return
     // The top of a chain: one message for the whole of it
     if (isPlus(node) && !isPlus(node.parent) && operands(node).some(isStringy)) {
-      const { fixed, template } = textOf(node, source)
-      if (PROSE.test(fixed)) record(node, template)
+      consider(node)
       for (const part of operands(node))
         if (isStringy(part)) ts.forEachChild(part, visit)
         else visit(part)
       return
     }
-    if (isStringy(node) && !isFixedPosition(node)) {
-      const { fixed, template } = textOf(node, source)
-      if (PROSE.test(fixed)) record(node, template)
-    }
+    if (isStringy(node) && !isFixedPosition(node)) consider(node)
     ts.forEachChild(node, visit)
   }
   visit(source)
   return found
 }
 
-/** Every message in every listed file */
+/** Every message and assembly in every listed file */
 export const allMessages = () =>
   messageFiles().flatMap((path) => findMessages(readFileSync(join(ROOT, path), 'utf8'), path))
