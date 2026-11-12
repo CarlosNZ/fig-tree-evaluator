@@ -508,7 +508,7 @@ describe('type checks between nodes', () => {
     expect((await checks({ $not: '$data.x' })).uncovered).toEqual([])
   })
 
-  test('a message names the constraints where only they can refuse a value', async () => {
+  test('a message says what a constraint may refuse, where only constraints can refuse a value', async () => {
     /** The root node's type-check messages. */
     const messages = async (expression: unknown) =>
       (await fallbackCoverage(fig, expression)).uncovered
@@ -516,11 +516,20 @@ describe('type checks between nodes', () => {
         .map((finding) => finding.message)
     // Every value is an array, so only `homogeneous` can refuse one
     expect(await messages({ $plus: ['$data.first', ' ', '$data.last'] })).toEqual([
-      "plus – parameter 'values' may receive an array its constraints refuse (homogeneous)",
+      "plus – parameter 'values' may receive values of more than one type",
     ])
+    expect(await messages({ $multiply: ['$data.n', 2] })).toEqual([
+      "multiply – parameter 'values' may receive values that aren't all number",
+    ])
+    // All strings, so of the two constraints only `length` is at risk
+    expect(
+      await messages({
+        $lessThan: { values: { $map: { input: ['a', 'b', 'c'], each: '$element' } } },
+      })
+    ).toEqual(["lessThan – parameter 'values' may receive a number of values other than 2"])
     // The value may not be an array at all
     expect(await messages({ $lessThan: { values: '$data.pair' } })).toEqual([
-      "lessThan – parameter 'values' may receive something other than array, as constrained",
+      "lessThan – parameter 'values' may receive something other than array",
     ])
   })
 

@@ -221,7 +221,7 @@ export const checkConstraints = (value: unknown, constraints: Constraints): Type
       if (matching === undefined)
         return {
           ok: false,
-          expected: `homogeneous array of ${allowed.join(' | ')}`,
+          expected: `an array of one type: ${allowed.join(' | ')}`,
           actual: describeElements(value),
         }
     }

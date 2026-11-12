@@ -10,7 +10,7 @@
 import { isTruthy } from '../primitives/truthiness'
 import { defaultFor, NO_DEFAULT } from '../typeCheck'
 import { isPlainObject } from '../utils'
-import type { ExpectedType } from '../typeCheck'
+import type { Constraints, ExpectedType } from '../typeCheck'
 import type { CompiledNode, OperatorNode } from '../compile/artifact'
 import type { NullBehavior, ValidatedParameter } from '../operatorDefinition'
 import type { FragmentParameter } from '../fragments'
@@ -70,6 +70,29 @@ const describe = (type: ExpectedType): string =>
     : Array.isArray(type)
       ? type.join(' | ')
       : `one of ${(type as { literal: unknown[] }).literal.map((v) => JSON.stringify(v)).join(', ')}`
+
+/**
+ * What an array its constraints may refuse might hold, in words. Each
+ * constraint is tried alone, so only those at risk are named; should none
+ * be at risk alone, all are named.
+ */
+const constraintMisfit = (known: Known, type: ExpectedType, constraints: Constraints): string => {
+  const phrase = {
+    length: () => `a number of values other than ${String(constraints.length)}`,
+    homogeneous: () => {
+      const allowed = constraints.homogeneous ?? []
+      return allowed.length === 1
+        ? `values that aren't all ${allowed[0]}`
+        : 'values of more than one type'
+    },
+    elementShape: () => 'elements of the wrong shape',
+  }
+  const present = (['length', 'homogeneous', 'elementShape'] as const).filter(
+    (key) => constraints[key] !== undefined
+  )
+  const atRisk = present.filter((key) => fits(known, type, { [key]: constraints[key] }) !== 'yes')
+  return (atRisk.length > 0 ? atRisk : present).map((key) => phrase[key]()).join(' or ')
+}
 
 /**
  * The default chain: the instance's `operatorDefaults` value, else the
@@ -134,11 +157,9 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
     // Where every value has the type, only a constraint can refuse one
     const { type, constraints } = declared
     const misfit =
-      constraints === undefined
-        ? `something other than ${describe(type)}`
-        : fits(known, type) === 'yes'
-          ? `an array its constraints refuse (${Object.keys(constraints).join(', ')})`
-          : `something other than ${describe(type)}, as constrained`
+      constraints !== undefined && fits(known, type) === 'yes'
+        ? constraintMisfit(known, type, constraints)
+        : `something other than ${describe(type)}`
     const failure: Failure = {
       path: node.path,
       code: 'type-check',
