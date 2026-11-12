@@ -315,7 +315,7 @@ const runOnce = async (
       if (fits(exactly(value), declared.type, declared.constraints, policy) !== 'yes') {
         const error = new FigTreeError({
           code: ErrorCodes.typeCheck,
-          message: `${node.name} – parameter '${name}': fails its type check`,
+          message: `${node.name} – parameter '${name}' fails its type check`,
           path: [],
         })
         typeChecks.set(error, name)

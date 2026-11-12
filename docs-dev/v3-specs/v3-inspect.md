@@ -402,7 +402,7 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
       "order": 34,
       "severity": "error",
       "code": "unknown-operator",
-      "message": "'flibble' names no registered operator",
+      "message": "'flibble' is not a registered operator",
       "path": ["broken"]
     },
     {

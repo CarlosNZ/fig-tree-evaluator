@@ -448,7 +448,7 @@ describe('batch semantics', () => {
       fragments: { inner: pair.inner, outer: { expression: { fragment: 'inner' } } },
     })
     expect(() => fig.updateOptions({ fragments: { inner: null } })).toThrow(
-      /names no registered fragment/
+      /is not a registered fragment/
     )
   })
 

@@ -402,7 +402,7 @@ const walk = (state: WalkState, raw: unknown, path: LinkedPath, depth: number): 
       state,
       'error',
       ErrorCodes.depthCeiling,
-      `The expression nests deeper than the engine's ceiling of ${DEPTH_CEILING} levels — descent stopped here`,
+      `Depth ceiling of ${DEPTH_CEILING} levels exceeded`,
       path,
       order
     )
@@ -495,7 +495,7 @@ const walkString = (
         state,
         'warning',
         ErrorCodes.unrecognizedIdentifier,
-        `'${raw}' matches no reference namespace, so it's kept as a plain string — wrap it in 'literal' to remove this warning`,
+        `'${raw}' is not a known reference, so it stays a string — wrap it in 'literal' to silence this warning`,
         path,
         order
       )
@@ -607,7 +607,7 @@ const walkOperatorCanonical = (
       state,
       'error',
       ErrorCodes.unknownOperator,
-      `'${opValue}' names no registered operator${didYouMean(suggestion)}`,
+      `'${opValue}' is not a registered operator${didYouMean(suggestion)}`,
       path,
       order,
       { suggestion }
@@ -1723,7 +1723,7 @@ const startFragmentCall = (
       state,
       'error',
       ErrorCodes.unknownFragment,
-      `'${name}' names no registered fragment${didYouMean(suggestion)}`,
+      `'${name}' is not a registered fragment${didYouMean(suggestion)}`,
       path,
       order,
       { suggestion }

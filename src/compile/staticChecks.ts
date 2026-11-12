@@ -578,7 +578,7 @@ const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
             state,
             'error',
             ErrorCodes.unknownNodeKey,
-            `Fragment '${node.name}' declares no parameter '${name}'${didYouMean(suggestion)}`,
+            `Fragment '${node.name}' has no parameter '${name}'${didYouMean(suggestion)}`,
             argument.path,
             argument.order,
             { parameter: name, suggestion }
@@ -731,7 +731,7 @@ const resolveParam = (state: CheckState, node: ReferenceNode) => {
     state,
     'error',
     ErrorCodes.unresolvedParam,
-    `'${node.raw}': the fragment declares no parameter '${String(first)}'${didYouMean(suggestion)}`,
+    `'${node.raw}': the fragment has no parameter '${String(first)}'${didYouMean(suggestion)}`,
     node.path,
     node.order,
     { parameter, suggestion }

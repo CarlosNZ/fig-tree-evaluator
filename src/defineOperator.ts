@@ -438,7 +438,7 @@ export function defineOperator(
       if (!(entryName in declarations))
         addIssue(
           ErrorCodes.invalidDefinition,
-          `Positional entry '${entry}' names no declared parameter`,
+          `Positional entry '${entry}' is not a declared parameter`,
           ['positionalParams', i]
         )
       if (seen.has(entryName))
@@ -467,7 +467,7 @@ export function defineOperator(
         if (!(target in declarations) || target === paramName)
           addIssue(
             ErrorCodes.invalidDefinition,
-            `'over' names no sibling parameter ('${target}')`,
+            `'over' target '${target}' is not a sibling parameter`,
             [...paramPath, 'over'],
             paramName
           )
@@ -553,7 +553,7 @@ export function defineOperator(
       else if (!(target in declarations))
         addIssue(
           ErrorCodes.invalidDefinition,
-          `'replacesNullAt' target '${target}' names no sibling parameter`,
+          `'replacesNullAt' target '${target}' is not a sibling parameter`,
           [...path, i],
           paramName
         )
@@ -593,7 +593,7 @@ export function defineOperator(
     if (target === undefined)
       addIssue(
         ErrorCodes.invalidDefinition,
-        `'timeoutParam' names no declared parameter ('${def.timeoutParam}')`,
+        `'timeoutParam' target '${def.timeoutParam}' is not a declared parameter`,
         ['timeoutParam']
       )
     else if (effectiveTypes[def.timeoutParam] !== 'integer')

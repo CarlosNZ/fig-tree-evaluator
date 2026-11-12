@@ -85,7 +85,7 @@ fig.validate({ $buildString: ['Hello, %1', '$dta.name'] })
 //        {
 //          severity: 'warning',
 //          code: 'unrecognized-identifier',
-//          message: "'$dta.name' matches no reference namespace, so it's kept as a plain string — wrap it in 'literal' to remove this warning",
+//          message: "'$dta.name' is not a known reference, so it stays a string — wrap it in 'literal' to silence this warning",
 //          path: ['$buildString', 1],
 //        },
 //      ],

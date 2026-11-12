@@ -87,13 +87,14 @@ export const atBoundary = (
   const counted = mayBeNaN(strictNumbers ? output : exactOnly(output))
   const passed = withoutNaN(output)
   if (counted === 'no') return { output: passed }
+  const certainty = passed.length === 0 && certain ? 'always' : 'may'
   return {
     output: passed,
     boundary: {
       path: node.path,
       code: 'non-finite-result',
-      message: `${node.name} – non-finite-result possible: NaN may reach its result`,
-      certainty: passed.length === 0 && certain ? 'always' : 'may',
+      message: `${node.name} – non-finite-result${certainty === 'may' ? ' possible' : ''} when it gives NaN`,
+      certainty,
       operator: node.name,
       order: [node.order],
     },

@@ -142,7 +142,7 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
     const failure: Failure = {
       path: node.path,
       code: 'type-check',
-      message: `${node.name} – parameter '${name}': may receive ${misfit}`,
+      message: `${node.name} – parameter '${name}' may receive ${misfit}`,
       certainty: answer === 'no' && certain ? 'always' : 'may',
       operator: node.name,
       parameter: name,

@@ -184,7 +184,7 @@ const validateOperatorDefaults = (
           canonical
         )
       else
-        addIssue(ErrorCodes.unknownOperator, `'${operatorName}' names no registered operator`, path)
+        addIssue(ErrorCodes.unknownOperator, `'${operatorName}' is not a registered operator`, path)
       continue
     }
     if (!isPlainObject(defaults)) {
@@ -244,7 +244,7 @@ const validateOperatorDefaults = (
       if (declaration === undefined) {
         addIssue(
           ErrorCodes.invalidOptions,
-          `'${key}' names no declared parameter of '${operatorName}' (nor 'fallback'/'noCache')`,
+          `'${key}' is not a declared parameter of '${operatorName}', 'fallback' or 'noCache'`,
           keyPath,
           operatorName
         )

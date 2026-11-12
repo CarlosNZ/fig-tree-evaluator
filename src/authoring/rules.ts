@@ -72,7 +72,7 @@ export const ownFailures = (
       {
         ...at,
         code: OPERATOR,
-        message: `${node.name} – may fail whatever its inputs: nothing describes what it fails on`,
+        message: `${node.name} – operator-failure possible on any input: its failures are not declared`,
         certainty: 'may',
       },
     ]

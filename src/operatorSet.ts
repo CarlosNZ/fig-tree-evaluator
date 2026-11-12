@@ -156,7 +156,7 @@ export const operatorSet = (
     const suggestion = nearestName(name, byName.keys())
     addIssue(
       ErrorCodes.unknownOperator,
-      `'${name}' names no operator in the input${didYouMean(suggestion)}`,
+      `'${name}' is not an operator in the input${didYouMean(suggestion)}`,
       path,
       suggestion === undefined ? undefined : { suggestion }
     )
@@ -315,7 +315,7 @@ export const operatorSet = (
         const suggestion = nearestName(name, byName.keys())
         addIssue(
           ErrorCodes.unknownOperator,
-          `'${name}' names no operator in the input — to add a new operator, put it in the input`,
+          `'${name}' is not an operator in the input — to add a new operator, put it in the input`,
           path,
           suggestion === undefined ? undefined : { suggestion }
         )

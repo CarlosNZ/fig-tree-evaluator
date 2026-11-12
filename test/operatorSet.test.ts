@@ -219,7 +219,7 @@ const checks: {
     call: () => operatorSet(coreOperators, { except: 'uper' }),
     code: ErrorCodes.unknownOperator,
     path: ['except'],
-    message: "'uper' names no operator in the input — did you mean 'upper'?",
+    message: "'uper' is not an operator in the input — did you mean 'upper'?",
   },
   {
     id: 'a name selector that is an alias',
@@ -264,7 +264,7 @@ const checks: {
     call: () => operatorSet(coreOperators, { replace: op('uper', 'string') }),
     code: ErrorCodes.unknownOperator,
     path: ['replace'],
-    message: "'uper' names no operator in the input — to add a new operator, put it in the input",
+    message: "'uper' is not an operator in the input — to add a new operator, put it in the input",
   },
   {
     id: 'a replacement for an operator the selection removed',
@@ -457,7 +457,7 @@ describe('operatorSet — checks', () => {
       {
         code: ErrorCodes.unknownOperator,
         path: ['only'],
-        message: "'uper' names no operator in the input — did you mean 'upper'?",
+        message: "'uper' is not an operator in the input — did you mean 'upper'?",
       },
     ])
   })

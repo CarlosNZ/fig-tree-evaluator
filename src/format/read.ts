@@ -157,7 +157,7 @@ const readCanonicalOperator = (
   if (spelling === 'literal') return readCanonicalLiteral(raw, fail)
   const operator = lookup.operators.get(spelling)
   if (operator === undefined)
-    return fail(ErrorCodes.unknownOperator, `'${spelling}' names no registered operator`)
+    return fail(ErrorCodes.unknownOperator, `'${spelling}' is not a registered operator`)
 
   const slots: Slot[] = []
   const params: [string, unknown][] = []
@@ -208,7 +208,7 @@ const readCanonicalFragment = (
   if (typeof name !== 'string')
     return fail(ErrorCodes.malformedNode, "The 'fragment' value must be a literal string")
   if (!lookup.fragments.has(name))
-    return fail(ErrorCodes.unknownFragment, `'${name}' names no registered fragment`)
+    return fail(ErrorCodes.unknownFragment, `'${name}' is not a registered fragment`)
 
   const slots: Slot[] = []
   for (const key in raw) {
