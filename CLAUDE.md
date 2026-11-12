@@ -29,6 +29,8 @@ pnpm compile              # tsc only (typecheck + emit, no bundling)
 pnpm getVersion           # regenerate src/version.ts from package.json
 pnpm extractV2Table       # regenerate the converter's two tables (src/migrate/) from the v2 package and the core definitions
 pnpm coverageCases        # regenerate docs-dev/v3-specs/v3-coverage-cases.md, the readable page of the #217 case corpus
+pnpm messages             # every message string in src/ (not catalog), linked to its line, with what the v3 suite
+                          # makes of it: codegen/messages/out/messages.md (gitignored); --check fails on one never produced
 pnpm differential         # every v2 test case through v2, and converted through v3: ✗ in full, ⚠ as a line, a summary;
                           # writes every differing case in full to differential/out/differences.md (gitignored)
 pnpm differential 42 57   # those cases in full: expression, conversion, issues, both outcomes

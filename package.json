@@ -75,6 +75,7 @@
     "checkDefinitions": "tsx codegen/checkDefinitions.ts",
     "extractV2Table": "tsx codegen/extractV2Table.ts",
     "coverageCases": "tsx codegen/coverageCasesPage.ts",
+    "messages": "tsx codegen/messages/index.ts",
     "differential": "tsx differential/index.ts",
     "lint": "eslint .",
     "format": "prettier --write .",

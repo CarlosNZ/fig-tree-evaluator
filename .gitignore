@@ -61,3 +61,6 @@ bench/browser/dist
 
 # Playwright MCP session snapshots and console logs
 .playwright-mcp
+
+# Rewritten by every `pnpm messages` run
+codegen/messages/out/
