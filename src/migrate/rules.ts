@@ -516,10 +516,13 @@ const sqlShape = (draft: V3Draft, context: RuleContext) => {
 
 // Batch 5
 
-/** Why v3 cannot register an operator under a v2 function's name */
+/**
+ * Why v3 cannot register an operator under a v2 function's name. A name
+ * starting with `$` never gets here: v2 read it as an alias, so the
+ * normaliser quotes the call as one with a computed name.
+ */
 const unregistrable = (name: string) => {
-  const illegal = name.startsWith('$') ? '$' : /[.[\]]/.exec(name)?.[0]
-  if (illegal === '$') return `\`${name}\` starts with \`$\`, which a v3 name cannot`
+  const illegal = /[.[\]]/.exec(name)?.[0]
   if (illegal !== undefined) return `\`${name}\` holds a \`${illegal}\`, which a v3 name cannot`
   if (Object.hasOwn(V3_NAMES, name)) return `\`${name}\` is already a v3 operator's name`
   return undefined
