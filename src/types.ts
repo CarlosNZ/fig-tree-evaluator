@@ -73,7 +73,8 @@ export interface SqlConnection {
    * Rows as objects, always; reshaping is the operator's job, not this.
    * Throws `sqlFailure()` (code `sql-error`) for what the driver or the
    * connection refuses; anything else it throws reaches a fallback as
-   * `request-failure`.
+   * `request-failure`, and so does an answer that is not an array of
+   * objects.
    */
   query(req: SqlRequest): Promise<Record<string, unknown>[]>
 }
