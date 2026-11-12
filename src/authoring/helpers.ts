@@ -261,7 +261,7 @@ export const entriesOf = ({
   )
     throw failed(
       node,
-      "gave 'failures' that are not a list of entries, each with a code, an answer and a declared parameter"
+      "gave 'failures' that are not an array of failure entries, each with a code, an answer and a declared parameter"
     )
   return entries
 }

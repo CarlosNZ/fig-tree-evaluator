@@ -197,7 +197,7 @@ describe('misuse', () => {
     expect(call).toThrow(
       expect.objectContaining({
         code: ErrorCodes.invalidOptions,
-        message: "'params' must be an array of parameter names (strings)",
+        message: "'params' must be an array of parameter names",
       })
     )
   })

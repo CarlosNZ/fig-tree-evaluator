@@ -1093,7 +1093,7 @@ describe('declareAnalysis', () => {
     expect(Object.isFrozen(declareAnalysis(mine, { failures: [] }))).toBe(true)
   })
 
-  test('refuses a core operator, whose analysis is built in, naming it', () => {
+  test('refuses a core operator, whose analysis fallbackCoverage already has, naming it', () => {
     const divide = coreOperators.find((op) => op.name === 'divide')!
     expect(() => declareAnalysis(divide, { failures: [] })).toThrow(
       expect.objectContaining({
@@ -1189,7 +1189,9 @@ describe('declareAnalysis', () => {
       [{ code: 'operator-failure', occurs: 'sometimes' }] as never,
       [{ code: 'operator-failure', parameter: 'nope' }],
     ])
-      await expect(coverage({ failures })).rejects.toThrow(naming(/not a list of entries/))
+      await expect(coverage({ failures })).rejects.toThrow(
+        naming(/not an array of failure entries/)
+      )
     await expect(
       coverage({ failures: (_, helpers) => [{ code: 'x', occurs: helpers.isSupplied('nope') }] })
     ).rejects.toThrow(naming(/'nope' is not a declared parameter/))

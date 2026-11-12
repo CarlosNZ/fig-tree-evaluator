@@ -27,8 +27,8 @@ const refuse = (message: string): FigTreeError =>
  * An operator's analysis for `fallbackCoverage`: what a node of it returns
  * and how its body fails, given what its parameters receive. The hooks are
  * checked for their kind only: a literal is nowhere to validate, and
- * calling a hook on made-up inputs would prove nothing. A core operator's
- * analysis is built in, so it takes none.
+ * calling a hook on made-up inputs would prove nothing. A core operator
+ * takes none: `fallbackCoverage` already has its analysis.
  */
 export const declareAnalysis = (
   operator: BuiltOperator,
@@ -37,7 +37,9 @@ export const declareAnalysis = (
   if (!isValidatedOperator(operator))
     throw refuse('declareAnalysis() takes an operator built by defineOperator()')
   if (coreOperators.includes(operator))
-    throw refuse(`'${operator.name}' is a core operator, whose analysis is built in`)
+    throw refuse(
+      `'${operator.name}' is a core operator, whose analysis fallbackCoverage already has`
+    )
   return analysisFrom(operator, hooks)
 }
 
@@ -50,18 +52,21 @@ export const analysisFrom = (
   hooks: Pick<OperatorAnalysis, 'gamut' | 'failures'>
 ): OperatorAnalysis => {
   const name = operator.name
-  if (!isPlainObject(hooks)) throw refuse(`the analysis of '${name}' must be a plain object`)
+  if (!isPlainObject(hooks))
+    throw refuse(
+      `declareAnalysis() takes the hooks for '${name}' as an object: { gamut, failures }`
+    )
   for (const key of Object.keys(hooks))
     if (!HOOKS.has(key)) throw refuse(`'${key}' is not an analysis hook of '${name}'`)
   const { gamut, failures } = hooks
   if (gamut === undefined && failures === undefined)
     throw refuse(
-      `the analysis of '${name}' declares no hook: without one, it is external and returns its 'returns', as an undeclared operator is`
+      `declareAnalysis() needs a hook for '${name}', or it returns just its 'returns' and may fail on any input, as if undeclared`
     )
   if (gamut !== undefined && typeof gamut !== 'function')
     throw refuse(`'gamut' of '${name}' must be a function`)
   if (failures !== undefined && typeof failures !== 'function' && !Array.isArray(failures))
-    throw refuse(`'failures' of '${name}' must be a function or a list of entries`)
+    throw refuse(`'failures' of '${name}' must be a function or an array of failure entries`)
   const analysis: OperatorAnalysis = Object.freeze({
     operator,
     ...(gamut !== undefined ? { gamut } : {}),
