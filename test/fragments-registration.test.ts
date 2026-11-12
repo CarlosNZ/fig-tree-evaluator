@@ -44,10 +44,21 @@ describe('the definition shape', () => {
   // Through the instance, `null` is the option merge's removal marker, and
   // at construction there is nothing to remove. The registry itself, which
   // never sees a removal, still refuses it
+  test.each([
+    ['an array', []],
+    ['a number', 5],
+  ])('a fragments option that is %s is refused', (_label, fragments) => {
+    const error = rejects(fragments as never)
+    expect(error.code).toBe(ErrorCodes.invalidOptions)
+    expect(error.issues?.map(({ code, path }) => ({ code, path }))).toEqual([
+      { code: ErrorCodes.invalidOptions, path: ['fragments'] },
+    ])
+  })
+
   test('null is a removal, not a definition', () => {
     const fig = new FigTree({ fragments: { frag: null } as never })
     expect(fig.getFragments()).toEqual([])
-    expect(() => registry({ frag: null } as never)).toThrow(/must be a wrapper object/)
+    expect(() => registry({ frag: null } as never)).toThrow(/must be an object/)
   })
 
   test('a wrapper without an expression is refused', () => {
@@ -125,7 +136,7 @@ describe('registration names', () => {
   test('a fragment may not take an operator name', () => {
     const error = rejects({ plus: { expression: 1 } })
     expect(codes(error)).toEqual([ErrorCodes.duplicateOperator])
-    expect(error.message).toContain('one namespace')
+    expect(error.message).toContain('is already registered by')
   })
 
   test('a fragment may not take an operator alias', () => {
@@ -138,6 +149,71 @@ describe('registration names', () => {
 describe('parameter declarations', () => {
   const frag = (parameters: Record<string, unknown>) => ({
     frag: { expression: 1, parameters },
+  })
+
+  test.each([
+    [
+      'parameters that are not an object',
+      { frag: { expression: 1, parameters: [] } },
+      ErrorCodes.invalidDefinition,
+      ['parameters'],
+    ],
+    [
+      'an illegal parameter name',
+      frag({ 'a.b': {} }),
+      ErrorCodes.invalidName,
+      ['parameters', 'a.b'],
+    ],
+    ['an empty parameter name', frag({ '': {} }), ErrorCodes.invalidName, ['parameters', '']],
+    [
+      'a declaration that is not an object',
+      frag({ x: 5 }),
+      ErrorCodes.invalidDefinition,
+      ['parameters', 'x'],
+    ],
+    [
+      'a required that is not a boolean',
+      frag({ x: { required: 'yes' } }),
+      ErrorCodes.invalidDefinition,
+      ['parameters', 'x', 'required'],
+    ],
+    [
+      'malformed constraints',
+      frag({ x: { type: 'array', constraints: { length: 'two' } } }),
+      ErrorCodes.invalidDefinition,
+      ['parameters', 'x', 'constraints'],
+    ],
+  ])('%s is refused', (_label, fragments, code, path) => {
+    expect(rejects(fragments).issues?.map((issue) => [issue.code, issue.path])).toEqual([
+      [code, ['fragments', 'frag', ...path]],
+    ])
+  })
+
+  test.each([
+    ['not an object', 'array', 5, 'expected a constraints object, got number'],
+    [
+      'an unknown key',
+      'array',
+      { lengthh: 2 },
+      'expected one of length, homogeneous, elementShape',
+    ],
+    ['a bad homogeneous', 'array', { homogeneous: 'x' }, 'expected a non-empty array of basic'],
+    ['a bad shape entry', 'object', { elementShape: { k: 5 } }, "expected a declaration of 'k'"],
+    [
+      'an unknown shape type',
+      'object',
+      { elementShape: { k: { type: 'strig' } } },
+      "expected a valid type for 'k'",
+    ],
+    [
+      'a bad shape required',
+      'object',
+      { elementShape: { k: { required: 'yes' } } },
+      "expected a boolean 'required' for 'k'",
+    ],
+  ])('malformed constraints (%s) say what was expected', (_label, type, constraints, expected) => {
+    const error = rejects(frag({ x: { type, constraints } }))
+    expect(error.issues?.[0].message).toContain(expected)
   })
 
   test('an unknown declaration key is refused', () => {
@@ -165,7 +241,7 @@ describe('parameter declarations', () => {
   test('required and default together is a contradiction', () => {
     const error = rejects(frag({ x: { type: 'string', required: true, default: 'a' } }))
     expect(codes(error)).toEqual([ErrorCodes.invalidDefinition])
-    expect(error.issues?.[0].message).toContain('could never apply')
+    expect(error.issues?.[0].message).toContain("so it can't have a default")
   })
 
   test('constraints are admitted, and checked against the default', () => {
@@ -205,7 +281,7 @@ describe('body compilation', () => {
     const error = rejects({ frag: { expression: { operator: 'flibble' } } })
     expect(codes(error)).toEqual([ErrorCodes.unknownOperator])
     expect(error.issues?.[0].path).toEqual(['fragments', 'frag', 'expression'])
-    expect(error.issues?.[0].message).toContain("fragment 'frag'")
+    expect(error.issues?.[0].message).toContain("Fragment 'frag'")
   })
 
   test('a malformed node in a body fails registration', () => {
@@ -345,7 +421,7 @@ describe('batch semantics', () => {
     const { issues } = error as FigTreeError
     expect(issues?.map((issue) => issue.code)).toEqual([ErrorCodes.unrecognizedIdentifier])
     expect(issues?.[0].message).toMatch(
-      /^fragment 'outer': '\$inner' is not a registered operator or fragment/
+      /^Fragment 'outer': '\$inner' is not a registered operator or fragment/
     )
     expect(issues?.[0].path).toEqual(['fragments', 'outer', 'expression', '$inner'])
     // And the instance is as it was
@@ -373,7 +449,7 @@ describe('batch semantics', () => {
       fragments: { inner: pair.inner, outer: { expression: { fragment: 'inner' } } },
     })
     expect(() => fig.updateOptions({ fragments: { inner: null } })).toThrow(
-      /names no registered fragment/
+      /is not a registered fragment/
     )
   })
 

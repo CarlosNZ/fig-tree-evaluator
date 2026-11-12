@@ -73,7 +73,7 @@ export const resolveReference = (node: ReferenceNode, ctx: EvaluationContext): u
 
 const resolveData = (node: ReferenceNode, ctx: EvaluationContext): unknown => {
   if (node.segments.length === 0) return ctx.data
-  return drill(ctx.data, node.segments, node, ctx, 'is absent from the evaluation data')
+  return drill(ctx.data, node.segments, node, ctx, 'is missing from the data')
 }
 
 const resolveVar = async (node: ReferenceNode, ctx: EvaluationContext): Promise<unknown> => {
@@ -84,13 +84,7 @@ const resolveVar = async (node: ReferenceNode, ctx: EvaluationContext): Promise<
   if (typeof name !== 'string' || thunk === undefined) throw unrefused(`'${node.raw}'`)
   const value = await thunk()
   if (rest.length === 0) return normalize(value)
-  return drill(
-    value,
-    rest as PathSegment[],
-    node,
-    ctx,
-    `is absent from the value of '$vars.${name}'`
-  )
+  return drill(value, rest as PathSegment[], node, ctx, `is missing from '$vars.${name}'`)
 }
 
 const resolveParam = async (node: ReferenceNode, ctx: EvaluationContext): Promise<unknown> => {
@@ -113,13 +107,7 @@ const resolveParam = async (node: ReferenceNode, ctx: EvaluationContext): Promis
   if (thunk === undefined) throw unrefused(`'${node.raw}'`)
   const value = await thunk()
   if (rest.length === 0) return normalize(value)
-  return drill(
-    value,
-    rest as PathSegment[],
-    node,
-    ctx,
-    `is absent from the value of '$params.${String(name)}'`
-  )
+  return drill(value, rest as PathSegment[], node, ctx, `is missing from '$params.${String(name)}'`)
 }
 
 const resolveBinding = (node: ReferenceNode, ctx: EvaluationContext): unknown => {
@@ -133,7 +121,7 @@ const resolveBinding = (node: ReferenceNode, ctx: EvaluationContext): unknown =>
     node.segments,
     node,
     ctx,
-    `is absent from '${node.raw.split('.')[0]}'`
+    `is missing from '${node.raw.split('.')[0]}'`
   )
 }
 

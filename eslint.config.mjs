@@ -74,6 +74,13 @@ export default tseslint.config(
     languageOptions: { globals: globals.node },
   },
   {
+    // Jest setup files for `pnpm messages`, which Jest loads as CommonJS
+    // into each test file's environment
+    files: ['codegen/messages/*.cjs'],
+    languageOptions: { sourceType: 'commonjs', globals: { ...globals.node, ...globals.jest } },
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
+  {
     plugins: { 'comment-length': commentLength },
     rules: {
       // `//` comments: enforced + auto-fixable (reflow) via plugin. Its

@@ -237,7 +237,7 @@ export const registerFragments = (
     runStaticChecks(artifact, { fragmentParams: new Set(Object.keys(entry.parameters)) })
     for (const { issue } of artifact.issues)
       if (issue.severity === 'error')
-        addIssue(issue.code, `fragment '${name}': ${issue.message}`, [
+        addIssue(issue.code, `Fragment '${name}': ${issue.message}`, [
           'fragments',
           name,
           ...issue.path,
@@ -281,29 +281,27 @@ const validateDefinition = (
   if (!legality.ok) {
     addIssue(
       ErrorCodes.invalidName,
-      `'${name}' is not a legal fragment name: ${legality.reason}`,
+      name === ''
+        ? 'A fragment name must be non-empty'
+        : `'${name}' is not a legal fragment name — ${legality.reason}`,
       at()
     )
     return undefined
   }
   if (isReservedRegistrationName(name)) {
-    addIssue(
-      ErrorCodes.reservedName,
-      `'${name}' is a reserved name and may not name a fragment`,
-      at()
-    )
+    addIssue(ErrorCodes.reservedName, `'${name}' can't be a fragment name`, at())
     return undefined
   }
   if (!isPlainObject(definition)) {
     addIssue(
       ErrorCodes.invalidDefinition,
-      `fragment '${name}' must be a wrapper object: { expression, parameters?, listing?, metadata? }`,
+      `Fragment '${name}' must be an object: { expression, parameters?, listing?, metadata? }`,
       at()
     )
     return undefined
   }
   if (!('expression' in definition)) {
-    addIssue(ErrorCodes.invalidDefinition, `fragment '${name}' has no 'expression'`, at())
+    addIssue(ErrorCodes.invalidDefinition, `Fragment '${name}' has no 'expression'`, at())
     return undefined
   }
   for (const key of Object.keys(definition))
@@ -370,7 +368,9 @@ const validateDeclaration = (
   if (!legality.ok) {
     addIssue(
       ErrorCodes.invalidName,
-      `'${parameter}' is not a legal parameter name: ${legality.reason}`,
+      parameter === ''
+        ? 'A parameter name must be non-empty'
+        : `'${parameter}' is not a legal parameter name — ${legality.reason}`,
       path
     )
     return undefined
@@ -378,17 +378,13 @@ const validateDeclaration = (
   // Flat reservation: a reserved node key is reserved everywhere, even
   // where it could not collide
   if (RESERVED_NODE_KEYS.has(parameter)) {
-    addIssue(
-      ErrorCodes.reservedName,
-      `'${parameter}' is a reserved node key and may not name a parameter`,
-      path
-    )
+    addIssue(ErrorCodes.reservedName, `'${parameter}' can't be a parameter name`, path)
     return undefined
   }
   if (!isPlainObject(declared)) {
     addIssue(
       ErrorCodes.invalidDefinition,
-      `the declaration of '${parameter}' must be an object`,
+      `The declaration of '${parameter}' must be a plain object`,
       path
     )
     return undefined
@@ -432,7 +428,7 @@ const validateDeclaration = (
   if (hasDefault && declared.required === true) {
     addIssue(
       ErrorCodes.invalidDefinition,
-      `'${parameter}' is declared required and also declares a default — the default could never apply`,
+      `'${parameter}' is required, so it can't have a default`,
       [...path, 'default']
     )
     return undefined
@@ -442,7 +438,7 @@ const validateDeclaration = (
     if (!fit.ok) {
       addIssue(
         ErrorCodes.typeCheck,
-        `the default for '${parameter}' does not satisfy its declared type: expected ${fit.expected}, got ${fit.actual}`,
+        `The default for '${parameter}' is the wrong type: expected ${fit.expected}, got ${fit.actual}`,
         [...path, 'default']
       )
       return undefined
@@ -451,7 +447,7 @@ const validateDeclaration = (
     if (!constrained.ok) {
       addIssue(
         ErrorCodes.typeCheck,
-        `the default for '${parameter}' violates its declared constraints: expected ${constrained.expected}, got ${constrained.actual}`,
+        `The default for '${parameter}' violates its declared constraints: expected ${constrained.expected}, got ${constrained.actual}`,
         [...path, 'default']
       )
       return undefined
@@ -505,7 +501,7 @@ const checkCycles = (compiled: Map<string, CompileArtifact>, addIssue: AddIssue)
     ([name, ...rest]) =>
       addIssue(
         ErrorCodes.fragmentCycle,
-        `fragment '${name}' reaches itself: ${[name, ...rest, name].join(' → ')} — recursion is not supported`,
+        `Fragment '${name}' calls itself: ${[name, ...rest, name].join(' → ')}`,
         ['fragments', name]
       )
   )

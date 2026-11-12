@@ -40,7 +40,8 @@ interface Registry {
     positionalParams?: readonly string[]
     restParam: string | null
   }[]
-  getFragments(): readonly { name: string }[]
+  // parameters, when given, let a misplaced argument be named as one
+  getFragments(): readonly { name: string; parameters?: Record<string, unknown> }[]
 }
 
 type Spelling = 'preserve' | 'canonical' | 'alias'

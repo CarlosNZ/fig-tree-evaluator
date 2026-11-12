@@ -147,7 +147,7 @@ describe('match', () => {
         severity: 'warning',
         code: 'unrecognized-identifier',
         path: ['$match', 1, '$USD'],
-        message: "'$USD' is not a registered operator or fragment, so it is a plain key",
+        message: "'$USD' is matched as a plain label",
       },
     ])
     expect(await ev(expression, { code: '$USD' })).toBe('dollars')
@@ -157,8 +157,7 @@ describe('match', () => {
     expect(fig.validate({ $match: ['a', { $plsu: 'x' }] }).issues).toMatchObject([
       {
         severity: 'warning',
-        message:
-          "'$plsu' is not a registered operator or fragment, so it is a plain key — did you mean '$plus'?",
+        message: "'$plsu' is matched as a plain label — did you mean '$plus'?",
         suggestion: '$plus',
       },
     ])

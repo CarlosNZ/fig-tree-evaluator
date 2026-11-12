@@ -70,14 +70,12 @@ export const classifyObject = (
   if (hasOperator && hasFragment) return malformed("'operator' and 'fragment' may not share a node")
   if ((hasOperator || hasFragment) && shorthand.length > 0)
     return malformed(
-      `a canonical '${hasOperator ? 'operator' : 'fragment'}' key may not sit beside the shorthand key '${shorthand[0]}'`
+      `'${hasOperator ? 'operator' : 'fragment'}' may not sit beside '${shorthand[0]}'`
     )
   if (hasOperator) return OPERATOR
   if (hasFragment) return FRAGMENT
   if (shorthand.length >= 2)
-    return malformed(
-      `one node, one invocation: found ${shorthand.map((key) => `'${key}'`).join(' and ')}`
-    )
+    return malformed(`${shorthand.map((key) => `'${key}'`).join(' and ')} may not share a node`)
   if (shorthand.length === 1) return { kind: 'shorthand', key: shorthand[0] }
   return PLAIN
 }

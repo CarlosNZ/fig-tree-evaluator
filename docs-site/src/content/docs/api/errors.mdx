@@ -59,7 +59,7 @@ The error FigTree throws, whatever went wrong: a static error, a runtime failure
 
 **Details:**
 
-- A runtime failure's `message` starts with the operator's name, as in `divide – produced a non-finite number (Infinity)`.
+- A runtime failure's `message` starts with the operator's name, as in `divide – division by 0`.
 - When a custom operator throws a plain `Error`, the `FigTreeError` has the code `operator-failure` and the `Error`'s message. An [`OperatorFailure`](/custom-operators/evaluate/#failing) keeps its own `code` and `errorData`.
 - A static error's `code`, `message`, `path` and `operator` are those of the first error in its `issues`. It never has a `trace`, since nothing ran.
 - An error from the constructor, `updateOptions()`, `with()` or `defineOperator()` has the code `invalid-options` or `invalid-definition`, and lists each problem in `issues` with a code of its own and a `path` into the options or the definition. Its `message` is the first issue's, with a count of the rest, such as `(+ 1 more issue)`. An invalid per-call option is reported the same way, with its `path`. A bundled client's constructor, such as `new FetchClient()`, throws `invalid-options` too when it can't use its argument, with `path: []` and no `issues`.
@@ -70,7 +70,7 @@ The error FigTree throws, whatever went wrong: a static error, a runtime failure
 
 ```txt
 empty-aggregate (operator: plus) in fragment 'averageOrder' at expression.$round[0].$divide[0], called from summary.average
-plus – the sum of nothing — the values array is empty; pin the mode with 'expect' to get its identity
+plus – 'values' is empty, so output type is unclear — use 'expect'
 ```
 
 **See also:** [Errors that reach the host](/guides/fallbacks/#errors-that-reach-the-host)
@@ -152,7 +152,7 @@ Runtime failures. A fallback catches each of these, and with none to catch it, `
 | `invalid-response`  | A successful response that isn't JSON, or a GraphQL response with neither `data` nor `errors`. `errorData` has the `url` and `response`                                                                         |
 | `graphql-errors`    | A GraphQL response with errors in it. `errorData.errors` is its array of errors                                                                                                                                |
 | `sql-error`         | The database refusing a query. `errorData` has the `driver`, and usually a `driverCode`                                                                                                                         |
-| `request-failure`   | Anything else a client throws, such as the server being unreachable. No `errorData`                                                                                                                             |
+| `request-failure`   | Anything else a client throws, such as the server being unreachable, or a SQL connection returning rows that aren't objects. No `errorData`                                                                     |
 | `non-finite-result` | Arithmetic that gives an infinity from finite numbers, such as `{ $divide: [1, 0] }`, or gives `NaN`, such as `{ $divide: [0, 0] }`                                                                             |
 | `empty-aggregate`   | An empty list computed for an operator that has no answer for one, such as `min`, or `plus` without `expect`. An empty list written into the expression is an `operator-validate` static error instead          |
 | `missing-data-path` | A missing path under `strictDataPaths`, in a reference or a `get`. Also the warning `validate()` gives for a path missing from its sample data                                                                  |

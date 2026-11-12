@@ -155,6 +155,8 @@ Often you want less than a list of rows. `shape` says what to return:
 - **`'column'`**: each row's value, as an array, for a query that selects a single column.
 - **`'firstValue'`**: the first row's value, for a query that selects a single column.
 
+A query that selects more than one column fails under `'column'` and `'firstValue'` with `'type-check'`, so name the one column you want in the SQL.
+
 When there's no row, `'firstRow'` and `'firstValue'` return `noRowDefault` instead, which is `null` unless you give one:
 
 <Expression
@@ -186,7 +188,7 @@ A failed request fails its node like anything else, so a fallback can catch it, 
 - **`'graphql-errors'`**: a GraphQL response with errors in it, even if it has some `data` as well. `errorData.errors` is the response's array of errors.
 - **`'sql-error'`**: the database refused the query. `errorData` has the `driver` (`'postgres'` or `'sqlite'`), and usually a `driverCode`, the database's own code for the error, such as Postgres's `'42703'` for an unknown column.
 - **`'request-timeout'`**: the node's own `timeout` ran out ([below](#a-requests-own-timeout)).
-- **`'request-failure'`**: anything else, such as the server being unreachable. It has a `message`, but no `errorData`.
+- **`'request-failure'`**: anything else, such as the server being unreachable, or a SQL connection returning rows that aren't objects. It has a `message`, but no `errorData`.
 
 <Callout kind="note" title="Safe to log">
   A header's value never appears in a failure, or in a [trace](/guides/tracing/), since headers are where credentials usually go. A long response that isn't JSON, such as a proxy's error page, is cut to its first 500 characters.
@@ -387,7 +389,7 @@ interface SqlRequest {
 
 FigTree builds the request, so a client only sends it, and returns what came back: the parsed JSON for HTTP (`null` for an empty response), and the rows, as objects, for SQL.
 
-To report a failure the operators can describe, throw one with `httpFailure()` or `sqlFailure()`, both imported from `fig-tree-evaluator`. `httpFailure()` takes the `status`, `statusText`, `url` and `response`, and makes an `'http-status'` failure. `sqlFailure()` takes the driver's name and its error, and makes a `'sql-error'`. Anything else a client throws reaches a fallback as `'request-failure'`, with only its message.
+To report a failure the operators can describe, throw one with `httpFailure()` or `sqlFailure()`, both imported from `fig-tree-evaluator`. `httpFailure()` takes the `status`, `statusText`, `url` and `response`, and makes an `'http-status'` failure. `sqlFailure()` takes the driver's name and its error, and makes a `'sql-error'`. Anything else a client throws reaches a fallback as `'request-failure'`, with only its message. So does a SQL connection that returns anything but an array of objects, such as rows as arrays.
 
 Here's a connection for MySQL, through the [mysql2](https://sidorares.github.io/node-mysql2/docs) package:
 

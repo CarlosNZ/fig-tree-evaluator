@@ -43,6 +43,25 @@ describe('literal parameter values vs declared types, constraints included', () 
   test('dynamic values pass untouched — runtime territory', () => {
     expect(errorCodes({ $format: { template: '$data.t' } })).toHaveLength(0)
   })
+
+  test('a literal parameter refuses a computed value', () => {
+    // The core's one literal parameter is `as`, which has its own check
+    const pickKey = defineOperator({
+      name: 'pickKey',
+      category: 'other',
+      parameters: { from: { type: 'object' }, key: { type: 'string', evaluationMode: 'literal' } },
+      evaluate: ({ from, key }) => (from as Record<string, unknown>)[key],
+    })
+    const hosts = new FigTree({ operators: [compileOps(), [pickKey]] })
+    const codes = (key: unknown) =>
+      hosts
+        .validate({ $pickKey: { from: { a: 1 }, key } })
+        .issues.filter((issue) => issue.severity === 'error')
+        .map((issue) => issue.code)
+    expect(codes({ $plus: ['a', 'b'] })).toEqual(['type-check'])
+    expect(codes('$data.k')).toEqual(['type-check'])
+    expect(codes('a')).toEqual([])
+  })
 })
 
 describe('missing required / unknown parameter', () => {
@@ -190,6 +209,12 @@ describe('as renaming', () => {
     }
   })
 
+  test('as must be a legal name: not empty, and without . [ or ]', () => {
+    for (const as of ['', 'a.b', 'row[0]', 'x]']) {
+      expect(errorCodes({ operator: 'map', input: [1], as, each: 1 })).toContain('invalid-as')
+    }
+  })
+
   test('as may not collide with reserved namespaces, long or short form', () => {
     for (const as of ['data', 'e', 'index', 'v', 'error', 'err']) {
       expect(errorCodes({ operator: 'map', input: [1], as, each: 1 })).toContain('invalid-as')
@@ -263,6 +288,13 @@ describe('as renaming', () => {
     expect(errorCodes(nested('order'))).toContain('invalid-as')
     expect(errorCodes(nested('orderIndex'))).toContain('invalid-as')
     expect(errorCodes(nested('item'))).toHaveLength(0)
+    // The inner index name clashing with an outer name
+    const inner = { operator: 'map', input: [2], as: 'order', each: 1 }
+    const { issues } = fig.validate({ operator: 'map', input: [1], as: 'orderIndex', each: inner })
+    const errors = issues.filter((issue) => issue.severity === 'error')
+    expect(errors.map((issue) => issue.message)).toEqual([
+      "'order' gives '$orderIndex', already in use by an enclosing 'as'",
+    ])
   })
 })
 
@@ -284,7 +316,7 @@ describe('vars cycles, shadowing, unreferenced', () => {
     const cycles = issues.filter((issue) => issue.code === 'var-cycle')
     expect(cycles).toHaveLength(1)
     expect(cycles[0].path).toEqual(['vars', 'a'])
-    expect(cycles[0].message).toBe("'a' and 'b' form a vars cycle — a var may not depend on itself")
+    expect(cycles[0].message).toBe("'a' and 'b' form a cycle")
   })
 
   test('a self-cycle and a three-var cycle name their members', () => {
@@ -303,7 +335,7 @@ describe('vars cycles, shadowing, unreferenced', () => {
     expect(three.filter((issue) => issue.code === 'var-cycle')).toEqual([
       expect.objectContaining({
         path: ['vars', 'a'],
-        message: "'a', 'b' and 'c' form a vars cycle — a var may not depend on itself",
+        message: "'a', 'b' and 'c' form a cycle",
       }),
     ])
   })
@@ -444,6 +476,29 @@ describe('operator validate hooks', () => {
     )
     for (const helper of ['parsePath', 'checkType', 'checkConstraints', 'renderText']) {
       expect(probe?.message).toContain(helper)
+    }
+  })
+
+  test("a hook that throws is the node's error, carrying what it threw", () => {
+    // Host code can throw anything; no core hook throws
+    for (const thrown of [new Error('mode must be set'), 'mode must be set']) {
+      const fussy = defineOperator({
+        name: 'fussy',
+        category: 'other',
+        parameters: { value: { type: 'any' } },
+        positionalParams: ['value'],
+        validate: () => {
+          throw thrown
+        },
+        evaluate: ({ value }) => value,
+      })
+      const hosts = new FigTree({ operators: [compileOps(), [fussy]] })
+      const issues = hosts.validate({ $fussy: 1 }).issues
+      expect(issues.map(({ code, path, operator }) => ({ code, path, operator }))).toEqual([
+        { code: 'operator-validate', path: [], operator: 'fussy' },
+      ])
+      // The hook's own text, not the library's wording
+      expect(issues[0].message).toContain('mode must be set')
     }
   })
 
@@ -630,6 +685,17 @@ describe('dead bindings', () => {
     )
     expect(warningCodes({ operator: 'map', input: [1], as: 'row', each: 1 })).toContain(
       'dead-binding'
+    )
+  })
+
+  test('the warning names both bindings, renamed or not', () => {
+    const message = (expression: object) =>
+      fig.validate(expression).issues.find((issue) => issue.code === 'dead-binding')?.message
+    expect(message({ operator: 'map', input: [1], each: 1 })).toBe(
+      "'map' never reads $element or $index in its 'each'"
+    )
+    expect(message({ operator: 'map', input: [1], as: 'row', each: 1 })).toBe(
+      "'map' never reads $row or $rowIndex in its 'each'"
     )
   })
 

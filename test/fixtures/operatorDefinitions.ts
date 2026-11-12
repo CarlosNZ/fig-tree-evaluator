@@ -329,6 +329,14 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
 
   // Per-parameter declarations
   {
+    id: 'parameter-declaration-not-an-object',
+    definition: withValueParam(42),
+    expected: {
+      code: ErrorCodes.invalidDefinition,
+      pathTail: ['parameters', 'value'],
+    },
+  },
+  {
     id: 'parameter-type-outside-vocabulary',
     definition: withValueParam({ type: 'text' }),
     expected: {
@@ -361,6 +369,14 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     },
   },
   {
+    id: 'parameter-required-not-a-boolean',
+    definition: withValueParam({ type: 'number', required: 'yes' }),
+    expected: {
+      code: ErrorCodes.invalidDefinition,
+      pathTail: ['parameters', 'value', 'required'],
+    },
+  },
+  {
     id: 'parameter-evaluation-outside-vocabulary',
     definition: withValueParam({ evaluationMode: 'lazyish' }),
     expected: {
@@ -371,6 +387,14 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
   {
     id: 'null-policy-on-null-free-type',
     definition: withValueParam({ type: 'number', nullPolicy: 'accept' }),
+    expected: {
+      code: ErrorCodes.invalidNullPolicy,
+      pathTail: ['parameters', 'value', 'nullPolicy'],
+    },
+  },
+  {
+    id: 'null-policy-outside-vocabulary',
+    definition: withValueParam({ type: ['number', 'null'], nullPolicy: 'ignore' }),
     expected: {
       code: ErrorCodes.invalidNullPolicy,
       pathTail: ['parameters', 'value', 'nullPolicy'],
@@ -401,6 +425,14 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     },
   },
   {
+    id: 'truthiness-not-a-boolean',
+    definition: withValueParam({ type: 'any', truthiness: 1 }),
+    expected: {
+      code: ErrorCodes.invalidDefinition,
+      pathTail: ['parameters', 'value', 'truthiness'],
+    },
+  },
+  {
     id: 'sentinel-outside-default-position',
     definition: withField('returns', EvaluationData),
     expected: { code: ErrorCodes.invalidDefinition, pathTail: ['returns'] },
@@ -426,6 +458,17 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     id: 'positional-duplicate-entry',
     definition: withField('positionalParams', ['value', 'value']),
     expected: { code: ErrorCodes.invalidDefinition, pathTail: ['positionalParams', 1] },
+  },
+  {
+    id: 'over-not-a-string',
+    definition: withParams({
+      items: { type: 'array' },
+      fn: { evaluationMode: 'perElement', over: 5 },
+    }),
+    expected: {
+      code: ErrorCodes.invalidDefinition,
+      pathTail: ['parameters', 'fn', 'over'],
+    },
   },
   {
     id: 'over-without-per-element',
@@ -463,6 +506,17 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     expected: {
       code: ErrorCodes.invalidDefinition,
       pathTail: ['parameters', 'each', 'over'],
+    },
+  },
+  {
+    id: 'replaces-null-at-not-a-string-array',
+    definition: withParams({
+      value: { type: ['number', 'null'] },
+      holder: { type: 'number', required: false, evaluationMode: 'lazy', replacesNullAt: 'value' },
+    }),
+    expected: {
+      code: ErrorCodes.invalidDefinition,
+      pathTail: ['parameters', 'holder', 'replacesNullAt'],
     },
   },
   {

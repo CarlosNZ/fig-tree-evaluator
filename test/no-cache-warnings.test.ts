@@ -36,7 +36,9 @@ const dead = (fig: FigTree, expression: unknown) =>
 
 const at = (path: (string | number)[], kind: 'redundant' | 'dead') => ({
   path,
-  message: expect.stringContaining(`is ${kind}`) as unknown as string,
+  message: expect.stringContaining(
+    kind === 'dead' ? 'has no effect' : 'is redundant'
+  ) as unknown as string,
 })
 
 describe('dead: nothing beneath can cache', () => {

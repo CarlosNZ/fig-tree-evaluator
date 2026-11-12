@@ -1111,6 +1111,23 @@ const BATCH_3: Example[] = [
     differs: { v2: { value: 'You have 2 friends' }, v3: { value: 'You have 2' } },
   },
   {
+    name: 'a computed `numberMapping` names no token',
+    input: {
+      operator: 'stringSubstitution',
+      string: 'You have {{count}}',
+      numberMapping: { operator: 'getData', property: 'mapping' },
+    },
+    data: { count: 2, mapping: { count: { 1: 'one friend', other: '{} friends' } } },
+    expected: {
+      '//': `${NOTE}v3 has no \`numberMapping\`, so each token it maps renders the bare number. Choose the text in the substitution instead, with \`match\` or \`if\`.`,
+      operator: 'buildString',
+      template: 'You have {{$data.count}}',
+      trim: true,
+    },
+    issues: [{ code: 'number-mapping', path: ['numberMapping'] }],
+    differs: { v2: { value: 'You have 2 friends' }, v3: { value: 'You have 2' } },
+  },
+  {
     name: 'an escape v3 can write as text loses its backslash, in named mode',
     input: { operator: 'stringSubstitution', string: 'a \\{{ b {{n}}', substitutions: { n: 1 } },
     expected: {

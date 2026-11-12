@@ -27,6 +27,9 @@ test('vars names follow the shared legality rule', () => {
 
   const dotted = compile({ operator: 'plus', values: [1], vars: { 'a.b': 1 } })
   expect(errorCodes(dotted)).toContain('invalid-name')
+
+  const empty = compile({ operator: 'plus', values: [1], vars: { '': 1 } })
+  expect(empty.issues.map((s) => s.issue.message)).toContain('A var name must be non-empty')
 })
 
 test('a vars block is structural, never a node', () => {

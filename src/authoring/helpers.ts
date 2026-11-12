@@ -186,7 +186,7 @@ export const hooked = (
 const failed = (node: OperatorNode, what: string, cause?: unknown): FigTreeError =>
   new FigTreeError({
     code: ErrorCodes.invalidDefinition,
-    message: `the analysis of '${node.name}' ${what}`,
+    message: `The analysis of '${node.name}' ${what}`,
     path: toNodePath(node.path),
     operator: node.name,
     ...(cause !== undefined ? { cause } : {}),
@@ -261,7 +261,7 @@ export const entriesOf = ({
   )
     throw failed(
       node,
-      "gave 'failures' that are not a list of entries, each with a code, an answer and a declared parameter"
+      "gave 'failures' that are not an array of failure entries, each with a code, an answer and a declared parameter"
     )
   return entries
 }

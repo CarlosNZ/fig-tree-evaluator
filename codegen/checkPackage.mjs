@@ -65,8 +65,8 @@ const ROOT_MARKERS = [
     ],
   },
   { part: 'the inspector', markers: ['inspect() takes a CompiledExpression'] },
-  { part: 'operatorSet()', markers: ['the selection leaves no operators'] },
-  { part: "defineOperator()'s checks", markers: ['a definition must be a plain object'] },
+  { part: 'operatorSet()', markers: ['The selection leaves no operators'] },
+  { part: "defineOperator()'s checks", markers: ['A definition must be a plain object'] },
 ]
 
 /**
@@ -104,9 +104,9 @@ const ENGINE_MARKERS = [
       'buildObject', // declareOperator
       'greaterThanOrEqual', // ordering
       '"floor"', // unary
-      'the minimum', // extremum
+      'so there is no', // extremum
       '"upper"', // normalizer
-      'array is a dead expression', // emptyArrayWarning
+      'An empty ', // emptyArrayWarning, emptyAggregateError
     ],
   },
 ]

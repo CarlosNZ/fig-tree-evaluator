@@ -12,9 +12,11 @@ describe('parsePath', () => {
   })
 
   it('throws on malformed input', () => {
-    expect(() => parsePath('a[')).toThrow(/Invalid path/)
-    expect(() => parsePath('a["unterminated]')).toThrow(/Invalid path/)
-    expect(() => parsePath('a[x]')).toThrow(/Invalid path/)
+    expect(() => parsePath('a[')).toThrow(/invalid path/)
+    expect(() => parsePath('a["unterminated]')).toThrow(/invalid path/)
+    expect(() => parsePath('a[x]')).toThrow(/invalid path/)
+    // An escape with nothing after it
+    expect(() => parsePath('a["x\\')).toThrow(/invalid path/)
   })
 })
 

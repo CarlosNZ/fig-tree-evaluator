@@ -288,7 +288,6 @@ const runOnce = async (
   if (inputs.ends !== undefined) return { failure: inputs.ends }
 
   const standIns = new Map<unknown, Child>()
-  const made = new Set<unknown>()
   const markers = new Map<unknown, Child>()
   const typeChecks = new Map<unknown, string>()
   // Whether the body waits on a stand-in: before it has answered, noted;
@@ -316,7 +315,7 @@ const runOnce = async (
       if (fits(exactly(value), declared.type, declared.constraints, policy) !== 'yes') {
         const error = new FigTreeError({
           code: ErrorCodes.typeCheck,
-          message: `${node.name} – parameter '${name}': fails its type check`,
+          message: `${node.name} – parameter '${name}' fails its type check`,
           path: [],
         })
         typeChecks.set(error, name)
@@ -351,9 +350,7 @@ const runOnce = async (
   }
   const handle = (evaluate: () => Promise<unknown>) => {
     let asked: Promise<unknown> | undefined
-    const lazy = { evaluate: () => (asked ??= evaluate()) }
-    made.add(lazy)
-    return lazy
+    return { evaluate: () => (asked ??= evaluate()) }
   }
   type Item = { index: number; child?: Child; value?: unknown }
   /** Known elements first, in index order; then any stand-in, never. */
@@ -371,7 +368,7 @@ const runOnce = async (
     }
     const isUnknown = (item: Item) =>
       item.child !== undefined && 'unknown' in chosen.get(item.child)!
-    const settlements = {
+    return {
       length: items.length,
       async *[Symbol.asyncIterator]() {
         for (const item of items) if (!isUnknown(item)) yield settle(item)
@@ -380,8 +377,6 @@ const runOnce = async (
         await NEVER
       },
     }
-    made.add(settlements)
-    return settlements
   }
 
   /** A value that has passed its layers, delivered as its mode has it. */
@@ -466,7 +461,6 @@ const runOnce = async (
         return stream(items, vet)
       },
     }
-    made.add(each)
     params[name] = each
   }
 
@@ -516,14 +510,6 @@ const runOnce = async (
   // The result boundary (`normalizeResult` in src/evaluate/operator.ts)
   if (result === undefined) return { value: null }
   if (Number.isNaN(result) && typeNamesNumber(definition.returns))
-    return own(
-      ErrorCodes.nonFiniteResult,
-      `${node.name} – produced a non-finite number (${String(result)})`
-    )
-  if (made.has(result))
-    return own(
-      ErrorCodes.escapedHandle,
-      `${node.name} – returned a lazy handle instead of evaluating it`
-    )
+    return own(ErrorCodes.nonFiniteResult, `${node.name} – returned NaN`)
   return { value: result }
 }

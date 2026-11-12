@@ -99,14 +99,14 @@ export const fallbackCoverage = async (
             uncoveredFinding({
               ...at,
               message:
-                'the timeout may reject the evaluation: something in it can wait, and this value has no static fallback to shield it',
+                'The timeout may reject the evaluation: something in it can wait, and this value has no static fallback to shield it',
             })
           )
       } else if (analysis.waiting.has(node))
         caught.push({
           pending: {
             ...at,
-            message: 'may be cut off by the timeout, which puts its static fallback in its place',
+            message: 'May be cut off by the timeout, which puts its static fallback in its place',
           },
           by: { path: node.path },
         })

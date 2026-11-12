@@ -46,7 +46,7 @@ describe('an undeclared name is an error with the in-body message', () => {
       expect.objectContaining({
         code: ErrorCodes.unresolvedParam,
         path: ['b'],
-        message: "'$params.z': the fragment declares no parameter 'z'",
+        message: "'$params.z': the fragment has no parameter 'z'",
       }),
     ])
   })
@@ -56,7 +56,7 @@ describe('an undeclared name is an error with the in-body message', () => {
     const result = fig.validate(body, { params: [] })
     expect(errors(result).map((issue) => issue.path)).toEqual([['a'], ['b', '$get', 'from']])
     for (const issue of errors(result)) {
-      expect(issue.message).toContain('the fragment declares no parameter')
+      expect(issue.message).toContain('the fragment has no parameter')
       expect(issue.message).not.toContain('only available inside a fragment body')
     }
   })
@@ -74,7 +74,7 @@ describe('an undeclared name is an error with the in-body message', () => {
         code: ErrorCodes.unresolvedParam,
         path: ['a'],
         message:
-          "'$params.contry.code': the fragment declares no parameter 'contry' — did you mean 'country'?",
+          "'$params.contry.code': the fragment has no parameter 'contry' — did you mean 'country'?",
         parameter: 'contry',
         suggestion: 'country',
       },
@@ -87,7 +87,7 @@ describe('an undeclared name is an error with the in-body message', () => {
         severity: 'error',
         code: ErrorCodes.unresolvedParam,
         path: ['b', '$buildString', 'template'],
-        message: "'$p.zzz': the fragment declares no parameter 'zzz'",
+        message: "'$p.zzz': the fragment has no parameter 'zzz'",
         parameter: 'zzz',
       },
       expect.objectContaining({ parameter: 'contry', suggestion: 'country' }),
@@ -103,8 +103,8 @@ test('without the option, every $params read is the outside-a-body error', () =>
   for (const options of [undefined, {}, { params: undefined }] as (ValidateOptions | undefined)[]) {
     const result = fig.validate({ a: '$params.x', b: '$params' }, options)
     expect(errors(result).map((issue) => issue.message)).toEqual([
-      "'$params.x': $params is only available inside a fragment body",
-      "'$params': $params is only available inside a fragment body",
+      "'$params.x' is only available inside a fragment body",
+      "'$params' is only available inside a fragment body",
     ])
     expect(errors(result).map((issue) => issue.parameter)).toEqual(['x', undefined])
   }
@@ -197,7 +197,7 @@ describe('misuse', () => {
     expect(call).toThrow(
       expect.objectContaining({
         code: ErrorCodes.invalidOptions,
-        message: "'params' must be an array of parameter names (strings)",
+        message: "'params' must be an array of parameter names",
       })
     )
   })

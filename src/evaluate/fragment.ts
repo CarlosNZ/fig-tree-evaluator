@@ -298,7 +298,7 @@ const callFailure = (
 ): FigTreeError =>
   new FigTreeError({
     code,
-    message: `fragment '${node.name}' – ${message}`,
+    message: `Fragment '${node.name}' – ${message}`,
     path: toNodePath(path),
   })
 

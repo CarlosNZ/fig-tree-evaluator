@@ -5,9 +5,10 @@
  * propagates null; the aggregates propagate per element with
  * `nullValueDefault` as the declared per-site opt-out (ledger #18). The
  * number type admits the infinities but not NaN. A body that can create an
- * infinity from finite operands (overflow, division by zero) refuses it with
- * `overflowChecked`; a NaN result is refused by the engine's result boundary,
- * as every operator declared to return a number is (ledger #10).
+ * infinity from finite operands refuses it: `divide` a zero divisor,
+ * `power` a negative power of zero, and every one overflow, with
+ * `overflowChecked`. A NaN result is refused by the engine's result
+ * boundary, as every operator declared to return a number is (ledger #10).
  */
 import { declareOperator } from '../buildOperator'
 import { compareValues, roundDecimal } from '../primitives'
@@ -16,6 +17,7 @@ import {
   emptyAggregateError,
   emptyAggregateFailure,
   emptyAggregateWarning,
+  nonFiniteFailure,
   operandTypeFailure,
   overflowChecked,
 } from './shared'
@@ -57,7 +59,7 @@ export const plus = declareOperator({
   evaluate: ({ values, expect }) => {
     if (values.length === 0) {
       if (expect === undefined)
-        throw emptyAggregateFailure('the sum', "pin the mode with 'expect' to get its identity")
+        throw emptyAggregateFailure("'values' is empty, so output type is unclear — use 'expect'")
       return PLUS_IDENTITY[expect]()
     }
     // The declared `homogeneous` constraint, checked after any null
@@ -107,7 +109,12 @@ export const divide = declareOperator({
   },
   positionalParams: ['value', 'by'],
   returns: 'number',
-  evaluate: ({ value, by }) => overflowChecked(value / by, [value, by]),
+  evaluate: ({ value, by }) => {
+    // A finite number over zero is an infinity or NaN. An infinite `value`
+    // over zero is that infinity, carried as any infinite operand is
+    if (by === 0 && Number.isFinite(value)) throw nonFiniteFailure('division by 0')
+    return overflowChecked(value / by, [value, by])
+  },
 })
 
 export const modulo = declareOperator({
@@ -161,7 +168,11 @@ export const power = declareOperator({
   },
   positionalParams: ['base', 'exponent'],
   returns: 'number',
-  evaluate: ({ base, exponent }) => overflowChecked(base ** exponent, [base, exponent]),
+  evaluate: ({ base, exponent }) => {
+    // Zero to a negative power is a division by zero
+    if (base === 0 && exponent < 0) throw nonFiniteFailure("0 can't be raised to a negative power")
+    return overflowChecked(base ** exponent, [base, exponent])
+  },
 })
 
 export const round = declareOperator({
@@ -221,10 +232,11 @@ const extremum = (name: string, label: string, wins: (comparison: number) => boo
     validate: emptyAggregateError,
     evaluate: ({ values }) => {
       const candidates = values as (number | string)[]
-      if (candidates.length === 0) throw emptyAggregateFailure(label)
+      if (candidates.length === 0)
+        throw emptyAggregateFailure(`'values' is empty, so there is no ${label}`)
       return candidates.reduce((best, value) => (wins(compareValues(value, best)) ? value : best))
     },
   })
 
-export const min = extremum('min', 'the minimum', (comparison) => comparison < 0)
-export const max = extremum('max', 'the maximum', (comparison) => comparison > 0)
+export const min = extremum('min', 'minimum', (comparison) => comparison < 0)
+export const max = extremum('max', 'maximum', (comparison) => comparison > 0)

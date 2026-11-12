@@ -831,7 +831,7 @@ const paramNames = (params: unknown): ReadonlySet<string> => {
   if (!Array.isArray(params) || params.some((name) => typeof name !== 'string'))
     throw new FigTreeError({
       code: ErrorCodes.invalidOptions,
-      message: "'params' must be an array of parameter names (strings)",
+      message: "'params' must be an array of parameter names",
       path: [],
     })
   return new Set(params)

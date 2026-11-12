@@ -395,39 +395,39 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
     {
       "severity": "error",
       "code": "max-nodes",
-      "message": "the expression holds 22 evaluable nodes — maxNodes is 20",
+      "message": "The expression has 22 nodes — maxNodes is 20",
       "path": []
     },
     {
       "order": 34,
       "severity": "error",
       "code": "unknown-operator",
-      "message": "'flibble' names no registered operator",
+      "message": "'flibble' is not a registered operator",
       "path": ["broken"]
     },
     {
       "order": 36,
       "severity": "error",
       "code": "unrecognized-identifier",
-      "message": "'$colour' is not a registered operator or fragment — data with a '$' key goes inside 'literal'",
+      "message": "'$colour' is not a registered operator or fragment — use 'literal' to treat it as data",
       "path": ["extras", "$colour"]
     },
     {
       "severity": "warning",
       "code": "missing-data-path",
-      "message": "'$data.customer.name' is absent from the supplied sample data",
+      "message": "'$data.customer.name' is missing from the sample data",
       "path": ["greeting", "$greet", "name"]
     },
     {
       "severity": "warning",
       "code": "missing-data-path",
-      "message": "'$data.customer.email' is absent from the supplied sample data",
+      "message": "'$data.customer.email' is missing from the sample data",
       "path": ["contact", "$firstNonNull", 0]
     },
     {
       "severity": "warning",
       "code": "missing-data-path",
-      "message": "'$data.customer.phone' is absent from the supplied sample data",
+      "message": "'$data.customer.phone' is missing from the sample data",
       "path": ["contact", "$firstNonNull", 1]
     }
   ],

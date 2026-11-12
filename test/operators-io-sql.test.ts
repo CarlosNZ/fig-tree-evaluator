@@ -107,8 +107,64 @@ describe('shape', () => {
         fig.evaluate({ $sql: { query: `SELECT * FROM people -- ${shape}`, shape } })
       )
       expect(error.code).toBe('type-check')
-      expect(error.message).toMatch(/single-column result/)
+      expect(error.message).toMatch(/needs one column/)
     }
+  })
+
+  describe('a connection that breaks the rows-as-objects contract', () => {
+    const SHAPES = ['rows', 'firstRow', 'column', 'firstValue']
+    const counting = (answer: unknown) => {
+      const connection = {
+        queries: 0,
+        query: async () => {
+          connection.queries++
+          return answer as never
+        },
+      }
+      return connection
+    }
+    const broken: [string, unknown, RegExp][] = [
+      // pg's `rowMode: 'array'`
+      ['rows as arrays', [['Ada'], ['Grace']], /each row .* must be an object, received array/],
+      // pg's whole result, not its `rows`: unchecked, 'firstRow' read it as
+      // no row at all
+      ['a driver result object', { rows: NAMES, rowCount: 2 }, /an array of rows, received object/],
+      ['null', null, /an array of rows, received null/],
+      ['a null row', [null, { name: 'Grace' }], /each row .* must be an object, received null/],
+    ]
+
+    it.each(broken)(
+      'fails %s as request-failure, whatever the shape',
+      async (_, answer, message) => {
+        const fig = new FigTree({ operators: [coreOperators, sqlOperators(counting(answer))] })
+        for (const shape of SHAPES) {
+          const error = await rejection<FigTreeError>(
+            fig.evaluate({ $sql: { query: 'SELECT name FROM people', shape } })
+          )
+          expect(error.code).toBe('request-failure')
+          expect(error.message).toMatch(message)
+        }
+      }
+    )
+
+    it('never caches the broken answer', async () => {
+      const connection = counting([['Ada']])
+      const fig = new FigTree({ operators: [coreOperators, sqlOperators(connection)] })
+      await rejection(fig.evaluate({ $sql: 'SELECT name FROM people' }))
+      await rejection(fig.evaluate({ $sql: 'SELECT name FROM people' }))
+      expect(connection.queries).toBe(2)
+    })
+
+    it('takes any object as a row: node:sqlite’s have a null prototype', async () => {
+      class Row {
+        name = 'Grace'
+      }
+      const rows = [Object.assign(Object.create(null), { name: 'Ada' }), new Row()]
+      const fig = new FigTree({ operators: [coreOperators, sqlOperators(counting(rows))] })
+      expect(
+        await fig.evaluate({ $sql: { query: 'SELECT name FROM people', shape: 'column' } })
+      ).toEqual(['Ada', 'Grace'])
+    })
   })
 
   it('validates a literal shape at authoring time', () => {

@@ -402,7 +402,7 @@ const walk = (state: WalkState, raw: unknown, path: LinkedPath, depth: number): 
       state,
       'error',
       ErrorCodes.depthCeiling,
-      `the expression nests deeper than the engine's ceiling of ${DEPTH_CEILING} levels — descent stopped here`,
+      `Depth ceiling of ${DEPTH_CEILING} levels exceeded`,
       path,
       order
     )
@@ -495,7 +495,7 @@ const walkString = (
         state,
         'warning',
         ErrorCodes.unrecognizedIdentifier,
-        `'${raw}' matches no reference namespace, so it's kept as a plain string — wrap it in 'literal' to remove this warning`,
+        `'${raw}' is not a known reference, so it stays a string — wrap it in 'literal' to silence this warning`,
         path,
         order
       )
@@ -607,7 +607,7 @@ const walkOperatorCanonical = (
       state,
       'error',
       ErrorCodes.unknownOperator,
-      `'${opValue}' names no registered operator${didYouMean(suggestion)}`,
+      `'${opValue}' is not a registered operator${didYouMean(suggestion)}`,
       path,
       order,
       { suggestion }
@@ -623,7 +623,7 @@ const walkOperatorCanonical = (
         state,
         'error',
         ErrorCodes.malformedNode,
-        "'parameters' is reserved and unused on operator nodes",
+        "'parameters' is only for fragment calls",
         extendPath(path, key),
         order,
         { operator: node.name }
@@ -646,7 +646,7 @@ const nonLiteralName = (
     state,
     'error',
     ErrorCodes.malformedNode,
-    `the '${key}' value must be a literal string`,
+    `The '${key}' value must be a literal string`,
     path,
     order
   )
@@ -717,7 +717,7 @@ const compileNoCache = (
       state,
       'error',
       ErrorCodes.malformedNode,
-      "'noCache' takes only the literal true — it is settled before the subtree runs",
+      "'noCache' can only be true",
       extendPath(path, 'noCache'),
       order,
       node.kind === 'operator' ? { operator: node.name } : {}
@@ -747,12 +747,14 @@ const emitStrayInvocationKey = (
       ? didYouMean(suggestion)
       : labels
         ? ''
-        : " — data with a '$' key goes inside 'literal'"
+        : " — use 'literal' to treat it as data"
   emit(
     state,
     labels ? 'warning' : 'error',
     ErrorCodes.unrecognizedIdentifier,
-    `'${key}' is not a registered operator or fragment${labels ? ', so it is a plain key' : ''}${hint}`,
+    labels
+      ? `'${key}' is matched as a plain label${hint}`
+      : `'${key}' is not a registered operator or fragment${hint}`,
     path,
     order,
     { suggestion }
@@ -874,7 +876,7 @@ const rewriteGetSource = (state: WalkState, node: OperatorNode, pending: Pending
       state,
       'error',
       ErrorCodes.bareVars,
-      `'${from.value}': with 'from: ${from.value}' the path's first key names the var, so the path must be written out and start with a key`,
+      `'from: ${from.value}' needs a literal path that starts with a variable's name`,
       from.path,
       order,
       { operator: 'get', parameter: 'from' }
@@ -1082,19 +1084,20 @@ const reportTemplateFace = (
   const warn = (code: string, message: string) =>
     emit(state, 'warning', code, message, template.path, template.order, { operator: node.name })
   const unbound = (raw: string, detail: string) =>
-    warn(ErrorCodes.unboundToken, `'${raw}' binds to nothing and renders as its own text${detail}`)
+    warn(ErrorCodes.unboundToken, `'${raw}' matches no substitution, so it's left as text${detail}`)
   const unused = (spare: string[]) => {
     for (const label of spare)
-      warn(ErrorCodes.unusedSubstitution, `substitution ${label} is never named by the template`)
+      warn(ErrorCodes.unusedSubstitution, `Substitution ${label} is never named by the template`)
   }
 
   if (face.mode === 'array' || face.mode === 'dynamic') {
-    if (tokens.some((token) => token.kind === 'named' && token.body.startsWith('$')))
+    const reference = tokens.find((token) => token.kind === 'named' && token.body.startsWith('$'))
+    if (reference !== undefined)
       warn(
         ErrorCodes.inertReferenceToken,
-        `a reference token needs the named face — beside ${
-          face.mode === 'array' ? 'positional substitutions' : 'a dynamically supplied map'
-        } it is not recognized and renders as its own text`
+        `'${reference.raw}' is left as text — reference tokens don't work beside ${
+          face.mode === 'array' ? 'positional' : 'computed'
+        } substitutions`
       )
   }
 
@@ -1399,19 +1402,28 @@ const readAsBinding = (
   if (typeof value !== 'string' || recognizeReference(value).kind !== 'plain')
     return asError("'as' must be a literal name — a dynamic value cannot be statically resolved")
   const legality = checkNameLegality(value)
-  if (!legality.ok) return asError(`'${value}' is not a legal binding name — ${legality.reason}`)
+  if (!legality.ok)
+    return asError(
+      value === ''
+        ? "An 'as' name must be non-empty"
+        : `'${value}' is not a legal 'as' name — ${legality.reason}`
+    )
   // A binding is read as the token after a `$`, so it takes the namespaces'
   // shape: otherwise `as: '5'` would make every `'$5.00'` in its `each` a
   // reference
   if (!isNameShaped(value))
-    return asError(`'${value}' is not a legal binding name — it must start with a letter or '_'`)
+    return asError(`'${value}' is not a legal 'as' name — it must start with a letter or '_'`)
 
   const names = [value, indexBinding(value)]
   for (const name of names) {
     if (namespaceOf(name) !== undefined)
-      return asError(`'${value}' collides with the reserved namespace word '${name}'`)
+      return asError(`'${name}' is reserved, so it can't be an 'as' name`)
     if (bindingNamespace(name, state.scope.bindings) !== null)
-      return asError(`'${value}' collides with an enclosing 'as' binding ('${name}')`)
+      return asError(
+        name === value
+          ? `'${value}' is already in use by an enclosing 'as'`
+          : `'${value}' gives '$${name}', already in use by an enclosing 'as'`
+      )
   }
   for (const name of names) state.asNames.add(name)
   return value
@@ -1439,7 +1451,7 @@ const walkShorthand = (
         state,
         'error',
         ErrorCodes.malformedNode,
-        `'${key}' may not sit beside the shorthand key '${shorthandKey}' — reserved modifiers only`,
+        `'${key}' may not sit beside '${shorthandKey}'`,
         extendPath(path, key),
         order
       )
@@ -1609,7 +1621,7 @@ const walkLiteral = (
         state,
         'warning',
         ErrorCodes.uselessModifier,
-        `'${key}' on 'literal' is dead — contents are never evaluated`,
+        `'${key}' on 'literal' has no effect`,
         extendPath(path, key),
         order
       )
@@ -1662,7 +1674,9 @@ const walkFragmentCanonical = (
         state,
         'error',
         ErrorCodes.unknownNodeKey,
-        `'${key}' is not a key of a fragment call — arguments live only in 'parameters'`,
+        Object.hasOwn(state.registry.fragments.get(fragValue)?.parameters ?? {}, key)
+          ? `The '${key}' argument must go in 'parameters'`
+          : `'${key}' is not a key of a fragment call`,
         extendPath(path, key),
         order
       )
@@ -1688,7 +1702,7 @@ const walkFragmentShorthand = (
       state,
       'error',
       ErrorCodes.malformedNode,
-      `fragments have no single-value or positional form — '$${name}' takes a named-arguments object`,
+      `'$${name}' takes an object of named arguments`,
       extendPath(path, `$${name}`),
       order
     )
@@ -1723,7 +1737,7 @@ const startFragmentCall = (
       state,
       'error',
       ErrorCodes.unknownFragment,
-      `'${name}' names no registered fragment${didYouMean(suggestion)}`,
+      `'${name}' is not a registered fragment${didYouMean(suggestion)}`,
       path,
       order,
       { suggestion }
@@ -1777,7 +1791,7 @@ const compileFragmentParameters = (
     state,
     'error',
     ErrorCodes.malformedNode,
-    "a fragment's 'parameters' must be a named-arguments object or a node computing one",
+    "A fragment call's 'parameters' must be a literal or computed object",
     path,
     order
   )
@@ -1802,7 +1816,7 @@ const compileVars = (
       state,
       'error',
       ErrorCodes.invalidVars,
-      "a 'vars' block must be an object of name → expression entries",
+      "A 'vars' block must be an object of name → expression entries",
       varsPath,
       order
     )
@@ -1819,7 +1833,9 @@ const compileVars = (
         state,
         'error',
         ErrorCodes.invalidName,
-        `'${name}' is not a legal var name — ${legality.reason}`,
+        name === ''
+          ? 'A var name must be non-empty'
+          : `'${name}' is not a legal var name — ${legality.reason}`,
         path,
         order
       )
@@ -1962,7 +1978,7 @@ const assembleContainer = (
         state,
         'warning',
         ErrorCodes.unreferencedVar,
-        'this vars block declares names nothing in its scope references',
+        'These vars are declared but never used',
         extendPath(path, 'vars'),
         order
       )

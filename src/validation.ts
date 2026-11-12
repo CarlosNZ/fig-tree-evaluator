@@ -34,7 +34,7 @@ export const limitIssues = (artifact: CompileArtifact, options: EvaluationOption
     issues.push({
       severity: 'error',
       code: ErrorCodes.maxNodesExceeded,
-      message: `the expression holds ${artifact.nodeCount} evaluable nodes — maxNodes is ${options.maxNodes}`,
+      message: `The expression has ${artifact.nodeCount} nodes — maxNodes is ${options.maxNodes}`,
       path: [],
     })
   return issues
@@ -66,7 +66,7 @@ export const staticGate = (artifact: CompileArtifact, options: EvaluationOptions
 export const depthIssue = (measured: number, limit: number): Issue => ({
   severity: 'error',
   code: ErrorCodes.maxDepthExceeded,
-  message: `the expression nests ${measured} levels deep — maxDepth is ${limit}`,
+  message: `The expression nests ${measured} levels deep — maxDepth is ${limit}`,
   path: [],
 })
 
@@ -125,7 +125,7 @@ const sampleDataIssues = (reads: DataRead[], data: unknown): Issue[] => {
     issues.push({
       severity: 'warning',
       code: ErrorCodes.missingDataPath,
-      message: `'${renderDataReference(segments)}' is absent from the supplied sample data${readBy}`,
+      message: `'${renderDataReference(segments)}' is missing from the sample data${readBy}`,
       path: toNodePath(read.path),
     })
   }

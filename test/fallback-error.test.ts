@@ -169,8 +169,7 @@ describe('scope', () => {
       expect.objectContaining({
         code: 'unresolved-binding',
         path: ['fallback'],
-        message:
-          "'$err.message' is only available inside the fallback of an operator node or fragment call",
+        message: "'$err.message' is only available inside a fallback",
       }),
     ])
   })
@@ -624,7 +623,7 @@ describe('the static check knows the fields $error always has', () => {
 /** The `$error` a shielded hole's fallback reads, at `path`. */
 const timedOut = (path: (string | number)[], more: object = {}) => ({
   code: 'timeout',
-  message: 'evaluation exceeded its 20ms timeout',
+  message: 'Evaluation exceeded its 20ms timeout',
   path,
   ...more,
 })
@@ -671,7 +670,7 @@ describe('a fallback built only from literals and $error is static', () => {
       expect(first).toEqual({
         report: {
           status: 'late',
-          why: 'evaluation exceeded its 20ms timeout',
+          why: 'Evaluation exceeded its 20ms timeout',
           at: [['report'], null],
         },
       })
@@ -750,7 +749,7 @@ describe('a fallback built only from literals and $error is static', () => {
       expect(await sleeping().evaluate({ r: { fragment: 'slowPair' } })).toEqual({
         r: {
           a: { at: ['expression', 'a'], by: 'sleep' },
-          b: 'evaluation exceeded its 20ms timeout',
+          b: 'Evaluation exceeded its 20ms timeout',
         },
       })
     })
@@ -853,7 +852,7 @@ describe('a fallback built only from literals and $error is static', () => {
         expect(() => defaulting(fallback)).toThrow(
           expect.objectContaining({
             code: 'invalid-options',
-            message: expect.stringMatching(/must be static/),
+            message: expect.stringMatching(/may hold only fixed values/),
           })
         )
     })

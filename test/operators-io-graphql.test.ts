@@ -134,7 +134,7 @@ describe('the response', () => {
     const error = await rejection<FigTreeError>(
       withClient(http).evaluate({ $graphQL: 'query { nope }' })
     )
-    expect(error.message).toMatch(/carried 1 error: Cannot query field "nope"/)
+    expect(error.message).toMatch(/returned 1 error: Cannot query field "nope"/)
     expect(error.errorData).toEqual({ errors: [{ message: 'Cannot query field "nope"' }] })
   })
 

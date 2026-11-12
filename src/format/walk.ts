@@ -90,10 +90,7 @@ export class Walk {
   /** Convert a value at the current location. */
   value(value: unknown): unknown {
     if (this.depth > DEPTH_CEILING)
-      this.fail(
-        ErrorCodes.depthCeiling,
-        `the expression nests deeper than the engine's ceiling of ${DEPTH_CEILING} levels`
-      )
+      this.fail(ErrorCodes.depthCeiling, `Depth ceiling of ${DEPTH_CEILING} levels exceeded`)
     if (typeof value === 'string') return this.writer.string(value)
     if (Array.isArray(value)) return value.map((element, i) => this.child(element, i))
     if (!isPlainDataObject(value)) return value

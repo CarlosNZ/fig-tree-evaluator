@@ -106,7 +106,7 @@ describe('the infinities are numbers', () => {
   test('a NaN computed from one fails', async () => {
     const error = await rejection(fig.evaluate({ $subtract: ['$data.x', '$data.x'] }, { data }))
     expect(error.code).toBe('non-finite-result')
-    expect(error.message).toBe('subtract – produced a non-finite number (NaN)')
+    expect(error.message).toBe('subtract – returned NaN')
   })
 
   test('renderers write them out', async () => {
@@ -119,25 +119,44 @@ describe('the infinities are numbers', () => {
 
 describe('an infinity created from finite operands fails', () => {
   test.each([
-    ['plus', { $plus: [1.7e308, 1.7e308] }, 'Infinity'],
-    ['subtract', { $subtract: [-1.7e308, 1.7e308] }, '-Infinity'],
-    ['multiply', { $multiply: [1e200, 1e200] }, 'Infinity'],
-    ['divide by zero', { $divide: [1, 0] }, 'Infinity'],
-    ['divide overflow', { $divide: [1e308, 1e-10] }, 'Infinity'],
-    ['power', { $power: [10, 400] }, 'Infinity'],
-    ['power of zero', { $power: [0, -1] }, 'Infinity'],
-    ['convert', { $convert: ['1e400', 'number'] }, 'Infinity'],
-    ['convert spelled out', { $convert: ['-Infinity', 'number'] }, '-Infinity'],
-  ])('%s', async (_, expression, shown) => {
+    ['plus', { $plus: [1.7e308, 1.7e308] }, 'plus – the result is too large to represent'],
+    [
+      'subtract',
+      { $subtract: [-1.7e308, 1.7e308] },
+      'subtract – the result is too large to represent',
+    ],
+    ['multiply', { $multiply: [1e200, 1e200] }, 'multiply – the result is too large to represent'],
+    ['divide by zero', { $divide: [1, 0] }, 'divide – division by 0'],
+    ['zero divided by zero', { $divide: [0, 0] }, 'divide – division by 0'],
+    [
+      'divide overflow',
+      { $divide: [1e308, 1e-10] },
+      'divide – the result is too large to represent',
+    ],
+    ['power', { $power: [10, 400] }, 'power – the result is too large to represent'],
+    ['power of zero', { $power: [0, -1] }, "power – 0 can't be raised to a negative power"],
+    ['convert', { $convert: ['1e400', 'number'] }, "convert – '1e400' is too large for a number"],
+    [
+      'convert spelled out',
+      { $convert: ['-Infinity', 'number'] },
+      "convert – '-Infinity' is not a finite number",
+    ],
+  ])('%s', async (_, expression, message) => {
     const error = await rejection(fig.evaluate(expression))
     expect(error.code).toBe('non-finite-result')
-    expect(error.message).toContain(`produced a non-finite number (${shown})`)
+    expect(error.message).toBe(message)
+  })
+
+  test('an infinite value over zero is that infinity, as any infinite operand is carried', async () => {
+    expect(await fig.evaluate({ $divide: ['$data.x', 0] }, { data: { x: -Infinity } })).toBe(
+      -Infinity
+    )
   })
 
   test('a NaN computed from finite operands fails at the result boundary', async () => {
-    const error = await rejection(fig.evaluate({ $divide: [0, 0] }))
+    const error = await rejection(fig.evaluate({ $power: [-8, 0.5] }))
     expect(error.code).toBe('non-finite-result')
-    expect(error.message).toBe('divide – produced a non-finite number (NaN)')
+    expect(error.message).toBe('power – returned NaN')
   })
 })
 

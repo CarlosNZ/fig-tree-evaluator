@@ -39,10 +39,15 @@ export const convert = declareOperator({
           const parsed = trimmed === '' ? NaN : Number(trimmed)
           if (Number.isNaN(parsed))
             throw new OperatorFailure(
-              `'${value}' is not a numeric string — use regex to extract a number from text`
+              `'${value}' is not a number — use regex to extract one from text`
             )
           // '1e400' overflows, and 'Infinity' is the same number spelled out
-          if (!Number.isFinite(parsed)) throw nonFiniteFailure(parsed)
+          if (!Number.isFinite(parsed))
+            throw nonFiniteFailure(
+              /infinity/i.test(trimmed)
+                ? `'${value}' is not a finite number`
+                : `'${value}' is too large for a number`
+            )
           return parsed
         }
         throw cannot(value, 'number')
@@ -50,7 +55,7 @@ export const convert = declareOperator({
       case 'string': {
         if (Array.isArray(value) || isPlainObject(value))
           throw new OperatorFailure(
-            `cannot convert ${describeType(value)} to string — a cast is not a render; use buildString or join`
+            `cannot convert ${describeType(value)} to string — use buildString or join`
           )
         if (typeof value === 'object') throw cannot(value, 'string')
         return renderText(value)

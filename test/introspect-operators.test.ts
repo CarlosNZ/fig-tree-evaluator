@@ -219,7 +219,7 @@ describe('operatorDefaults — reported beside, never merged over', () => {
             code: 'invalid-options',
             path: ['operatorDefaults', 'round', 'fallback'],
             operator: 'round',
-            message: expect.stringMatching(/must be static/),
+            message: expect.stringMatching(/may hold only fixed values/),
           },
         ],
       })

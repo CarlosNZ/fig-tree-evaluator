@@ -50,7 +50,7 @@ describe('argument failures are caller-side', () => {
     const error = await rejection<FigTreeError>(
       strict.evaluate({ banner: { $frag: { roles: '$data.n' } } }, { data: { n: 7 } })
     )
-    expect(error.message).toContain("fragment 'frag' – parameter 'roles'")
+    expect(error.message).toContain("Fragment 'frag' – parameter 'roles'")
     expect(error.path).toEqual(['banner', '$frag', 'roles'])
     expect(error.fragmentPath).toBeUndefined()
   })

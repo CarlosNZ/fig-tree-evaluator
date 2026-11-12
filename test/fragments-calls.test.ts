@@ -243,10 +243,23 @@ describe('the call faces', () => {
     expect(await zero.evaluate({ $zero: {} })).toBe('constant')
   })
 
+  test('a stray key is named an argument when the fragment declares it', () => {
+    const messages = (expression: object) =>
+      fig()
+        .validate(expression)
+        .issues.map((issue) => issue.message)
+    expect(messages({ fragment: 'greet', name: 'Ada' })).toContain(
+      "The 'name' argument must go in 'parameters'"
+    )
+    expect(messages({ fragment: 'greet', falback: 1 })).toContain(
+      "'falback' is not a key of a fragment call"
+    )
+  })
+
   test('a reference-string payload stays a hard error in shorthand position', () => {
     const issues = fig().validate({ $greet: '$data.args' }).issues
     expect(issues[0].code).toBe(ErrorCodes.malformedNode)
-    expect(issues[0].message).toContain('no single-value or positional form')
+    expect(issues[0].message).toContain('takes an object of named arguments')
   })
 })
 

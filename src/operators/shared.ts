@@ -51,7 +51,7 @@ export const emptyAggregateError = (literalParams: Record<string, unknown>): Val
         {
           severity: 'error',
           parameter: 'values',
-          message: 'an empty values array has no result — supply at least one value',
+          message: 'An empty values array has no result',
         },
       ]
     : []
@@ -66,7 +66,7 @@ const emptyArrayWarning =
           {
             severity: 'warning',
             parameter,
-            message: `an empty ${parameter} array is a dead expression — the result is always the identity`,
+            message: `An empty ${parameter} array`,
           },
         ]
       : []
@@ -88,36 +88,32 @@ export const fewerThanTwoWarning = (literalParams: Record<string, unknown>): Val
         {
           severity: 'warning',
           parameter: 'values',
-          message: 'fewer than two values is a dead comparison — the result never varies',
+          message: 'Fewer than two values',
         },
       ]
     : []
 
 /** The runtime failure for a dynamically-empty aggregate with no identity. */
-export const emptyAggregateFailure = (what: string, hint?: string): OperatorFailure =>
-  new OperatorFailure(
-    `${what} of nothing — the values array is empty${hint !== undefined ? `; ${hint}` : ''}`,
-    { code: ErrorCodes.emptyAggregate }
-  )
+export const emptyAggregateFailure = (message: string): OperatorFailure =>
+  new OperatorFailure(message, { code: ErrorCodes.emptyAggregate })
 
 /** The runtime failure for operands outside an operator's domain. */
 export const operandTypeFailure = (message: string): OperatorFailure =>
   new OperatorFailure(message, { code: ErrorCodes.typeCheck })
 
-/** The runtime failure for a number the arithmetic could not represent. */
-export const nonFiniteFailure = (result: number): OperatorFailure =>
-  new OperatorFailure(`produced a non-finite number (${String(result)})`, {
-    code: ErrorCodes.nonFiniteResult,
-  })
+/** The runtime failure for a number too large to represent. */
+export const nonFiniteFailure = (message: string): OperatorFailure =>
+  new OperatorFailure(message, { code: ErrorCodes.nonFiniteResult })
 
 /**
- * An infinite result from finite operands is overflow, or division by zero,
- * and fails. One carried from an infinite operand is a number like any other.
- * A NaN result is the engine's result boundary's to refuse.
+ * An infinite result from finite operands is overflow and fails (`divide`
+ * and `power` refuse division by zero before it gets here). One carried
+ * from an infinite operand is a number like any other. A NaN result is the
+ * engine's result boundary's to refuse.
  */
 export const overflowChecked = (result: number, operands: readonly number[]): number => {
   if ((result === Infinity || result === -Infinity) && operands.every(Number.isFinite))
-    throw nonFiniteFailure(result)
+    throw nonFiniteFailure('the result is too large to represent')
   return result
 }
 

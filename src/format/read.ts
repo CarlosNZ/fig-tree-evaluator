@@ -33,7 +33,8 @@ export interface OperatorShape extends PositionalShape {
 export interface Lookup {
   /** Canonical names and aliases alike: they share one namespace. */
   operators: Map<string, OperatorShape>
-  fragments: Set<string>
+  /** Each fragment's declared parameters, by the fragment's name. */
+  fragments: Map<string, Record<string, unknown>>
   /** Does a `$name` key invoke `literal`, an operator or a fragment? */
   recognizes: (name: string) => boolean
 }
@@ -45,7 +46,9 @@ export const buildLookup = (fig: Registry): Lookup => {
     operators.set(name, shape)
     if (alias !== undefined) operators.set(alias, shape)
   }
-  const fragments = new Set(fig.getFragments().map(({ name }) => name))
+  const fragments = new Map(
+    fig.getFragments().map(({ name, parameters }) => [name, parameters ?? {}])
+  )
   return {
     operators,
     fragments,
@@ -127,8 +130,7 @@ export type Fail = (code: string, message: string) => never
 /** The modifiers every node form carries beside its invocation. */
 const MODIFIERS = new Set(['fallback', 'noCache', 'vars'])
 
-const NO_CACHE_VALUE =
-  "'noCache' takes only the literal true — it is settled before the subtree runs"
+const NO_CACHE_VALUE = "'noCache' can only be true"
 
 export const readNode = (raw: Record<string, unknown>, lookup: Lookup, fail: Fail): NodeRead => {
   const classified = classifyObject(raw, lookup.recognizes)
@@ -153,11 +155,11 @@ const readCanonicalOperator = (
 ): OperatorRead | LiteralRead => {
   const spelling = raw.operator
   if (typeof spelling !== 'string')
-    return fail(ErrorCodes.malformedNode, "the 'operator' value must be a literal string")
+    return fail(ErrorCodes.malformedNode, "The 'operator' value must be a literal string")
   if (spelling === 'literal') return readCanonicalLiteral(raw, fail)
   const operator = lookup.operators.get(spelling)
   if (operator === undefined)
-    return fail(ErrorCodes.unknownOperator, `'${spelling}' names no registered operator`)
+    return fail(ErrorCodes.unknownOperator, `'${spelling}' is not a registered operator`)
 
   const slots: Slot[] = []
   const params: [string, unknown][] = []
@@ -169,7 +171,7 @@ const readCanonicalOperator = (
       return fail(ErrorCodes.malformedNode, NO_CACHE_VALUE)
     else if (key === '//' || MODIFIERS.has(key)) slots.push({ kind: 'keep', key, value })
     else if (key === 'parameters')
-      return fail(ErrorCodes.malformedNode, "'parameters' is reserved and unused on operator nodes")
+      return fail(ErrorCodes.malformedNode, "'parameters' is only for fragment calls")
     else {
       // An unknown key is carried as a parameter: the named form reads it
       // exactly as the canonical node does
@@ -206,9 +208,10 @@ const readCanonicalFragment = (
 ): FragmentRead => {
   const name = raw.fragment
   if (typeof name !== 'string')
-    return fail(ErrorCodes.malformedNode, "the 'fragment' value must be a literal string")
-  if (!lookup.fragments.has(name))
-    return fail(ErrorCodes.unknownFragment, `'${name}' names no registered fragment`)
+    return fail(ErrorCodes.malformedNode, "The 'fragment' value must be a literal string")
+  const declared = lookup.fragments.get(name)
+  if (declared === undefined)
+    return fail(ErrorCodes.unknownFragment, `'${name}' is not a registered fragment`)
 
   const slots: Slot[] = []
   for (const key in raw) {
@@ -224,7 +227,9 @@ const readCanonicalFragment = (
     else
       return fail(
         ErrorCodes.unknownNodeKey,
-        `'${key}' is not a key of a fragment call — arguments live only in 'parameters'`
+        Object.hasOwn(declared, key)
+          ? `The '${key}' argument must go in 'parameters'`
+          : `'${key}' is not a key of a fragment call`
       )
   }
   const parameters = raw.parameters
@@ -240,7 +245,7 @@ const checkFragmentParameters = (value: unknown, lookup: Lookup, fail: Fail) => 
   if (typeof value === 'string' && recognizeReference(value).kind === 'reference') return
   fail(
     ErrorCodes.malformedNode,
-    "a fragment's 'parameters' must be a named-arguments object or a node computing one"
+    "A fragment call's 'parameters' must be a literal or computed object"
   )
 }
 
@@ -263,10 +268,7 @@ const readShorthand = (
     }
     // The sibling rule: reserved modifiers only
     if (!SHORTHAND_SIBLINGS.has(key))
-      return fail(
-        ErrorCodes.malformedNode,
-        `'${key}' may not sit beside the shorthand key '${shorthandKey}' — reserved modifiers only`
-      )
+      return fail(ErrorCodes.malformedNode, `'${key}' may not sit beside '${shorthandKey}'`)
     // Dead on `literal`, so its value goes unchecked there, as in the compiler
     if (key === 'noCache' && value !== true && !isLiteral)
       return fail(ErrorCodes.malformedNode, NO_CACHE_VALUE)
@@ -277,10 +279,7 @@ const readShorthand = (
   if (isLiteral) return { kind: 'literal', content: payload, slots, fromPayload: true }
   if (isFragment) {
     if (!isPlainDataObject(payload))
-      return fail(
-        ErrorCodes.malformedNode,
-        `fragments have no single-value or positional form — '${shorthandKey}' takes a named-arguments object`
-      )
+      return fail(ErrorCodes.malformedNode, `'${shorthandKey}' takes an object of named arguments`)
     return { kind: 'fragment', name, slots, parameters: payload, fromPayload: true }
   }
 

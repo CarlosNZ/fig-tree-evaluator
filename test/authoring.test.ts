@@ -87,7 +87,7 @@ test('a finding carries its code, certainty, operator, parameter and message', a
     {
       path: [],
       code: ErrorCodes.nonFiniteResult,
-      message: 'divide – produced a non-finite number (Infinity)',
+      message: 'divide – division by 0',
       certainty: 'always',
       operator: 'divide',
       parameter: 'by',
@@ -516,11 +516,11 @@ describe('type checks between nodes', () => {
         .map((finding) => finding.message)
     // Every value is an array, so only `homogeneous` can refuse one
     expect(await messages({ $plus: ['$data.first', ' ', '$data.last'] })).toEqual([
-      "plus – parameter 'values': may receive an array its constraints refuse (homogeneous)",
+      "plus – parameter 'values' may receive an array its constraints refuse (homogeneous)",
     ])
     // The value may not be an array at all
     expect(await messages({ $lessThan: { values: '$data.pair' } })).toEqual([
-      "lessThan – parameter 'values': may receive something other than array, as constrained",
+      "lessThan – parameter 'values' may receive something other than array, as constrained",
     ])
   })
 
@@ -567,6 +567,29 @@ describe('type checks between nodes', () => {
     expect((await checks(renamed)).uncovered).toEqual([])
     const places = { $map: { input: [1.25, 2.5], each: { $plus: ['$index', 1] } } }
     expect((await checks(places)).uncovered).toEqual([])
+  })
+
+  test("a per-element parameter's result is checked against its declared type", async () => {
+    // Every core per-element parameter is `any`, so only a host's can fail
+    const doubleAll = defineOperator({
+      name: 'doubleAll',
+      category: 'array',
+      parameters: {
+        items: { type: 'array' },
+        each: { type: 'number', evaluationMode: 'perElement', over: 'items' },
+      },
+      returns: 'array',
+      evaluate: async ({ items, each }) =>
+        (await Promise.all(items.map((_, i) => each.evaluate(i)))).map((n) => n * 2),
+    })
+    const hosts = new FigTree({ operators: [coreOperators, [doubleAll]] })
+    /** The findings on `each` itself, over elements one of which is text */
+    const eachChecks = async (each: unknown) =>
+      (
+        await checks({ $doubleAll: { items: [{ n: 1 }, { n: 'x' }], each } }, hosts)
+      ).uncovered.filter((finding) => finding.parameter === 'each')
+    expect(await eachChecks('$element.n')).toEqual([typeCheck([], 'each')])
+    expect(await eachChecks({ $multiply: ['$element.n', 2] })).toEqual([])
   })
 
   test("a var's reference is what its definition returns", async () => {
@@ -1070,7 +1093,7 @@ describe('declareAnalysis', () => {
     expect(Object.isFrozen(declareAnalysis(mine, { failures: [] }))).toBe(true)
   })
 
-  test('refuses a core operator, whose analysis is built in, naming it', () => {
+  test('refuses a core operator, whose analysis fallbackCoverage already has, naming it', () => {
     const divide = coreOperators.find((op) => op.name === 'divide')!
     expect(() => declareAnalysis(divide, { failures: [] })).toThrow(
       expect.objectContaining({
@@ -1166,7 +1189,9 @@ describe('declareAnalysis', () => {
       [{ code: 'operator-failure', occurs: 'sometimes' }] as never,
       [{ code: 'operator-failure', parameter: 'nope' }],
     ])
-      await expect(coverage({ failures })).rejects.toThrow(naming(/not a list of entries/))
+      await expect(coverage({ failures })).rejects.toThrow(
+        naming(/not an array of failure entries/)
+      )
     await expect(
       coverage({ failures: (_, helpers) => [{ code: 'x', occurs: helpers.isSupplied('nope') }] })
     ).rejects.toThrow(naming(/'nope' is not a declared parameter/))

@@ -7,7 +7,7 @@
  * lists values only, so the types are checked here, where `pnpm typecheck`
  * fails if one goes missing.
  */
-import { FigTree, isFigTreeError, type FigTreeError } from '../src'
+import { FigTree, coreOperators, defineOperator, isFigTreeError, type FigTreeError } from '../src'
 import type {
   CanonicalOptions,
   NameOptions,
@@ -185,7 +185,17 @@ test('the option types accept what the spec lists', () => {
 })
 
 describe('a malformed node stops the conversion', () => {
-  const fig = new FigTree({ fragments: { greet: { expression: 'hi' } } })
+  // Every core operator has a positional form, so only a host's can lack one
+  const named = defineOperator({
+    name: 'named',
+    category: 'other',
+    parameters: { value: { type: 'any' } },
+    evaluate: ({ value }) => value,
+  })
+  const fig = new FigTree({
+    operators: [coreOperators, [named]],
+    fragments: { greet: { expression: 'hi' } },
+  })
   const thrownBy = (convert: () => unknown): FigTreeError => {
     try {
       convert()
@@ -253,6 +263,8 @@ describe('a malformed node stops the conversion', () => {
     ],
     ['surplus positional arguments', { $not: [1, 2] }, 'positional-arity'],
     ['a positional payload with no positions', { $abs: [1, 2] }, 'positional-arity'],
+    ['a positional payload for no positional form', { $named: [1] }, 'positional-arity'],
+    ['a single payload for no positional form', { $named: 1 }, 'positional-arity'],
     ['a reserved key in a named payload', { $abs: { value: 1, fallback: 0 } }, 'unknown-node-key'],
     ['parameters in a named payload', { $abs: { value: 1, parameters: {} } }, 'unknown-node-key'],
   ])('%s', (_label, expression, code) => {
@@ -265,6 +277,36 @@ describe('a malformed node stops the conversion', () => {
     expect(thrown({ a: [1, { $not: { $abs: [1, 2] } }] }).path).toEqual(['a', 1, 'value'])
     expect(thrown({ $if: [true, { operator: 'nope' }] }).path).toEqual(['then'])
     expect(thrown({ vars: { x: { fragment: 'nope' } }, y: 1 }).path).toEqual(['vars', 'x'])
+  })
+
+  test('a stray key on a fragment call is named an argument when the fragment declares it', () => {
+    const declaring = new FigTree({
+      fragments: {
+        greet: { expression: '$params.name', parameters: { name: { type: 'string' } } },
+      },
+    })
+    const message = (registry: Registry, expression: unknown) => {
+      try {
+        toCanonical(expression, registry)
+        return undefined
+      } catch (error) {
+        return (error as FigTreeError).message
+      }
+    }
+    expect(message(declaring, { fragment: 'greet', name: 'x' })).toBe(
+      "The 'name' argument must go in 'parameters'"
+    )
+    expect(message(declaring, { fragment: 'greet', falback: 1 })).toBe(
+      "'falback' is not a key of a fragment call"
+    )
+    // A snapshot that leaves out the parameters gets the plain message
+    const snapshot: Registry = {
+      getOperators: () => declaring.getOperators(),
+      getFragments: () => [{ name: 'greet' }],
+    }
+    expect(message(snapshot, { fragment: 'greet', name: 'x' })).toBe(
+      "'name' is not a key of a fragment call"
+    )
   })
 
   test('nesting beyond the compiler’s ceiling', () => {

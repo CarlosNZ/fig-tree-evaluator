@@ -124,8 +124,8 @@ export const killSwitchError = (
   return new FigTreeError({
     code: timedOut ? ErrorCodes.timeout : ErrorCodes.aborted,
     message: timedOut
-      ? `evaluation exceeded its ${budget}timeout`
-      : 'evaluation was aborted by the caller',
+      ? `Evaluation exceeded its ${budget}timeout`
+      : 'Evaluation was aborted by the caller',
     path,
     ...(operator !== undefined ? { operator } : {}),
   })

@@ -219,11 +219,7 @@ const fallbackOf = (
 const normalizeResult = (result: unknown, node: OperatorNode): unknown => {
   if (result === undefined) return null
   if (Number.isNaN(result) && typeNamesNumber(node.entry.definition.returns))
-    throw nodeFailure(
-      node,
-      ErrorCodes.nonFiniteResult,
-      `produced a non-finite number (${String(result)})`
-    )
+    throw nodeFailure(node, ErrorCodes.nonFiniteResult, 'returned NaN')
   if (isEngineHandle(result))
     throw nodeFailure(
       node,

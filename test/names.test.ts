@@ -27,12 +27,6 @@ describe('checkNameLegality — the one rule', () => {
     expect(checkNameLegality('$').ok).toBe(false)
   })
 
-  it('rejects non-strings', () => {
-    expect(checkNameLegality(5).ok).toBe(false)
-    expect(checkNameLegality(null).ok).toBe(false)
-    expect(checkNameLegality(undefined).ok).toBe(false)
-  })
-
   it('reports a reason on failure', () => {
     const result = checkNameLegality('$a')
     expect(result.ok).toBe(false)

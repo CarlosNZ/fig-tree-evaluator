@@ -117,7 +117,7 @@ export const buildRegistry = (
     if (held !== undefined) {
       addIssue(
         ErrorCodes.duplicateOperator,
-        `'${invocationName}' is already registered (by '${held}') — one namespace, no silent precedence`,
+        `'${invocationName}' is already registered by '${held}'`,
         path,
         owner
       )
@@ -179,18 +179,18 @@ const validateOperatorDefaults = (
       if (canonical !== undefined)
         addIssue(
           ErrorCodes.invalidOptions,
-          `'operatorDefaults' keys are canonical names — use '${canonical}', not its alias '${operatorName}'`,
+          `'${operatorName}' is an alias — use '${canonical}'`,
           path,
           canonical
         )
       else
-        addIssue(ErrorCodes.unknownOperator, `'${operatorName}' names no registered operator`, path)
+        addIssue(ErrorCodes.unknownOperator, `'${operatorName}' is not a registered operator`, path)
       continue
     }
     if (!isPlainObject(defaults)) {
       addIssue(
         ErrorCodes.invalidOptions,
-        `the defaults for '${operatorName}' must be a plain object`,
+        `The defaults for '${operatorName}' must be a plain object`,
         path,
         operatorName
       )
@@ -212,7 +212,7 @@ const validateOperatorDefaults = (
           if (fallback === undefined) {
             addIssue(
               ErrorCodes.invalidOptions,
-              `the default fallback for '${operatorName}' must be static, built only from literals and $error reads — it is never evaluated`,
+              `The default fallback for '${operatorName}' may hold only fixed values and $error paths`,
               keyPath,
               operatorName
             )
@@ -221,17 +221,12 @@ const validateOperatorDefaults = (
         }
         if (key === 'noCache') {
           if (value !== true) {
-            addIssue(
-              ErrorCodes.invalidOptions,
-              `the 'noCache' modifier takes only the literal true`,
-              keyPath,
-              operatorName
-            )
+            addIssue(ErrorCodes.invalidOptions, `'noCache' can only be true`, keyPath, operatorName)
             valid = false
           } else if (!entry.definition.cache) {
             addIssue(
               ErrorCodes.invalidOptions,
-              `'noCache' on '${operatorName}', which never caches — its definition does not declare 'cache: true'`,
+              `'noCache' has no effect on '${operatorName}', which never caches`,
               keyPath,
               operatorName
             )
@@ -244,7 +239,7 @@ const validateOperatorDefaults = (
       if (declaration === undefined) {
         addIssue(
           ErrorCodes.invalidOptions,
-          `'${key}' names no declared parameter of '${operatorName}' (nor 'fallback'/'noCache')`,
+          `'${key}' is not a declared parameter of '${operatorName}', 'fallback' or 'noCache'`,
           keyPath,
           operatorName
         )
@@ -257,7 +252,7 @@ const validateOperatorDefaults = (
         // and presets are fragments' job
         addIssue(
           ErrorCodes.invalidOptions,
-          `'${key}' is a required parameter of '${operatorName}' — operatorDefaults may only target optional parameters`,
+          `'${key}' is required by '${operatorName}', so can't have a default`,
           keyPath,
           operatorName
         )
@@ -268,7 +263,7 @@ const validateOperatorDefaults = (
       if (!fit.ok) {
         addIssue(
           ErrorCodes.typeCheck,
-          `the default for '${operatorName}.${key}' does not satisfy its declared type: expected ${fit.expected}, got ${fit.actual}`,
+          `The default for '${operatorName}.${key}' is the wrong type: expected ${fit.expected}, got ${fit.actual}`,
           keyPath,
           operatorName
         )
@@ -279,7 +274,7 @@ const validateOperatorDefaults = (
       if (!constrained.ok) {
         addIssue(
           ErrorCodes.typeCheck,
-          `the default for '${operatorName}.${key}' violates its declared constraints: expected ${constrained.expected}, got ${constrained.actual}`,
+          `The default for '${operatorName}.${key}' violates its declared constraints: expected ${constrained.expected}, got ${constrained.actual}`,
           keyPath,
           operatorName
         )

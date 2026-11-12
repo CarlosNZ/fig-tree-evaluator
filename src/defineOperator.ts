@@ -104,7 +104,7 @@ export function defineOperator(
 
   // ── Structural gate — without these, nothing else can be checked ──────
   if (!isPlainObject(definition)) {
-    addIssue(ErrorCodes.invalidDefinition, 'a definition must be a plain object', [])
+    addIssue(ErrorCodes.invalidDefinition, 'A definition must be a plain object', [])
     throw issuesError(ErrorCodes.invalidDefinition, issues)
   }
   const def = definition as unknown as OperatorDefinition & Record<string, unknown>
@@ -141,7 +141,7 @@ export function defineOperator(
   if (def.alias !== undefined && typeof def.alias !== 'string')
     addIssue(ErrorCodes.invalidDefinition, "'alias' must be a string", ['alias'])
   if (def.cache !== undefined && def.cache !== true)
-    addIssue(ErrorCodes.invalidDefinition, "'cache' must be the literal true", ['cache'])
+    addIssue(ErrorCodes.invalidDefinition, "'cache' can only be true", ['cache'])
   if (def.metadata !== undefined && !isPlainObject(def.metadata))
     addIssue(ErrorCodes.invalidDefinition, "'metadata' must be a plain object", ['metadata'])
   if (
@@ -161,16 +161,14 @@ export function defineOperator(
   if (def.validate !== undefined && typeof def.validate !== 'function')
     addIssue(ErrorCodes.invalidDefinition, "'validate' must be a function", ['validate'])
   if (def.returns !== undefined && !isExpectedType(def.returns))
-    addIssue(ErrorCodes.invalidDefinition, "'returns' must be a metadata-vocabulary type", [
-      'returns',
-    ])
+    addIssue(ErrorCodes.invalidDefinition, "'returns' must be a valid type", ['returns'])
 
   // ── The EvaluationData sentinel — legal only as a parameter default ───
   const checkSentinelFree = (value: unknown, path: Path, parameter?: string) => {
     if (value === EvaluationData) {
       addIssue(
         ErrorCodes.invalidDefinition,
-        "the EvaluationData sentinel is legal only as a parameter 'default'",
+        "EvaluationData can only be a parameter's 'default'",
         path,
         parameter
       )
@@ -193,7 +191,7 @@ export function defineOperator(
       return
     }
     if (isReservedRegistrationName(value))
-      addIssue(ErrorCodes.reservedName, `'${value}' is a reserved name`, path)
+      addIssue(ErrorCodes.reservedName, `'${value}' can't be an operator ${path[0]}`, path)
   }
   if (typeof def.name === 'string') checkRegistrationName(def.name, ['name'])
   if (typeof def.alias === 'string') checkRegistrationName(def.alias, ['alias'])
@@ -212,14 +210,14 @@ export function defineOperator(
     else if (RESERVED_NODE_KEYS.has(paramName))
       addIssue(
         ErrorCodes.reservedName,
-        `'${paramName}' is a reserved node key and cannot name a parameter`,
+        `'${paramName}' can't be a parameter name`,
         paramPath,
         paramName
       )
     if (!isPlainObject(declaration)) {
       addIssue(
         ErrorCodes.invalidDefinition,
-        `the declaration for '${paramName}' must be a plain object`,
+        `The declaration of '${paramName}' must be a plain object`,
         paramPath,
         paramName
       )
@@ -245,12 +243,7 @@ export function defineOperator(
 
     let typeValid = true
     if (d.type !== undefined && !isExpectedType(d.type)) {
-      addIssue(
-        ErrorCodes.invalidDefinition,
-        `'type' must be a metadata-vocabulary type`,
-        at('type'),
-        paramName
-      )
+      addIssue(ErrorCodes.invalidDefinition, `'type' must be a valid type`, at('type'), paramName)
       typeValid = false
     }
     if (typeValid) effectiveTypes[paramName] = d.type ?? 'any'
@@ -280,7 +273,7 @@ export function defineOperator(
     if (hasDefault && d.required === true)
       addIssue(
         ErrorCodes.invalidDefinition,
-        `a 'default' contradicts 'required: true' — a default implies the parameter is optional`,
+        `A required parameter can't have a 'default'`,
         at('default'),
         paramName
       )
@@ -293,7 +286,7 @@ export function defineOperator(
         if (!fit.ok)
           addIssue(
             ErrorCodes.typeCheck,
-            `'default' does not satisfy the declared type: expected ${fit.expected}, got ${fit.actual}`,
+            `'default' is the wrong type: expected ${fit.expected}, got ${fit.actual}`,
             at('default'),
             paramName
           )
@@ -358,14 +351,14 @@ export function defineOperator(
       if (type !== undefined && !typeNamesNull(type))
         addIssue(
           ErrorCodes.invalidNullPolicy,
-          `'nullPolicy' is legal only where the declared type names 'null' — a type without 'null' is the reject declaration`,
+          `'nullPolicy' needs 'null' in the declared type`,
           at('nullPolicy'),
           paramName
         )
       if (d.truthiness === true && policy === 'propagate')
         addIssue(
           ErrorCodes.invalidNullPolicy,
-          `'truthiness' implies null policy 'accept' (null is falsy) — declaring 'propagate' is a conflict`,
+          `A 'truthiness' parameter accepts null (it's falsy), so 'nullPolicy' can't be 'propagate'`,
           at('nullPolicy'),
           paramName
         )
@@ -374,7 +367,7 @@ export function defineOperator(
       if (!NULL_POLICY_VALUES.has(d.elementNullPolicy as string)) {
         addIssue(
           ErrorCodes.invalidNullPolicy,
-          `'elementNullPolicy' must be 'propagate' or 'accept' — the conditional form is not admitted here`,
+          `'elementNullPolicy' must be 'propagate' or 'accept'`,
           at('elementNullPolicy'),
           paramName
         )
@@ -383,7 +376,7 @@ export function defineOperator(
       if (type !== undefined && !typeAdmitsContainer(type))
         addIssue(
           ErrorCodes.invalidNullPolicy,
-          `'elementNullPolicy' applies to container parameters only`,
+          `'elementNullPolicy' only applies to array or object parameters`,
           at('elementNullPolicy'),
           paramName
         )
@@ -430,19 +423,18 @@ export function defineOperator(
       const isRest = entry.startsWith(REST_PREFIX)
       const entryName = isRest ? entry.slice(REST_PREFIX.length) : entry
       if (isRest && i !== entries.length - 1)
-        addIssue(
-          ErrorCodes.invalidDefinition,
-          `the rest entry '${entry}' must be the last positional entry`,
-          ['positionalParams', i]
-        )
+        addIssue(ErrorCodes.invalidDefinition, `'${entry}' must come last in 'positionalParams'`, [
+          'positionalParams',
+          i,
+        ])
       if (!(entryName in declarations))
         addIssue(
           ErrorCodes.invalidDefinition,
-          `positional entry '${entry}' names no declared parameter`,
+          `'positionalParams' lists '${entry}', which is not in 'parameters'`,
           ['positionalParams', i]
         )
       if (seen.has(entryName))
-        addIssue(ErrorCodes.invalidDefinition, `duplicate positional entry '${entry}'`, [
+        addIssue(ErrorCodes.invalidDefinition, `'${entry}' appears twice in 'positionalParams'`, [
           'positionalParams',
           i,
         ])
@@ -458,7 +450,7 @@ export function defineOperator(
       if (!isPerElement)
         addIssue(
           ErrorCodes.invalidDefinition,
-          `'over' is legal only with evaluationMode: 'perElement'`,
+          `'over' needs evaluationMode 'perElement'`,
           [...paramPath, 'over'],
           paramName
         )
@@ -467,7 +459,7 @@ export function defineOperator(
         if (!(target in declarations) || target === paramName)
           addIssue(
             ErrorCodes.invalidDefinition,
-            `'over' names no sibling parameter ('${target}')`,
+            `'over' target '${target}' is not a sibling parameter`,
             [...paramPath, 'over'],
             paramName
           )
@@ -476,7 +468,7 @@ export function defineOperator(
           if (targetType !== undefined && !typeAdmitsArray(targetType))
             addIssue(
               ErrorCodes.invalidDefinition,
-              `the 'over' target '${target}' must admit an array`,
+              `'over' target '${target}' must accept an array`,
               [...paramPath, 'over'],
               paramName
             )
@@ -485,7 +477,7 @@ export function defineOperator(
     } else if (isPerElement) {
       addIssue(
         ErrorCodes.invalidDefinition,
-        `evaluationMode: 'perElement' requires 'over' to name the iterated sibling`,
+        `evaluationMode 'perElement' needs 'over'`,
         [...paramPath, 'evaluationMode'],
         paramName
       )
@@ -505,7 +497,7 @@ export function defineOperator(
       if (d[field] !== undefined && d[field] !== false)
         addIssue(
           field === 'truthiness' ? ErrorCodes.invalidDefinition : ErrorCodes.invalidNullPolicy,
-          `a 'replacesNullAt' parameter takes no '${field}' — its value never reaches the operator`,
+          `A 'replacesNullAt' parameter takes no '${field}' — its value never reaches the operator`,
           [...paramPath, field],
           paramName
         )
@@ -513,7 +505,7 @@ export function defineOperator(
     if (type !== undefined && typeNamesNull(type))
       addIssue(
         ErrorCodes.invalidDefinition,
-        `a 'replacesNullAt' parameter's type may not include 'null' — a null there means no replacement`,
+        `A 'replacesNullAt' parameter's type may not include 'null' — a null there means no replacement`,
         [...paramPath, 'type'],
         paramName
       )
@@ -523,7 +515,7 @@ export function defineOperator(
     if (d.evaluationMode !== 'lazy')
       addIssue(
         ErrorCodes.invalidDefinition,
-        `a 'replacesNullAt' parameter must declare evaluationMode: 'lazy'`,
+        `A 'replacesNullAt' parameter must declare evaluationMode: 'lazy'`,
         path,
         paramName
       )
@@ -531,14 +523,14 @@ export function defineOperator(
     if (holderRequired)
       addIssue(
         ErrorCodes.invalidDefinition,
-        `a 'replacesNullAt' parameter must be optional`,
+        `A 'replacesNullAt' parameter must be optional`,
         path,
         paramName
       )
     if ('default' in d)
       addIssue(
         ErrorCodes.invalidDefinition,
-        `a 'replacesNullAt' parameter may not carry a 'default' — it is presence-sensitive by construction`,
+        `A 'replacesNullAt' parameter can't have a 'default'`,
         path,
         paramName
       )
@@ -546,14 +538,14 @@ export function defineOperator(
       if (target === paramName)
         addIssue(
           ErrorCodes.invalidDefinition,
-          `'replacesNullAt' may not target the parameter declaring it`,
+          `'replacesNullAt' can't target its own parameter`,
           [...path, i],
           paramName
         )
       else if (!(target in declarations))
         addIssue(
           ErrorCodes.invalidDefinition,
-          `'replacesNullAt' target '${target}' names no sibling parameter`,
+          `'replacesNullAt' target '${target}' is not a sibling parameter`,
           [...path, i],
           paramName
         )
@@ -593,13 +585,15 @@ export function defineOperator(
     if (target === undefined)
       addIssue(
         ErrorCodes.invalidDefinition,
-        `'timeoutParam' names no declared parameter ('${def.timeoutParam}')`,
+        `'timeoutParam' target '${def.timeoutParam}' is not a declared parameter`,
         ['timeoutParam']
       )
     else if (effectiveTypes[def.timeoutParam] !== 'integer')
-      addIssue(ErrorCodes.invalidDefinition, `the 'timeoutParam' target must be 'integer'-typed`, [
-        'timeoutParam',
-      ])
+      addIssue(
+        ErrorCodes.invalidDefinition,
+        `'timeoutParam' target '${def.timeoutParam}' must have type 'integer'`,
+        ['timeoutParam']
+      )
   }
 
   if (issues.length > 0) throw issuesError(ErrorCodes.invalidDefinition, issues, operator)
@@ -630,7 +624,7 @@ const compileNullPolicies = (
     if (literalUnionParams.length !== 1) {
       report(
         ErrorCodes.invalidNullPolicy,
-        `a conditional 'nullPolicy' requires exactly one literal-union parameter in the definition — found ${literalUnionParams.length}`,
+        `A conditional 'nullPolicy' requires exactly one literal-union parameter in the definition — found ${literalUnionParams.length}`,
         path,
         paramName
       )
@@ -648,7 +642,7 @@ const compileNullPolicies = (
       } catch (error) {
         report(
           ErrorCodes.invalidNullPolicy,
-          `the conditional 'nullPolicy' threw during compilation for member ${JSON.stringify(member)}: ${String(error)}`,
+          `The conditional 'nullPolicy' threw for ${JSON.stringify(member)}: ${error instanceof Error ? error.message : String(error)}`,
           path,
           paramName
         )
@@ -658,7 +652,7 @@ const compileNullPolicies = (
       if (typeof policy !== 'string' || !NULL_POLICY_VALUES.has(policy)) {
         report(
           ErrorCodes.invalidNullPolicy,
-          `the conditional 'nullPolicy' must return 'propagate' or 'accept' for every member — got ${JSON.stringify(policy)} for ${JSON.stringify(member)}`,
+          `The conditional 'nullPolicy' must return 'propagate' or 'accept' for every member — got ${JSON.stringify(policy)} for ${JSON.stringify(member)}`,
           path,
           paramName
         )

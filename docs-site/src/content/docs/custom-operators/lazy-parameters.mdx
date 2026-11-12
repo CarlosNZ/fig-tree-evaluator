@@ -116,7 +116,7 @@ const match = defineOperator({
     if (key !== null && Object.hasOwn(branches, key)) return branches[key].evaluate()
     // Otherwise evaluate the default, if provided
     if (otherwise !== undefined) return otherwise.evaluate()
-    throw new OperatorFailure(`no branch matches '${key}', and no default was supplied`)
+    throw new OperatorFailure(`no branch matches '${key}', and there is no default`)
   },
 })
 ```

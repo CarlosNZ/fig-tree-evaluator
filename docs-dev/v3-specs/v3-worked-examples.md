@@ -44,7 +44,7 @@ await fig.evaluate(dashboard, { data })
 // FigTreeError {
 //   code: 'non-finite-result', operator: 'divide',
 //   path: ['stats', 'summary', '$buildString', 1],          // the failing node — deep
-//   message: 'divide – produced a non-finite number (Infinity)',
+//   message: 'divide – division by 0',
 // }
 ```
 

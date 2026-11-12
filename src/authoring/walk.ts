@@ -784,7 +784,7 @@ const argumentCheck = (
 ): Failure => ({
   path,
   code: 'type-check',
-  message: `fragment '${node.name}' – parameter '${name}': the argument may not fit the declared type`,
+  message: `Fragment '${node.name}' – parameter '${name}': the argument may not fit the declared type`,
   certainty: 'may',
   parameter: name,
   order: [order],
@@ -805,7 +805,7 @@ const dynamicArguments = (
   const failure = (code: string, message: string): Failure => ({
     path: source.path,
     code,
-    message: `fragment '${node.name}' – ${message}`,
+    message: `Fragment '${node.name}' – ${message}`,
     certainty: 'may',
     order: [source.order],
   })
