@@ -220,11 +220,10 @@ const main = () => {
   mkdirSync(OUT, { recursive: true })
   writeFileSync(PAGE, page)
 
-  // An entry in unreached.ts that matches no message, or one now produced
-  const stale = unreached.filter((accepted) => {
-    const message = messages.find((m) => matches(accepted, m))
-    return message === undefined || produced.has(message.id)
-  })
+  // An entry in unreached.ts with no message it matches left unproduced
+  const stale = unreached.filter(
+    (accepted) => !messages.some((m) => matches(accepted, m) && !produced.has(m.id))
+  )
 
   out()
   out(`${messages.length} messages: ${missing.length} never produced`)
