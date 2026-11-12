@@ -114,7 +114,9 @@ export const operatorListings = deepFreeze<ListingMap>({
     docUrl: DOCS,
     colors: { background: '#d6d0f0', text: '#26183f' },
     seeds: { values: [true, true] },
-    parameterDescriptions: { values: 'The values to test, by FigTree truthiness' },
+    parameterDescriptions: {
+      values: 'The values to test, by FigTree truthiness',
+    },
   },
   or: {
     displayName: 'Logical OR',
@@ -122,7 +124,9 @@ export const operatorListings = deepFreeze<ListingMap>({
     docUrl: DOCS,
     colors: { background: '#cabfeb', text: '#26183f' },
     seeds: { values: [true, false] },
-    parameterDescriptions: { values: 'The values to test, by FigTree truthiness' },
+    parameterDescriptions: {
+      values: 'The values to test, by FigTree truthiness',
+    },
   },
   not: {
     displayName: 'Logical NOT (!)',
@@ -130,7 +134,9 @@ export const operatorListings = deepFreeze<ListingMap>({
     docUrl: DOCS,
     colors: { background: '#c0aee5', text: '#26183f' },
     seeds: { value: true },
-    parameterDescriptions: { value: 'The value to test, by FigTree truthiness' },
+    parameterDescriptions: {
+      value: 'The value to negate, by FigTree truthiness',
+    },
   },
   if: {
     displayName: 'Conditional (?)',
@@ -144,8 +150,8 @@ export const operatorListings = deepFreeze<ListingMap>({
     },
     parameterDescriptions: {
       condition: 'The value to test, by FigTree truthiness',
-      then: 'The value when the condition holds',
-      else: 'The value when it does not',
+      then: 'The value when the condition is truthy',
+      else: "The value when it's not",
     },
   },
   match: {
@@ -159,26 +165,28 @@ export const operatorListings = deepFreeze<ListingMap>({
       default: 'No match',
     },
     parameterDescriptions: {
-      value: 'The value to look up among the branch keys, compared as text',
+      value: 'The value to match against the branch keys',
       branches: 'The branches, each keyed by a value to match',
-      default: 'The branch taken when none matches; without one, the node fails',
+      default:
+        'The branch taken when none matches — without one, a value that matches nothing fails the node',
     },
   },
   firstNonNull: {
     displayName: 'First non-null',
-    description:
-      'The first candidate that is not null (SQL COALESCE) — later candidates never evaluate',
+    description: 'The first candidate that is not null (like SQL COALESCE)',
     docUrl: DOCS,
     colors: { background: '#ccaee5', text: '#26183f' },
     seeds: { values: [null, 'The first non-null value'] },
-    parameterDescriptions: { values: 'Candidates, tried in order; only null is skipped' },
+    parameterDescriptions: {
+      values: 'Candidates, tried in order; only null is skipped',
+    },
   },
 
   // ── Comparison ─────────────────────────────────────────────────────────
   equal: {
     displayName: 'Equal (=)',
     description:
-      'True when all the values are equal, comparing arrays and objects by their contents',
+      'True when all the values are equal, with arrays and objects compared by their contents',
     docUrl: DOCS,
     colors: { background: '#d2efe9', text: '#183f3e' },
     seeds: { values: ['These are equal', 'These are equal'] },
@@ -190,7 +198,7 @@ export const operatorListings = deepFreeze<ListingMap>({
   },
   notEqual: {
     displayName: 'Not equal (!=)',
-    description: "True when the values aren't all equal — the opposite of equal",
+    description: 'True when the values are not all equal — the opposite of equal',
     docUrl: DOCS,
     colors: { background: '#c1e9e3', text: '#183f3e' },
     seeds: { values: ['These items', "don't match"] },
@@ -249,13 +257,13 @@ export const operatorListings = deepFreeze<ListingMap>({
   plus: {
     displayName: 'Plus (+)',
     description:
-      'Add numbers, concatenate strings or arrays, or shallow-merge objects — all operands must share one type',
+      'Add numbers, concatenate strings or arrays, or shallow-merge objects — all operands must be the same type',
     docUrl: DOCS,
     colors: { background: '#d7edd4', text: '#193e1e' },
     seeds: { values: [1, 2, 3] },
     parameterDescriptions: {
       values: 'The values to add, all of the same type',
-      expect: 'The type the values must be — needed when the list could be empty',
+      expect: 'The type the values should be — needed when the list could be empty',
       nullValueDefault: 'Replaces any null operand before the addition',
     },
   },
@@ -272,26 +280,29 @@ export const operatorListings = deepFreeze<ListingMap>({
   },
   multiply: {
     displayName: 'Multiply (*)',
-    description: 'Multiply numbers together — an empty list returns 1',
+    description: 'Multiply numbers together',
     docUrl: DOCS,
     colors: { background: '#b4e0b3', text: '#193e1e' },
     seeds: { values: [5, 5] },
     parameterDescriptions: {
-      values: 'The numbers to multiply',
+      values: 'The numbers to multiply — an empty list returns 1',
       nullValueDefault: 'Replaces any null factor before multiplying',
     },
   },
   divide: {
     displayName: 'Divide (/)',
-    description: 'Divide one number by another — dividing by zero fails',
+    description: 'Divide one number by another',
     docUrl: DOCS,
     colors: { background: '#cceacd', text: '#193e1e' },
     seeds: { value: 100, by: 10 },
-    parameterDescriptions: { value: 'The number to divide', by: 'The number to divide it by' },
+    parameterDescriptions: {
+      value: 'The number to divide',
+      by: 'The number to divide it by — if zero, the node fails',
+    },
   },
   modulo: {
     displayName: 'Modulo',
-    description: 'The remainder after dividing one number by another, with the sign of the divisor',
+    description: 'The remainder after dividing one number by another',
     docUrl: DOCS,
     colors: { background: '#c3e7c6', text: '#193e1e' },
     seeds: { value: 10, mod: 3 },
@@ -302,40 +313,46 @@ export const operatorListings = deepFreeze<ListingMap>({
   },
   power: {
     displayName: 'Power (^)',
-    description:
-      "Raise a base to an exponent — overflow, and results that aren't real numbers, fail",
+    description: 'Raise a base to an exponent',
     docUrl: DOCS,
     colors: { background: '#acddb1', text: '#193e1e' },
     seeds: { base: 2, exponent: 3 },
-    parameterDescriptions: { base: 'The number to raise', exponent: 'The power to raise it to' },
+    parameterDescriptions: {
+      base: 'The number to raise',
+      exponent: 'The power to raise it to',
+    },
   },
   round: {
     displayName: 'Round',
-    description: 'Round to a number of decimal places — halfway values round away from zero',
+    description: 'Round to a certain number of decimal places',
     docUrl: DOCS,
     colors: { background: '#d4edd8', text: '#193e1e' },
     seeds: { value: 3.14159, decimals: 2 },
     parameterDescriptions: {
       value: 'The number to round',
       decimals:
-        'Decimal places to keep; a negative number rounds to tens (-1), hundreds (-2) and so on',
+        'Decimal places to keep; negative values round to tens (-1), hundreds (-2) and so on',
     },
   },
   floor: {
-    displayName: 'Round down',
-    description: 'Round down toward negative infinity',
+    displayName: 'Floor',
+    description: 'Round down to the nearest whole number',
     docUrl: DOCS,
     colors: { background: '#bce4c4', text: '#193e1e' },
     seeds: { value: 2.7 },
-    parameterDescriptions: { value: 'The number to round down' },
+    parameterDescriptions: {
+      value: 'The number to round down',
+    },
   },
   ceiling: {
-    displayName: 'Round up',
-    description: 'Round up toward positive infinity',
+    displayName: 'Ceiling',
+    description: 'Round up to the nearest whole number',
     docUrl: DOCS,
     colors: { background: '#b3e0be', text: '#193e1e' },
     seeds: { value: 2.3 },
-    parameterDescriptions: { value: 'The number to round up' },
+    parameterDescriptions: {
+      value: 'The number to round up',
+    },
   },
   abs: {
     displayName: 'Absolute value',
@@ -343,7 +360,9 @@ export const operatorListings = deepFreeze<ListingMap>({
     docUrl: DOCS,
     colors: { background: '#ccead5', text: '#193e1e' },
     seeds: { value: -5 },
-    parameterDescriptions: { value: 'The number' },
+    parameterDescriptions: {
+      value: 'The number',
+    },
   },
   min: {
     displayName: 'Minimum',
@@ -416,7 +435,9 @@ export const operatorListings = deepFreeze<ListingMap>({
     docUrl: DOCS,
     colors: { background: '#f7e1bf', text: '#3f2f18' },
     seeds: { value: 'Hello World' },
-    parameterDescriptions: { value: 'The string to lowercase' },
+    parameterDescriptions: {
+      value: 'The string to lowercase',
+    },
   },
   upper: {
     displayName: 'Upper case',
@@ -424,7 +445,9 @@ export const operatorListings = deepFreeze<ListingMap>({
     docUrl: DOCS,
     colors: { background: '#f6e1b4', text: '#3f2f18' },
     seeds: { value: 'Hello World' },
-    parameterDescriptions: { value: 'The string to uppercase' },
+    parameterDescriptions: {
+      value: 'The string to uppercase',
+    },
   },
   trim: {
     displayName: 'Trim whitespace',
@@ -432,7 +455,9 @@ export const operatorListings = deepFreeze<ListingMap>({
     docUrl: DOCS,
     colors: { background: '#f2dd97', text: '#3f2f18' },
     seeds: { value: '  Hello World  ' },
-    parameterDescriptions: { value: 'The string to trim' },
+    parameterDescriptions: {
+      value: 'The string to trim',
+    },
   },
   regex: {
     displayName: 'Regular expression',
@@ -460,7 +485,9 @@ export const operatorListings = deepFreeze<ListingMap>({
     docUrl: DOCS,
     colors: { background: '#cde5f3', text: '#18293f' },
     seeds: { value: [1, 2, 3, 4, 5] },
-    parameterDescriptions: { value: 'The array or string to measure' },
+    parameterDescriptions: {
+      value: 'The array or string to measure',
+    },
   },
   map: {
     displayName: 'Map each',
@@ -470,14 +497,14 @@ export const operatorListings = deepFreeze<ListingMap>({
     seeds: { input: [1, 2, 3], each: '$element', as: 'item' },
     parameterDescriptions: {
       input: 'The array to iterate over',
-      as: "A name to use in place of element: 'row' gives $row and $rowIndex",
+      as: "A name to use in place of element: 'order' gives $order and $orderIndex",
       nullInputDefault: 'Used as the array when input is null, such as []',
-      each: 'Evaluated for each element, which it reads as $element',
+      each: 'An expression, evaluated for each element, which it reads as $element',
     },
   },
   filter: {
     displayName: 'Filter',
-    description: 'Keep the elements of an array that pass a test',
+    description: 'Keep the elements of an array that meet a condition',
     docUrl: DOCS,
     colors: { background: '#a8c7eb', text: '#18293f' },
     seeds: { input: [0, 1, 2, 3], each: '$element', as: 'item' },
@@ -485,12 +512,12 @@ export const operatorListings = deepFreeze<ListingMap>({
       input: 'The array to iterate over',
       as: "A name to use in place of element: 'row' gives $row and $rowIndex",
       nullInputDefault: 'Used as the array when input is null, such as []',
-      each: 'The test for each element, which it reads as $element, by FigTree truthiness',
+      each: 'The condition expression for each element, which it reads as $element, by FigTree truthiness',
     },
   },
   find: {
     displayName: 'Find first',
-    description: 'The first element of an array that passes a test',
+    description: 'The first element of an array that meets a condition',
     docUrl: DOCS,
     colors: { background: '#cddcf3', text: '#18293f' },
     seeds: { input: [0, 1, 2, 3], each: '$element', as: 'item' },
@@ -498,13 +525,13 @@ export const operatorListings = deepFreeze<ListingMap>({
       input: 'The array to iterate over',
       as: "A name to use in place of element: 'row' gives $row and $rowIndex",
       nullInputDefault: 'Used as the array when input is null, such as []',
-      each: 'The test for each element, which it reads as $element, by FigTree truthiness',
+      each: 'The condition expression for each element, which it reads as $element, by FigTree truthiness',
       noMatchDefault: 'What to return when no element passes',
     },
   },
   some: {
-    displayName: 'Any match',
-    description: 'True when any element passes a test',
+    displayName: 'Any match (some)',
+    description: 'True when any element meets a condition',
     docUrl: DOCS,
     colors: { background: '#bbccef', text: '#18293f' },
     seeds: { input: [0, 1, 2, 3], each: '$element', as: 'item' },
@@ -512,12 +539,12 @@ export const operatorListings = deepFreeze<ListingMap>({
       input: 'The array to iterate over',
       as: "A name to use in place of element: 'row' gives $row and $rowIndex",
       nullInputDefault: 'Used as the array when input is null, such as []',
-      each: 'The test for each element, which it reads as $element, by FigTree truthiness',
+      each: 'The condition expression for each element, which it reads as $element, by FigTree truthiness',
     },
   },
   every: {
-    displayName: 'All match',
-    description: 'True when every element passes a test',
+    displayName: 'All match (every)',
+    description: 'True when every element meets a condition',
     docUrl: DOCS,
     colors: { background: '#a8b9eb', text: '#18293f' },
     seeds: { input: [0, 1, 2, 3], each: '$element', as: 'item' },
@@ -525,7 +552,7 @@ export const operatorListings = deepFreeze<ListingMap>({
       input: 'The array to iterate over',
       as: "A name to use in place of element: 'row' gives $row and $rowIndex",
       nullInputDefault: 'Used as the array when input is null, such as []',
-      each: 'The test for each element, which it reads as $element, by FigTree truthiness',
+      each: 'The condition expression for each element, which it reads as $element, by FigTree truthiness',
     },
   },
 
@@ -644,7 +671,7 @@ export const operatorListings = deepFreeze<ListingMap>({
     description: 'Use a value exactly as written — nothing inside it is evaluated',
     docUrl: DOCS,
     colors: { background: '#d5dae4', text: '#272a30' },
-    seeds: { value: 'No content inside a literal node is evaluated' },
+    seeds: { value: { $plus: [1, 2] } },
     parameterDescriptions: {
       value:
         'Returned exactly as written, including any keys prefixed with $ and $data strings inside it',
