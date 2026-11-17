@@ -15,6 +15,14 @@ describe('isTruthy', () => {
     expect(isTruthy(-Infinity)).toBe(true)
   })
 
+  it('treats undefined and 0n as falsy, and other bigints as truthy, as JS does', () => {
+    expect(isTruthy(undefined)).toBe(false)
+    expect(isTruthy(0n)).toBe(false)
+    expect(isTruthy(-0n)).toBe(false)
+    expect(isTruthy(1n)).toBe(true)
+    expect(isTruthy(-1n)).toBe(true)
+  })
+
   it('treats everything else as truthy, including empty containers', () => {
     expect(isTruthy([])).toBe(true)
     expect(isTruthy({})).toBe(true)

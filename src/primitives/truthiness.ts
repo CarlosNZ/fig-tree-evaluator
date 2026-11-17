@@ -2,9 +2,11 @@
  * FigTree truthiness — the single falsy test ("Truthiness" in
  * docs-dev/v3-specs/v3-api.md, "Truthiness is one function" in
  * docs-dev/v3-specs/v3-implementation-notes.md). Falsy is EXACTLY `false`,
- * `null`, `0`, `""` and `NaN`; everything else — including `[]` and `{}` — is
- * truthy. `NaN` is outside the value domain but can arrive from host data,
- * where it means "no number", as it does in JS.
+ * `null`, `undefined`, `0`, `""`, `NaN` and `0n`; everything else —
+ * including `[]` and `{}` — is truthy. `undefined`, `NaN` and `0n` are
+ * outside the value domain: the engine reads a stored `undefined` as
+ * `null`, so only a host calling this export passes one, and `NaN` and `0n`
+ * can arrive from host data, where JS reads both as falsy.
  * Consumed by `if.condition`, `and`/`or`/`not`, the predicate iterators, and
  * `convert to:'boolean'` (after its `"true"`/`"false"` carve-out).
  *
@@ -13,8 +15,7 @@
  * The empty-container ruling is open for revisiting; keeping the falsy set as
  * one constant here makes that a one-line change applied at every site.
  */
-const FALSY: readonly unknown[] = [false, null, 0, '']
+// A Set matches by SameValueZero, so NaN finds NaN and -0 finds 0
+const FALSY: ReadonlySet<unknown> = new Set([false, null, undefined, 0, '', NaN, 0n])
 
-// `indexOf` matches by `===`, which never matches NaN
-export const isTruthy = (value: unknown): boolean =>
-  FALSY.indexOf(value) === -1 && !Number.isNaN(value)
+export const isTruthy = (value: unknown): boolean => !FALSY.has(value)
