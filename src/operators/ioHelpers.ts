@@ -20,7 +20,7 @@ import { OperatorFailure } from '../OperatorFailure'
 import { ErrorCodes } from '../errorCodes'
 import { renderText, resolvePath } from '../primitives'
 import { describeType } from '../typeCheck'
-import { isObject } from '../utils'
+import { isNullish, isObject } from '../utils'
 import { toSegments } from './shared'
 
 export interface EffectiveRequest {
@@ -86,7 +86,7 @@ export const renderQuery = (query: Record<string, unknown> | undefined): string 
   if (query === undefined) return ''
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(query)) {
-    if (value === null || value === undefined) continue
+    if (isNullish(value)) continue
     params.append(key, wireScalar(value, `query['${key}']`, 'query'))
   }
   return params.toString()
@@ -108,7 +108,7 @@ export const mergeHeaders = (
   for (const source of sources) {
     if (source === undefined) continue
     for (const [key, value] of Object.entries(source)) {
-      if (value === null || value === undefined) {
+      if (isNullish(value)) {
         delete merged[key]
         continue
       }
@@ -171,7 +171,7 @@ export const requestKey = (request: EffectiveRequest): unknown => ({
 export const isNonEmpty = (container: unknown): boolean => {
   if (Array.isArray(container)) return container.length > 0
   if (isObject(container)) return Object.keys(container).length > 0
-  return container !== undefined && container !== null
+  return !isNullish(container)
 }
 
 /**

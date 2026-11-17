@@ -12,6 +12,7 @@
 import { declareOperator } from '../buildOperator'
 import { OperatorFailure } from '../OperatorFailure'
 import { renderText } from '../primitives'
+import { isNullish } from '../utils'
 import { decide, emptyAggregateWarning } from './shared'
 
 /**
@@ -93,7 +94,7 @@ export const firstNonNull = declareOperator({
       // not fire when the primary answered. A candidate that *fails* fails
       // the node — firstNonNull skips nulls, not errors
       const value = await candidate.evaluate()
-      if (value !== null) return value
+      if (!isNullish(value)) return value
     }
     // All-null and empty alike: absence in, absence out
     return null

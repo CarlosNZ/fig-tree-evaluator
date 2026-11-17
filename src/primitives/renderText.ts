@@ -9,7 +9,7 @@
  *   number   -> String(n)      (decimal form)
  *   BigInt   -> String(n)      (decimal form, no `n` suffix)
  *   boolean  -> "true" / "false"
- *   null     -> ""
+ *   null     -> ""           (and undefined, from host data: isNullish)
  *   array    -> ARRAY placeholder
  *   object   -> OBJECT placeholder  (also any other opaque constant)
  *
@@ -20,9 +20,9 @@
  * Composites render a self-signaling placeholder — never v2's
  * "[object Object]", never a silent "". `convert to:'string'` diverges
  * (propagate null, FAIL on composites and the other opaque constants);
- * that fork lives in `convert` (Phase 4.2), not here, so this stays total
- * and dependency-free.
+ * that fork lives in `convert` (Phase 4.2), not here, so this stays total.
  */
+import { isNullish } from '../utils'
 
 /** Placeholder emitted when an array reaches a rendering position. */
 export const ARRAY = '<array>'
@@ -33,7 +33,7 @@ export const ARRAY = '<array>'
 export const OBJECT = '<object>'
 
 export const renderText = (value: unknown): string => {
-  if (value === null) return ''
+  if (isNullish(value)) return ''
   if (typeof value === 'string') return value
   if (typeof value === 'number' || typeof value === 'bigint') return String(value)
   if (typeof value === 'boolean') return value ? 'true' : 'false'
@@ -44,11 +44,10 @@ export const renderText = (value: unknown): string => {
 /**
  * A value that renders as the `ARRAY` / `OBJECT` placeholder: anything but
  * text, a number, a boolean or a BigInt, so a function or symbol as well as
- * an array or object. `null` renders `""`, and `undefined` is excluded too:
- * the static checks read a dynamic element's slot as `undefined`.
+ * an array or object. `null` and `undefined` render `""`.
  */
 export const rendersAsPlaceholder = (value: unknown): boolean => {
-  if (value === null || value === undefined) return false
+  if (isNullish(value)) return false
   const type = typeof value
   return type !== 'string' && type !== 'number' && type !== 'boolean' && type !== 'bigint'
 }

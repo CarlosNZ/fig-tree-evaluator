@@ -20,6 +20,7 @@ import {
 } from '../primitives'
 import { COMPOSITE_RENDER_ERROR, rendersAsPlaceholder } from '../primitives/renderText'
 import { scanTemplate } from '../templateTokens'
+import { isNullish } from '../utils'
 import { emptyAggregateWarning } from './shared'
 
 const normalizer = (name: string, transform: (value: string) => string) =>
@@ -231,7 +232,7 @@ export const join = declareOperator({
     values
       .map((value, index) => {
         const token = `[${index}]`
-        if (value === null) context.trace.note({ type: 'render', token, rendered: 'empty' })
+        if (isNullish(value)) context.trace.note({ type: 'render', token, rendered: 'empty' })
         else if (rendersAsPlaceholder(value))
           context.trace.note({ type: 'render', token, rendered: 'placeholder' })
         return renderText(value)

@@ -48,7 +48,7 @@ import {
   NO_DEFAULT,
   type ExpectedType,
 } from '../typeCheck'
-import { isObject, isThenable, noop, once } from '../utils'
+import { isNullish, isObject, isThenable, noop, once } from '../utils'
 import type { EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
 import { nodeFailure } from './internal'
@@ -463,15 +463,15 @@ const replaceNulls = async (
   holder: Thunk
 ): Promise<unknown> => {
   if (declared.elementNullPolicy !== undefined) {
-    if (Array.isArray(value) && value.includes(null)) {
+    if (Array.isArray(value) && value.some(isNullish)) {
       const replacement = await holder()
-      return value.map((element) => (element === null ? replacement : element))
+      return value.map((element) => (isNullish(element) ? replacement : element))
     }
-    if (isObject(value) && Object.values(value).includes(null)) {
+    if (isObject(value) && Object.values(value).some(isNullish)) {
       const replacement = await holder()
       const copy: Record<string, unknown> = {}
       for (const [key, element] of Object.entries(value))
-        copy[key] = element === null ? replacement : element
+        copy[key] = isNullish(element) ? replacement : element
       return copy
     }
     return value
@@ -480,8 +480,8 @@ const replaceNulls = async (
 }
 
 const containsNull = (value: unknown): boolean => {
-  if (Array.isArray(value)) return value.includes(null)
-  if (isObject(value)) return Object.values(value).includes(null)
+  if (Array.isArray(value)) return value.some(isNullish)
+  if (isObject(value)) return Object.values(value).some(isNullish)
   return false
 }
 

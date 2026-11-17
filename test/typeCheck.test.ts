@@ -23,6 +23,16 @@ describe('checkType — basic tokens', () => {
     expect(checkType(null, 'object').ok).toBe(false)
   })
 
+  it('null admits undefined, which host data can hold inside a container', () => {
+    expect(checkType(undefined, 'null').ok).toBe(true)
+    expect(checkType(undefined, ['string', 'null']).ok).toBe(true)
+    expect(checkType(undefined, 'string')).toEqual({
+      ok: false,
+      expected: 'string',
+      actual: 'null',
+    })
+  })
+
   it('object admits an object of any class; functions, symbols and BigInts only any', () => {
     class User {
       constructor(public name: string) {}
@@ -148,6 +158,14 @@ describe('checkConstraints — homogeneous', () => {
       ok: false,
       expected,
       actual: 'array of boolean',
+    })
+  })
+
+  it('names an undefined element that differs, rather than missing it', () => {
+    expect(checkConstraints([1, undefined, 2], constraints)).toEqual({
+      ok: false,
+      expected: 'an array of one type: number | string',
+      actual: 'null beside number',
     })
   })
 })

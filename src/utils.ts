@@ -25,6 +25,18 @@ export const isThenable = (value: unknown): value is PromiseLike<unknown> =>
   typeof (value as { then?: unknown }).then === 'function'
 
 /**
+ * `null` or `undefined`: the test for absence wherever an operator ACTS on
+ * a value — renders it, applies a null policy to it, type-checks it, skips
+ * it. `undefined` is not a FigTree value, but host data can hold one inside
+ * a container, which a reference hands over as given; testing with this
+ * makes it read as `null` ("The value domain" in
+ * docs-dev/v3-specs/v3-api.md). A site that only carries a value along
+ * leaves it as it is, and so does `equal`.
+ */
+export const isNullish = (value: unknown): value is null | undefined =>
+  value === null || value === undefined
+
+/**
  * An object that is neither null nor an array, of any class: what the
  * `object` type admits ("The value domain" in docs-dev/v3-specs/v3-api.md).
  * Operators read one through its own enumerable keys, so a class instance

@@ -15,7 +15,7 @@
  */
 
 import { isLiteralType } from './typeIntersection'
-import { isObject } from './utils'
+import { isNullish, isObject } from './utils'
 
 export type BasicType =
   | 'any' // every domain value, INCLUDING null, plus opaque constants
@@ -61,7 +61,7 @@ const OK: TypeCheckResult = { ok: true }
 
 /** The runtime shape of a value, for the `actual` slot of a failure. */
 export const describeType = (value: unknown): string => {
-  if (value === null) return 'null'
+  if (isNullish(value)) return 'null'
   if (Array.isArray(value)) return 'array'
   if (Number.isNaN(value)) return 'NaN'
   return typeof value // 'string' | 'number' | 'boolean' | 'object' | 'function' | 'undefined' | ...
@@ -92,7 +92,7 @@ const matchesBasic = (value: unknown, type: BasicType): boolean => {
     case 'object':
       return isObject(value)
     case 'null':
-      return value === null
+      return isNullish(value)
     default:
       return false
   }
@@ -245,8 +245,9 @@ export const checkConstraints = (value: unknown, constraints: Constraints): Type
  */
 const describeElements = (elements: unknown[]): string => {
   const first = describeType(elements[0])
-  const other = elements.find((element) => describeType(element) !== first)
-  return other === undefined ? `array of ${first}` : `${describeType(other)} beside ${first}`
+  // An index, not the element: an element can itself be `undefined`
+  const other = elements.findIndex((element) => describeType(element) !== first)
+  return other === -1 ? `array of ${first}` : `${describeType(elements[other])} beside ${first}`
 }
 
 const CONSTRAINT_KEYS = ['length', 'homogeneous', 'elementShape']
@@ -337,7 +338,7 @@ export const checkConstraintsUnderPolicy = (
     if (!arity.ok) return arity
   }
   return checkConstraints(
-    value.filter((element) => element !== null),
+    value.filter((element) => !isNullish(element)),
     elementWise
   )
 }
@@ -360,7 +361,7 @@ interface Declared {
  * default at registration, a literal before evaluation, a value during it.
  */
 export const checkDeclaredConstraints = (value: unknown, declared: Declared): TypeCheckResult =>
-  value === null || declared.constraints === undefined
+  isNullish(value) || declared.constraints === undefined
     ? OK
     : checkConstraintsUnderPolicy(
         value,
