@@ -7,15 +7,21 @@
  *
  *   string   -> itself
  *   number   -> String(n)      (decimal form)
+ *   BigInt   -> String(n)      (decimal form, no `n` suffix)
  *   boolean  -> "true" / "false"
  *   null     -> ""
  *   array    -> ARRAY placeholder
- *   object   -> OBJECT placeholder  (also any opaque constant)
+ *   object   -> OBJECT placeholder  (also any other opaque constant)
+ *
+ * A BigInt is outside the value domain, but host data supplies one for any
+ * integer too large for a number (an int8 column, say), and its digits are
+ * the only reading anyone wants.
  *
  * Composites render a self-signaling placeholder — never v2's
  * "[object Object]", never a silent "". `convert to:'string'` diverges
- * (propagate null, FAIL on composites); that fork lives in `convert`
- * (Phase 4.2), not here, so this stays total and dependency-free.
+ * (propagate null, FAIL on composites and the other opaque constants);
+ * that fork lives in `convert` (Phase 4.2), not here, so this stays total
+ * and dependency-free.
  */
 
 /** Placeholder emitted when an array reaches a rendering position. */
@@ -29,7 +35,7 @@ export const OBJECT = '<object>'
 export const renderText = (value: unknown): string => {
   if (value === null) return ''
   if (typeof value === 'string') return value
-  if (typeof value === 'number') return String(value)
+  if (typeof value === 'number' || typeof value === 'bigint') return String(value)
   if (typeof value === 'boolean') return value ? 'true' : 'false'
   if (Array.isArray(value)) return ARRAY
   return OBJECT

@@ -10,6 +10,12 @@ describe('renderText', () => {
     expect(renderText(false)).toBe('false')
   })
 
+  it('renders a BigInt as its digits, beyond what a number holds exactly', () => {
+    expect(renderText(12345678901234567890n)).toBe('12345678901234567890')
+    expect(renderText(-5n)).toBe('-5')
+    expect(renderText(0n)).toBe('0')
+  })
+
   it('renders null as an empty string', () => {
     expect(renderText(null)).toBe('')
   })

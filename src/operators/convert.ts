@@ -8,7 +8,6 @@
 import { declareOperator } from '../buildOperator'
 import { isTruthy, renderText } from '../primitives'
 import { describeType } from '../typeCheck'
-import { isPlainObject } from '../utils'
 import { OperatorFailure } from '../OperatorFailure'
 import { nonFiniteFailure } from './shared'
 
@@ -50,15 +49,21 @@ export const convert = declareOperator({
             )
           return parsed
         }
+        // A BigInt from host data (an int8 column, say) converts only where
+        // a number holds it exactly: past ±(2^53 − 1) it would silently lose
+        // its last digits
+        if (typeof value === 'bigint') {
+          const converted = Number(value)
+          if (Number.isSafeInteger(converted)) return converted
+          throw new OperatorFailure(`the BigInt ${value} is outside the range for normal numbers`)
+        }
         throw cannot(value, 'number')
       }
       case 'string': {
-        if (Array.isArray(value) || isPlainObject(value))
-          throw new OperatorFailure(
-            `cannot convert ${describeType(value)} to string — use buildString or join`
-          )
-        if (typeof value === 'object') throw cannot(value, 'string')
-        return renderText(value)
+        const type = typeof value
+        if (type === 'string' || type === 'number' || type === 'boolean' || type === 'bigint')
+          return renderText(value)
+        throw cannot(value, 'string')
       }
       case 'boolean': {
         if (typeof value === 'string') {

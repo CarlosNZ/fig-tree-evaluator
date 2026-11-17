@@ -42,6 +42,24 @@ describe('to: number', () => {
     expect((await failure({ $convert: [[1], 'number'] })).code).toBe('operator-failure')
     expect((await failure({ $convert: [{ a: 1 }, 'number'] })).code).toBe('operator-failure')
   })
+
+  test.each([
+    ['a small BigInt', 42n, 42],
+    ['a negative BigInt', -42n, -42],
+    ['the largest a number holds exactly', 9007199254740991n, 9007199254740991],
+    ['the smallest a number holds exactly', -9007199254740991n, -9007199254740991],
+  ])('converts %s', async (_label, input, expected) => {
+    expect(await ev({ $convert: ['$data.v', 'number'] }, { v: input })).toBe(expected)
+  })
+
+  test.each([
+    ['one past the safe range', 9007199254740992n],
+    ['far below it', -(10n ** 30n)],
+  ])('fails on a BigInt %s, which a number cannot hold exactly', async (_label, input) => {
+    const error = await failure({ $convert: ['$data.v', 'number'] }, { v: input })
+    expect(error.code).toBe('operator-failure')
+    expect(error.message).toContain(`the BigInt ${input} is outside the range for normal numbers`)
+  })
 })
 
 describe('to: string', () => {
@@ -58,6 +76,22 @@ describe('to: string', () => {
   test('composites fail — a cast is not a render', async () => {
     expect((await failure({ $convert: [[1, 2], 'string'] })).code).toBe('operator-failure')
     expect((await failure({ $convert: [{ a: 1 }, 'string'] })).code).toBe('operator-failure')
+  })
+
+  test('a BigInt renders its digits, past what a number holds exactly', async () => {
+    const v = 12345678901234567890n
+    expect(await ev({ $convert: ['$data.v', 'string'] }, { v })).toBe('12345678901234567890')
+  })
+
+  test.each([
+    ['a symbol', Symbol('s'), 'symbol'],
+    ['a function', () => 1, 'function'],
+    ['a Date', new Date(0), 'object'],
+    ['a Map', new Map(), 'object'],
+  ])('%s fails like a composite, not as a placeholder', async (_label, input, type) => {
+    const error = await failure({ $convert: ['$data.v', 'string'] }, { v: input })
+    expect(error.code).toBe('operator-failure')
+    expect(error.message).toContain(`cannot convert ${type} to string`)
   })
 })
 
