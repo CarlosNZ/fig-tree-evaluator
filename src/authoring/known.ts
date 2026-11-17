@@ -16,7 +16,7 @@ import type { BasicType, Constraints, ExpectedType, TypeDeclaration } from '../t
 import { isLiteralType } from '../typeIntersection'
 import { WILDCARD, resolvePath } from '../primitives/path'
 import type { PathSegment } from '../primitives/path'
-import { isPlainObject } from '../utils'
+import { isObject } from '../utils'
 import type { Answer } from '../authoringTypes'
 
 export type Member =
@@ -249,11 +249,7 @@ export const containsNull = (known: Known): Answer =>
     known.map((member): Answer => {
       if ('exact' in member) {
         const { exact } = member
-        const values = Array.isArray(exact)
-          ? exact
-          : isPlainObject(exact)
-            ? Object.values(exact)
-            : []
+        const values = Array.isArray(exact) ? exact : isObject(exact) ? Object.values(exact) : []
         return values.includes(null) ? 'yes' : 'no'
       }
       if (member.type === 'array')
@@ -339,7 +335,7 @@ export const valuesOf = (known: Known): Known =>
   unionOf(
     known.map((member): Known => {
       if ('exact' in member)
-        return isPlainObject(member.exact)
+        return isObject(member.exact)
           ? unionOf(Object.values(member.exact).map((value) => exactly(value)))
           : NOTHING
       if (member.type !== 'object') return NOTHING
@@ -767,7 +763,7 @@ export const isEmpty = (known: Known): Answer =>
       const { exact } = member
       if (typeof exact === 'string' || Array.isArray(exact))
         return exact.length === 0 ? 'yes' : 'no'
-      return isPlainObject(exact) && Object.keys(exact).length === 0 ? 'yes' : 'no'
+      return isObject(exact) && Object.keys(exact).length === 0 ? 'yes' : 'no'
     }
     switch (member.type) {
       case 'array':

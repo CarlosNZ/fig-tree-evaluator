@@ -20,7 +20,7 @@ import { OperatorFailure } from '../OperatorFailure'
 import { ErrorCodes } from '../errorCodes'
 import { renderText, resolvePath } from '../primitives'
 import { describeType } from '../typeCheck'
-import { isPlainObject } from '../utils'
+import { isObject } from '../utils'
 import { toSegments } from './shared'
 
 export interface EffectiveRequest {
@@ -170,7 +170,7 @@ export const requestKey = (request: EffectiveRequest): unknown => ({
  */
 export const isNonEmpty = (container: unknown): boolean => {
   if (Array.isArray(container)) return container.length > 0
-  if (isPlainObject(container)) return Object.keys(container).length > 0
+  if (isObject(container)) return Object.keys(container).length > 0
   return container !== undefined && container !== null
 }
 
@@ -194,8 +194,7 @@ export const drill = (value: unknown, returnPath: string | unknown[] | undefined
  * the body as it came.
  */
 export const graphQLData = (response: unknown, url: string): unknown => {
-  if (!isPlainObject(response))
-    throw invalidResponse('the response was not an object', url, response)
+  if (!isObject(response)) throw invalidResponse('the response was not an object', url, response)
   const errors = (response as Record<string, unknown>).errors
   if (Array.isArray(errors) && errors.length > 0) {
     const first = (errors[0] as { message?: unknown } | null)?.message
@@ -233,7 +232,7 @@ export const connectionRows = (answer: unknown): Record<string, unknown>[] => {
       { code: ErrorCodes.requestFailure }
     )
   for (const row of answer) {
-    if (!isPlainObject(row))
+    if (!isObject(row))
       throw new OperatorFailure(
         `each row from the connection must be an object, received ${describeType(row)}`,
         { code: ErrorCodes.requestFailure }

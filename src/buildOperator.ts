@@ -14,7 +14,7 @@
  * definition goes through `defineOperator()`, which runs the checks and then
  * this same assembly.
  */
-import { fnv1a, isPlainObject } from './utils'
+import { fnv1a, isObject } from './utils'
 import { typeNamesNull, type ExpectedType, type LiteralType } from './typeCheck'
 import { isLiteralType } from './typeIntersection'
 import { elementNullBehaviorOf, nullBehaviorOf, type Declared } from './nullBehavior'
@@ -200,7 +200,7 @@ const cloneTypeExpression = (type: ExpectedType): ExpectedType => {
 /** Plain-data deep clone for owned declaration structures (constraints). */
 const deepClone = <T>(value: T): T => {
   if (Array.isArray(value)) return value.map(deepClone) as T
-  if (isPlainObject(value)) {
+  if (isObject(value)) {
     const copy: Record<string, unknown> = {}
     for (const [key, child] of Object.entries(value)) copy[key] = deepClone(child)
     return copy as T
@@ -257,7 +257,7 @@ const deepFreezePlain = <T>(value: T): T => {
   if (Array.isArray(value)) {
     value.forEach(deepFreezePlain)
     Object.freeze(value)
-  } else if (isPlainObject(value)) {
+  } else if (isObject(value)) {
     Object.values(value).forEach(deepFreezePlain)
     Object.freeze(value)
   }

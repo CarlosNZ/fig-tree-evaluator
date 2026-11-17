@@ -48,7 +48,7 @@ import {
   NO_DEFAULT,
   type ExpectedType,
 } from '../typeCheck'
-import { isPlainObject, isThenable, noop, once } from '../utils'
+import { isObject, isThenable, noop, once } from '../utils'
 import type { EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
 import { nodeFailure } from './internal'
@@ -467,7 +467,7 @@ const replaceNulls = async (
       const replacement = await holder()
       return value.map((element) => (element === null ? replacement : element))
     }
-    if (isPlainObject(value) && Object.values(value).includes(null)) {
+    if (isObject(value) && Object.values(value).includes(null)) {
       const replacement = await holder()
       const copy: Record<string, unknown> = {}
       for (const [key, element] of Object.entries(value))
@@ -481,7 +481,7 @@ const replaceNulls = async (
 
 const containsNull = (value: unknown): boolean => {
   if (Array.isArray(value)) return value.includes(null)
-  if (isPlainObject(value)) return Object.values(value).includes(null)
+  if (isObject(value)) return Object.values(value).includes(null)
   return false
 }
 
@@ -495,7 +495,7 @@ const isContainerOnly = (type: ExpectedType): boolean => {
 const applyTruthiness = (value: unknown, type: ExpectedType): unknown => {
   if (isContainerOnly(type)) {
     if (Array.isArray(value)) return value.map(isTruthy)
-    if (isPlainObject(value)) {
+    if (isObject(value)) {
       const judged: Record<string, boolean> = {}
       for (const [key, element] of Object.entries(value)) judged[key] = isTruthy(element)
       return judged

@@ -17,7 +17,7 @@
  */
 import { ErrorCodes } from './errorCodes'
 import { issuesError, type Issue } from './issues'
-import { isPlainObject } from './utils'
+import { isObject } from './utils'
 import {
   checkDeclaredConstraints,
   checkType,
@@ -88,7 +88,7 @@ export function defineOperator(
   if (isValidatedOperator(definition)) return definition
 
   const issues: Issue[] = []
-  const operatorName = isPlainObject(definition) ? definition.name : undefined
+  const operatorName = isObject(definition) ? definition.name : undefined
   const operator = typeof operatorName === 'string' ? operatorName : undefined
 
   const addIssue = (code: string, message: string, path: Path, parameter?: string) => {
@@ -103,7 +103,7 @@ export function defineOperator(
   }
 
   // ── Structural gate — without these, nothing else can be checked ──────
-  if (!isPlainObject(definition)) {
+  if (!isObject(definition)) {
     addIssue(ErrorCodes.invalidDefinition, 'A definition must be a plain object', [])
     throw issuesError(ErrorCodes.invalidDefinition, issues)
   }
@@ -111,7 +111,7 @@ export function defineOperator(
 
   if (typeof def.name !== 'string')
     addIssue(ErrorCodes.invalidDefinition, "'name' is required and must be a string", ['name'])
-  if (!isPlainObject(def.parameters))
+  if (!isObject(def.parameters))
     addIssue(
       ErrorCodes.invalidDefinition,
       "'parameters' is required and must be an object of declarations (may be {})",
@@ -142,7 +142,7 @@ export function defineOperator(
     addIssue(ErrorCodes.invalidDefinition, "'alias' must be a string", ['alias'])
   if (def.cache !== undefined && def.cache !== true)
     addIssue(ErrorCodes.invalidDefinition, "'cache' can only be true", ['cache'])
-  if (def.metadata !== undefined && !isPlainObject(def.metadata))
+  if (def.metadata !== undefined && !isObject(def.metadata))
     addIssue(ErrorCodes.invalidDefinition, "'metadata' must be a plain object", ['metadata'])
   if (
     def.positionalParams !== undefined &&
@@ -214,7 +214,7 @@ export function defineOperator(
         paramPath,
         paramName
       )
-    if (!isPlainObject(declaration)) {
+    if (!isObject(declaration)) {
       addIssue(
         ErrorCodes.invalidDefinition,
         `The declaration of '${paramName}' must be a plain object`,

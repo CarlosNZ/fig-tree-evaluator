@@ -7,6 +7,7 @@
  */
 import { declareOperator } from '../buildOperator'
 import { isTruthy, renderText } from '../primitives'
+import { rendersAsPlaceholder } from '../primitives/renderText'
 import { describeType } from '../typeCheck'
 import { OperatorFailure } from '../OperatorFailure'
 import { nonFiniteFailure } from './shared'
@@ -59,12 +60,10 @@ export const convert = declareOperator({
         }
         throw cannot(value, 'number')
       }
-      case 'string': {
-        const type = typeof value
-        if (type === 'string' || type === 'number' || type === 'boolean' || type === 'bigint')
-          return renderText(value)
-        throw cannot(value, 'string')
-      }
+      // A cast fails exactly where a rendering would write a placeholder
+      case 'string':
+        if (rendersAsPlaceholder(value)) throw cannot(value, 'string')
+        return renderText(value)
       case 'boolean': {
         if (typeof value === 'string') {
           const folded = value.trim().toLowerCase()

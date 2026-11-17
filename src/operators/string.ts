@@ -18,7 +18,7 @@ import {
   toCodePoints,
   trim as trimText,
 } from '../primitives'
-import { COMPOSITE_RENDER_ERROR, isComposite } from '../primitives/renderText'
+import { COMPOSITE_RENDER_ERROR, rendersAsPlaceholder } from '../primitives/renderText'
 import { scanTemplate } from '../templateTokens'
 import { emptyAggregateWarning } from './shared'
 
@@ -63,7 +63,7 @@ export const split = declareOperator({
  * an authoring slip with no reading behind it.
  */
 const compositeValuesErrors = (literalParams: Record<string, unknown>): ValidateFinding[] =>
-  Array.isArray(literalParams.values) && literalParams.values.some(isComposite)
+  Array.isArray(literalParams.values) && literalParams.values.some(rendersAsPlaceholder)
     ? [
         {
           severity: 'error',
@@ -185,7 +185,7 @@ export const buildString = declareOperator({
           ? (list as unknown[])[segment.index - 1]
           : (named as Record<string, unknown>)[segment.body]
       const rendered = renderText(value)
-      if (isComposite(value))
+      if (rendersAsPlaceholder(value))
         context.trace.note({ type: 'render', token: segment.raw, rendered: 'placeholder' })
       const text = trimValues ? trimText(rendered) : rendered
       if (text === '') context.trace.note({ type: 'render', token: segment.raw, rendered: 'empty' })
@@ -232,7 +232,7 @@ export const join = declareOperator({
       .map((value, index) => {
         const token = `[${index}]`
         if (value === null) context.trace.note({ type: 'render', token, rendered: 'empty' })
-        else if (isComposite(value))
+        else if (rendersAsPlaceholder(value))
           context.trace.note({ type: 'render', token, rendered: 'placeholder' })
         return renderText(value)
       })

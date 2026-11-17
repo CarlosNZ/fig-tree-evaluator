@@ -106,7 +106,7 @@ import type { Severity } from '../issues'
 import type { EvaluationMode } from '../operatorDefinition'
 import { didYouMean, listing, nearestName } from '../utils'
 import { isPlainDataObject } from '../plainData'
-import { COMPOSITE_RENDER_ERROR, isComposite } from '../primitives/renderText'
+import { COMPOSITE_RENDER_ERROR, rendersAsPlaceholder } from '../primitives/renderText'
 import { resolveOperator, type OperatorRegistry, type RegistryEntry } from '../registry'
 import { checkNameLegality } from '../names'
 import {
@@ -957,7 +957,7 @@ const reportCompositeSubstitutions = (state: WalkState, node: OperatorNode) => {
         ? supplied.skeleton
         : undefined
   if (!Array.isArray(literal) && !isPlainDataObject(literal)) return
-  if (!Object.values(literal).some(isComposite)) return
+  if (!Object.values(literal).some(rendersAsPlaceholder)) return
   emit(
     state,
     'error',

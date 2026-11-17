@@ -9,7 +9,7 @@
  * neither a `fallback` nor null propagation widens it.
  */
 import type { ExpectedType } from '../typeCheck'
-import { isPlainObject } from '../utils'
+import { isObject } from '../utils'
 import type { CompiledNode } from './artifact'
 
 export const staticType = (node: CompiledNode): ExpectedType => {
@@ -38,7 +38,7 @@ export const staticType = (node: CompiledNode): ExpectedType => {
 const valueType = (value: unknown): ExpectedType => {
   if (value === null) return 'null'
   if (Array.isArray(value)) return 'array'
-  if (isPlainObject(value)) return 'object'
+  if (isObject(value)) return 'object'
   switch (typeof value) {
     case 'string':
       return 'string'

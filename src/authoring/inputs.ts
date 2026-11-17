@@ -9,7 +9,7 @@
  */
 import { isTruthy } from '../primitives/truthiness'
 import { defaultFor, NO_DEFAULT } from '../typeCheck'
-import { isPlainObject } from '../utils'
+import { isObject } from '../utils'
 import type { Constraints, ExpectedType } from '../typeCheck'
 import type { CompiledNode, OperatorNode } from '../compile/artifact'
 import type { NullBehavior, ValidatedParameter } from '../operatorDefinition'
@@ -304,7 +304,7 @@ const containerOnly = (type: ExpectedType): boolean => {
 export const judge = (value: unknown, type: ExpectedType): unknown => {
   if (containerOnly(type)) {
     if (Array.isArray(value)) return value.map(isTruthy)
-    if (isPlainObject(value)) {
+    if (isObject(value)) {
       const judgedValues: Record<string, unknown> = {}
       for (const [key, element] of Object.entries(value)) judgedValues[key] = isTruthy(element)
       return judgedValues

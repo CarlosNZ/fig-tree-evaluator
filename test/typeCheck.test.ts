@@ -19,8 +19,20 @@ describe('checkType — basic tokens', () => {
 
     expect(checkType(1, 'string').ok).toBe(false)
     expect(checkType('1', 'number').ok).toBe(false)
-    expect(checkType([], 'object').ok).toBe(false) // array is not a plain object
+    expect(checkType([], 'object').ok).toBe(false) // an array is not an object here
     expect(checkType(null, 'object').ok).toBe(false)
+  })
+
+  it('object admits an object of any class; functions, symbols and BigInts only any', () => {
+    class User {
+      constructor(public name: string) {}
+    }
+    for (const value of [new User('Ann'), new Date(0), new Map(), Object.create(null)])
+      expect(checkType(value, 'object').ok).toBe(true)
+    for (const value of [() => 1, Symbol('s'), 1n]) {
+      expect(checkType(value, 'object').ok).toBe(false)
+      expect(checkType(value, 'any').ok).toBe(true)
+    }
   })
 
   it('integer refines number', () => {

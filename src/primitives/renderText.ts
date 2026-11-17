@@ -41,8 +41,17 @@ export const renderText = (value: unknown): string => {
   return OBJECT
 }
 
-/** A value that renders to the `ARRAY` / `OBJECT` placeholder. */
-export const isComposite = (value: unknown): boolean => value !== null && typeof value === 'object'
+/**
+ * A value that renders as the `ARRAY` / `OBJECT` placeholder: anything but
+ * text, a number, a boolean or a BigInt, so a function or symbol as well as
+ * an array or object. `null` renders `""`, and `undefined` is excluded too:
+ * the static checks read a dynamic element's slot as `undefined`.
+ */
+export const rendersAsPlaceholder = (value: unknown): boolean => {
+  if (value === null || value === undefined) return false
+  const type = typeof value
+  return type !== 'string' && type !== 'number' && type !== 'boolean' && type !== 'bigint'
+}
 
 /**
  * The static error for a LITERAL composite in a rendering position

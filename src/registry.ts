@@ -23,7 +23,7 @@
  */
 import { ErrorCodes } from './errorCodes'
 import { issuesError, type Issue } from './issues'
-import { isPlainObject } from './utils'
+import { isObject } from './utils'
 import { checkDeclaredConstraints, checkType } from './typeCheck'
 import type { OperatorEntry, ValidatedOperatorDefinition } from './operatorDefinition'
 import { forEachOperatorEntry } from './operatorEntries'
@@ -164,7 +164,7 @@ const validateOperatorDefaults = (
   aliases: Map<string, string>,
   addIssue: (code: string, message: string, path: Path, operator?: string) => void
 ): void => {
-  if (!isPlainObject(operatorDefaults)) {
+  if (!isObject(operatorDefaults)) {
     addIssue(ErrorCodes.invalidOptions, "'operatorDefaults' must be a plain object", [
       'operatorDefaults',
     ])
@@ -187,7 +187,7 @@ const validateOperatorDefaults = (
         addIssue(ErrorCodes.unknownOperator, `'${operatorName}' is not a registered operator`, path)
       continue
     }
-    if (!isPlainObject(defaults)) {
+    if (!isObject(defaults)) {
       addIssue(
         ErrorCodes.invalidOptions,
         `The defaults for '${operatorName}' must be a plain object`,

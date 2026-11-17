@@ -10,7 +10,7 @@ import { FigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
 import { coreOperators } from '../operators'
 import { isValidatedOperator } from '../operatorDefinition'
-import { isPlainObject } from '../utils'
+import { isObject } from '../utils'
 import type { BuiltOperator, OperatorAnalysis } from '../authoringTypes'
 import type { OperatorRegistry } from '../registry'
 import type { ValidatedOperatorDefinition } from '../operatorDefinition'
@@ -52,7 +52,7 @@ export const analysisFrom = (
   hooks: Pick<OperatorAnalysis, 'gamut' | 'failures'>
 ): OperatorAnalysis => {
   const name = operator.name
-  if (!isPlainObject(hooks))
+  if (!isObject(hooks))
     throw refuse(
       `declareAnalysis() takes the hooks for '${name}' as an object: { gamut, failures }`
     )

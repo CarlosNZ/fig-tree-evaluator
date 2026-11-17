@@ -48,7 +48,7 @@ import { ErrorCodes } from '../errorCodes'
 import type { FragmentEntry, FragmentParameter } from '../fragments'
 import { toNodePath, type CompiledNode, type FragmentCallNode, type LinkedPath } from '../compile'
 import { checkDeclared, describeType } from '../typeCheck'
-import { isPlainObject, noop, once } from '../utils'
+import { isObject, noop, once } from '../utils'
 import { DeferredScope } from './abort'
 import {
   pushNoCache,
@@ -209,7 +209,7 @@ const dynamicFrame = async (
   } catch (error) {
     throw anchor(error, ctx.frame)
   }
-  if (!isPlainObject(supplied))
+  if (!isObject(supplied))
     throw anchor(
       callFailure(
         node,

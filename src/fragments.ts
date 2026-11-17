@@ -68,7 +68,7 @@ import {
   type ExpectedType,
   type TypeDeclaration,
 } from './typeCheck'
-import { findCycles, isPlainObject } from './utils'
+import { findCycles, isObject } from './utils'
 import { argumentNullBehaviorOf, elementNullBehaviorOf } from './nullBehavior'
 
 /**
@@ -204,7 +204,7 @@ export const registerFragments = (
   addIssue: AddIssue
 ): void => {
   if (definitions === undefined) return
-  if (!isPlainObject(definitions)) {
+  if (!isObject(definitions)) {
     addIssue(ErrorCodes.invalidOptions, "'fragments' must be a plain object", ['fragments'])
     return
   }
@@ -292,7 +292,7 @@ const validateDefinition = (
     addIssue(ErrorCodes.reservedName, `'${name}' can't be a fragment name`, at())
     return undefined
   }
-  if (!isPlainObject(definition)) {
+  if (!isObject(definition)) {
     addIssue(
       ErrorCodes.invalidDefinition,
       `Fragment '${name}' must be an object: { expression, parameters?, listing?, metadata? }`,
@@ -336,12 +336,12 @@ const validateDefinition = (
   for (const key of ['listing', 'metadata'] as const) {
     const value = definition[key]
     if (value === undefined) continue
-    if (!isPlainObject(value))
+    if (!isObject(value))
       addIssue(ErrorCodes.invalidDefinition, `'${key}' must be a plain object`, at(key))
     else entry[key] = value
   }
   if (definition.parameters !== undefined) {
-    if (!isPlainObject(definition.parameters))
+    if (!isObject(definition.parameters))
       addIssue(
         ErrorCodes.invalidDefinition,
         `'parameters' must be a plain object`,
@@ -381,7 +381,7 @@ const validateDeclaration = (
     addIssue(ErrorCodes.reservedName, `'${parameter}' can't be a parameter name`, path)
     return undefined
   }
-  if (!isPlainObject(declared)) {
+  if (!isObject(declared)) {
     addIssue(
       ErrorCodes.invalidDefinition,
       `The declaration of '${parameter}' must be a plain object`,

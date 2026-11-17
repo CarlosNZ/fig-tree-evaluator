@@ -166,7 +166,9 @@ const resolveSegments = (
 
 /** Read one segment from a container, own-enumerable properties only. */
 const readOwn = (current: unknown, segment: string | number): ResolveResult => {
-  if (current === null || typeof current !== 'object') return MISS // scalar / null / opaque -> no paths
+  // Any object reads by its own keys, a class instance's fields included; a
+  // Date or Map has none, and a scalar, null or function has no paths
+  if (current === null || typeof current !== 'object') return MISS
 
   if (Array.isArray(current)) {
     const index = typeof segment === 'number' ? segment : toIndex(segment)

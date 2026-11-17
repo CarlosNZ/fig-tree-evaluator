@@ -93,6 +93,19 @@ describe('match', () => {
     expect(await ev({ $match: [true, { true: 'yes', false: 'no' }] })).toBe('yes')
   })
 
+  test('branches from host data may be an object of any class, read by its own keys', async () => {
+    class Labels {
+      open = 'Open'
+    }
+    expect(await ev({ $match: ['open', '$data.table', 'none'] }, { table: new Labels() })).toBe(
+      'Open'
+    )
+    // A Date has no own keys, so nothing matches
+    expect(await ev({ $match: ['open', '$data.table', 'none'] }, { table: new Date(0) })).toBe(
+      'none'
+    )
+  })
+
   test('only the matching branch evaluates', async () => {
     const { calls, fig } = tracked()
     const result = await fig.evaluate({

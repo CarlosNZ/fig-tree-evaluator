@@ -24,8 +24,15 @@ export const isThenable = (value: unknown): value is PromiseLike<unknown> =>
   value !== null &&
   typeof (value as { then?: unknown }).then === 'function'
 
-/** A plain object: an object that is neither null nor an array. */
-export const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+/**
+ * An object that is neither null nor an array, of any class: what the
+ * `object` type admits ("The value domain" in docs-dev/v3-specs/v3-api.md).
+ * Operators read one through its own enumerable keys, so a class instance
+ * works by its fields and a `Date` or `Map` reads as empty. Whether a value
+ * is plain DATA — walked by the compiler, merged into as options — is
+ * `isPlainDataObject`'s question (src/plainData.ts).
+ */
+export const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
 /**

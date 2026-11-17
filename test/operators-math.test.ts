@@ -57,6 +57,26 @@ describe('plus', () => {
     expect(await ev(expression, { scores: [1, 2, 3] })).toEqual(expected)
   })
 
+  test('a merge reads each operand by its own keys, into a plain object', async () => {
+    class User {
+      constructor(public name: string) {}
+      greet() {
+        return this.name
+      }
+    }
+    const merged = await ev(
+      { $plus: ['$data.base', '$data.user', '$data.when'] },
+      {
+        base: { a: 1 },
+        user: new User('Ann'),
+        when: new Date(0),
+      }
+    )
+    // The instance contributes its fields, not its methods; a Date, nothing
+    expect(merged).toEqual({ a: 1, name: 'Ann' })
+    expect(Object.getPrototypeOf(merged)).toBe(Object.prototype)
+  })
+
   test('mixed operands are a type error — the headline death of coercion', async () => {
     expect((await failure({ $plus: [1, '2'] })).code).toBe('type-check')
     expect((await failure({ $plus: ['a', [1]] })).code).toBe('type-check')

@@ -504,6 +504,18 @@ describe('events', () => {
       rendered: 'placeholder',
     })
 
+    // A function or symbol from host data renders the same placeholder, and
+    // says so
+    for (const opaque of [() => 1, Symbol('s')]) {
+      const rendered = await traceOf(fig, { $join: ['x', '$data.v'] }, { data: { v: opaque } })
+      expect(rendered.value).toBe('x <object>')
+      expect(rendered.events).toContainEqual({
+        type: 'render',
+        token: '[1]',
+        rendered: 'placeholder',
+      })
+    }
+
     const gapped = await traceOf(
       fig,
       {

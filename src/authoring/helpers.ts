@@ -10,7 +10,7 @@ import { authoredNames, toNodePath } from '../compile/artifact'
 import { validateHelpers } from '../compile/helpers'
 import { FigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
-import { isPlainObject } from '../utils'
+import { isObject } from '../utils'
 import type { FailureEntry, OperatorAnalysis } from '../authoringTypes'
 import type { OperatorNode } from '../compile/artifact'
 import type { ExpectedType } from '../typeCheck'
@@ -217,9 +217,7 @@ const MEMBER_TYPES = new Set<unknown>([
 
 const isGamut = (value: unknown): value is Known =>
   Array.isArray(value) &&
-  value.every(
-    (member) => isPlainObject(member) && ('exact' in member || MEMBER_TYPES.has(member.type))
-  )
+  value.every((member) => isObject(member) && ('exact' in member || MEMBER_TYPES.has(member.type)))
 
 /** What the body returns, by the `gamut` hook; `undefined` without one. */
 export const gamutOf = ({ analysis, node, params, helpers }: Hooked): Known | undefined => {
@@ -252,7 +250,7 @@ export const entriesOf = ({
     !Array.isArray(entries) ||
     !entries.every(
       (entry) =>
-        isPlainObject(entry) &&
+        isObject(entry) &&
         typeof entry.code === 'string' &&
         entry.code !== '' &&
         (entry.occurs === undefined || ANSWERS.has(entry.occurs)) &&

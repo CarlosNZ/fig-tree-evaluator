@@ -15,7 +15,7 @@
  */
 
 import { isLiteralType } from './typeIntersection'
-import { isPlainObject } from './utils'
+import { isObject } from './utils'
 
 export type BasicType =
   | 'any' // every domain value, INCLUDING null, plus opaque constants
@@ -90,7 +90,7 @@ const matchesBasic = (value: unknown, type: BasicType): boolean => {
     case 'array':
       return Array.isArray(value)
     case 'object':
-      return isPlainObject(value)
+      return isObject(value)
     case 'null':
       return value === null
     default:
@@ -177,7 +177,7 @@ export const isExpectedType = (expression: unknown): expression is ExpectedType 
     return (
       expression.length > 0 && expression.every((t) => typeof t === 'string' && BASIC_TYPES.has(t))
     )
-  if (isPlainObject(expression) && 'literal' in expression) {
+  if (isObject(expression) && 'literal' in expression) {
     const members = (expression as { literal: unknown }).literal
     return (
       Array.isArray(members) &&
@@ -260,7 +260,7 @@ const CONSTRAINT_KEYS = ['length', 'homogeneous', 'elementShape']
  * validated.
  */
 export const validateConstraintsShape = (declaration: unknown): TypeCheckResult => {
-  if (!isPlainObject(declaration)) return fail('a constraints object', declaration)
+  if (!isObject(declaration)) return fail('a constraints object', declaration)
 
   for (const key of Object.keys(declaration)) {
     if (!CONSTRAINT_KEYS.includes(key))
@@ -276,9 +276,9 @@ export const validateConstraintsShape = (declaration: unknown): TypeCheckResult 
     return fail('a non-empty array of basic types', homogeneous)
 
   if (elementShape !== undefined) {
-    if (!isPlainObject(elementShape)) return fail('an object of declarations', elementShape)
+    if (!isObject(elementShape)) return fail('an object of declarations', elementShape)
     for (const [key, entry] of Object.entries(elementShape)) {
-      if (!isPlainObject(entry)) return fail(`a declaration of '${key}'`, entry)
+      if (!isObject(entry)) return fail(`a declaration of '${key}'`, entry)
       if (entry.type !== undefined && !isExpectedType(entry.type))
         return fail(`a valid type for '${key}'`, entry.type)
       if (entry.required !== undefined && typeof entry.required !== 'boolean')
@@ -297,7 +297,7 @@ const checkElementShape = (
   element: unknown,
   shape: Record<string, TypeDeclaration>
 ): TypeCheckResult => {
-  if (!isPlainObject(element)) return fail('object', element)
+  if (!isObject(element)) return fail('object', element)
 
   const keys = Object.keys(shape)
   for (let i = 0; i < keys.length; i++) {
