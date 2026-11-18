@@ -4,6 +4,7 @@
  * and a falsy one. The infinities are numbers.
  */
 import { FigTree, FigTreeError } from '../src'
+import { validate } from '../src/authoring'
 
 const fig = new FigTree()
 
@@ -40,7 +41,7 @@ describe('NaN at a number parameter', () => {
   })
 
   test('validate() reports a JS-authored NaN at a number parameter', () => {
-    const { valid, issues } = fig.validate({ $plus: [NaN, 1] })
+    const { valid, issues } = validate(fig, { $plus: [NaN, 1] })
     expect(valid).toBe(false)
     expect(issues.map((issue) => issue.code)).toContain('type-check')
   })

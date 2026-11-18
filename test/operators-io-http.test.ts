@@ -13,6 +13,7 @@
 import { FigTree, FigTreeError, coreOperators, httpOperators } from '../src'
 import { MockHttpClient } from './helpers'
 import { rejection } from './helpers/rejection'
+import { validate } from '../src/authoring'
 
 const withClient = (client: MockHttpClient, options: object = {}) =>
   new FigTree({ operators: [coreOperators, httpOperators(client)], ...options })
@@ -236,7 +237,7 @@ describe('the body', () => {
   })
 
   it('refuses a body on a literal GET at authoring time', () => {
-    const literal = withClient(client()).validate({
+    const literal = validate(withClient(client()), {
       $http: { url: 'https://api.test/x', method: 'get', body: { a: 1 } },
     })
     expect(literal.valid).toBe(false)
@@ -244,7 +245,7 @@ describe('the body', () => {
   })
 
   it('…and on an implicit one, since method defaults to GET', () => {
-    const implicit = withClient(client()).validate({
+    const implicit = validate(withClient(client()), {
       $http: { url: 'https://api.test/x', body: { a: 1 } },
     })
     expect(implicit.valid).toBe(false)
@@ -254,7 +255,7 @@ describe('the body', () => {
   it('…but not on a null body, which is no body (row 27)', async () => {
     const figTree = withClient(client())
     const expression = { $http: { url: 'https://api.test/x', method: 'get', body: null } }
-    expect(figTree.validate(expression).valid).toBe(true)
+    expect(validate(figTree, expression).valid).toBe(true)
     expect(await figTree.evaluate(expression)).toEqual({ ok: true })
   })
 
@@ -299,7 +300,7 @@ describe('the response', () => {
   })
 
   it('reports a malformed literal returnPath at authoring time', () => {
-    const report = withClient(client()).validate({
+    const report = validate(withClient(client()), {
       $http: { url: 'https://api.test/x', returnPath: 'a[[b' },
     })
     expect(report.valid).toBe(false)
@@ -336,7 +337,7 @@ describe('authoring hints', () => {
   it('names the accepted verbs for a shouted one, once', () => {
     // The literal type check already says what is admitted, so there is no
     // second hint to add on top of it
-    const report = withClient(client()).validate({
+    const report = validate(withClient(client()), {
       $http: { url: 'https://api.test/x', method: 'GET' },
     })
     expect(report.issues).toHaveLength(1)

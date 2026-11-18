@@ -7,6 +7,7 @@
  */
 import { FigTree, FigTreeError, defineOperator, type CallOptions } from '../src'
 import { boomOp, echoOp, spyOp } from './fixtures/evalOperators'
+import { validate } from '../src/authoring'
 
 const fig = new FigTree({ operators: [echoOp(), boomOp()] })
 
@@ -122,7 +123,7 @@ describe('a sparse array compiles as its undefined elements do (#178)', () => {
   const sparse = [1, , 3]
 
   test('validate() reports it rather than throwing', () => {
-    expect(core.validate(sparse)).toEqual({ valid: true, issues: [] })
+    expect(validate(core, sparse)).toEqual({ valid: true, issues: [] })
   })
 
   test('compile() and evaluate() read the gap as null', async () => {

@@ -13,11 +13,12 @@
  * is deliberately NOT its ancestor (it evaluated its child).
  */
 import { FigTree } from '../src'
+import { validate } from '../src/authoring'
 
 const fig = new FigTree()
 const ev = (expression: unknown, data?: Record<string, unknown>) =>
   fig.evaluate(expression, data !== undefined ? { data } : {})
-const codes = (expression: unknown) => fig.validate(expression).issues.map((issue) => issue.code)
+const codes = (expression: unknown) => validate(fig, expression).issues.map((issue) => issue.code)
 
 describe('literal — the boundary is total inward', () => {
   test('an operator-shaped payload comes out as data, unevaluated', async () => {

@@ -18,7 +18,6 @@ import type { Issue } from './issues'
 import type { CallOptions, FigTreeOptions } from './options'
 import { isPlainDataObject } from './plainData'
 import type { CacheStore } from './types'
-import { didYouMean, nearestName } from './utils'
 
 /**
  * A test, and what it expects, as the message completes it: `'maxDepth'
@@ -149,7 +148,7 @@ const checkBlock = (block: object, rules: Rules, path: string[], issues: Issue[]
   for (const [key, value] of Object.entries(block)) {
     if (value === undefined) continue
     const rule = Object.hasOwn(rules, key) ? rules[key] : undefined
-    if (rule === undefined) issues.push(unknownKeyIssue(key, Object.keys(rules), [...path, key]))
+    if (rule === undefined) issues.push(error('is not an option', [...path, key]))
     else if (Array.isArray(rule)) {
       if (!rule[0](value)) issues.push(error(`must be ${rule[1]}`, [...path, key]))
     } else if (!isPlainDataObject(value)) issues.push(error('must be an object', [...path, key]))
@@ -184,9 +183,7 @@ const CALL_OPTION_KEYS = { data: 0, signal: 0, timeout: 0, trace: 0 } satisfies 
  * ignored, and refusing is the reversible direction: honouring it later
  * is additive, where quietly ignoring it and then honouring it would
  * change the meaning of expressions already in the field. A key that is
- * no option at all is refused as one, its did-you-mean drawn from the
- * per-call keys alone, since suggesting an instance option would only
- * lead to the refusal above.
+ * no option at all is refused as one.
  */
 export const callOptionIssue = (key: string, value: unknown): Issue | undefined => {
   if (Object.hasOwn(CALL_OPTION_KEYS, key)) {
@@ -195,15 +192,7 @@ export const callOptionIssue = (key: string, value: unknown): Issue | undefined 
   }
   if (Object.hasOwn(OPTION_RULES, key))
     return error('is not a per-call option — set it at construction or with updateOptions()', [key])
-  return unknownKeyIssue(key, Object.keys(CALL_OPTION_KEYS), [key])
-}
-
-const unknownKeyIssue = (key: string, known: string[], path: string[]): Issue => {
-  const suggestion = nearestName(key, known)
-  return {
-    ...error(`is not an option${didYouMean(suggestion)}`, path),
-    ...(suggestion !== undefined ? { suggestion } : {}),
-  }
+  return error('is not an option', [key])
 }
 
 /** An issue about the option at `path`, its message led by the option. */

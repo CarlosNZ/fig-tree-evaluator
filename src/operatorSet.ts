@@ -23,7 +23,6 @@ import {
 } from './operatorDefinition'
 import { checkOperatorEntry, forEachOperatorEntry } from './operatorEntries'
 import { isPlainDataObject } from './plainData'
-import { didYouMean, nearestName } from './utils'
 
 type Path = (string | number)[]
 
@@ -151,13 +150,7 @@ export const operatorSet = (
       })
       return undefined
     }
-    const suggestion = nearestName(name, byName.keys())
-    addIssue(
-      ErrorCodes.unknownOperator,
-      `'${name}' is not an operator in the input${didYouMean(suggestion)}`,
-      path,
-      suggestion === undefined ? undefined : { suggestion }
-    )
+    addIssue(ErrorCodes.unknownOperator, `'${name}' is not an operator in the input`, path)
     return undefined
   }
 
@@ -174,13 +167,7 @@ export const operatorSet = (
   ): Set<string> | undefined => {
     const category = selector.category as string
     if (!(OPERATOR_CATEGORIES as readonly string[]).includes(category)) {
-      const suggestion = nearestName(category, OPERATOR_CATEGORIES)
-      addIssue(
-        ErrorCodes.invalidOptions,
-        `'${category}' is not a category${didYouMean(suggestion)}`,
-        [...path, 'category'],
-        suggestion === undefined ? undefined : { suggestion }
-      )
+      addIssue(ErrorCodes.invalidOptions, `'${category}' is not a category`, [...path, 'category'])
       return undefined
     }
     const members = byCategory.get(category)
@@ -310,12 +297,10 @@ export const operatorSet = (
       }
       replacements.set(name, value)
       if (!byName.has(name)) {
-        const suggestion = nearestName(name, byName.keys())
         addIssue(
           ErrorCodes.unknownOperator,
           `'${name}' is not in the input set — only its operators can be replaced`,
-          path,
-          suggestion === undefined ? undefined : { suggestion }
+          path
         )
         continue
       }

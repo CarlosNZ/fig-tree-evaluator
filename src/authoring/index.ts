@@ -5,9 +5,9 @@
  * never pays for these checks, however thorough they become.
  *
  * The subpath reads a compiled handle through `viewHandle`, the reader the
- * inspector uses, so its bundle shares the engine's chunk with the root. A
- * caller always holds a `FigTree` already, so that code is in its bundle
- * either way.
+ * inspector uses, and an instance through `viewInstance`, so its bundle
+ * shares the engine's chunk with the root. A caller always holds a
+ * `FigTree` already, so that code is in its bundle either way.
  */
 import { FigTree, viewHandle } from '../FigTree'
 import { FigTreeError } from '../FigTreeError'
@@ -20,6 +20,7 @@ import { analysesFor } from './declare'
 import { Analysis } from './walk'
 
 export { declareAnalysis } from './declare'
+export { validate } from './validate'
 
 /**
  * Where each node of an expression can fail, and which fallback, if any,

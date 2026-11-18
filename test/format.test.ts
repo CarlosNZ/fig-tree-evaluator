@@ -27,6 +27,7 @@ import * as format from '../src/format'
 import { toCanonical, toShorthand } from '../src/format'
 import * as typeIntersection from '../src/typeIntersection'
 import { deepFreeze } from './helpers/migration'
+import { validate } from '../src/authoring'
 
 test('the subpath exports the four conversions and five primitives, and nothing else', () => {
   expect(Object.keys(format).sort()).toEqual([
@@ -142,7 +143,7 @@ describe('recognizeReference with as bindings in scope', () => {
     const inEach = (each: string) => ({ operator: 'map', input: [1], as: 'item', each })
     for (const value of ['$item.name', '$itemIndex', '$itemIndex.x', '$item[', '$items']) {
       const recognition = format.recognizeReference(value, { bindings: ['item'] })
-      const codes = fig.validate(inEach(value)).issues.map((issue) => issue.code)
+      const codes = validate(fig, inEach(value)).issues.map((issue) => issue.code)
       if (recognition.kind === 'invalid') expect(codes).toContain('invalid-reference')
       else expect(codes).not.toContain('invalid-reference')
       if (recognition.kind === 'unrecognized') expect(codes).toContain('unrecognized-identifier')

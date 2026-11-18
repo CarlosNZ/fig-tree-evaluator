@@ -7,10 +7,11 @@
  *
  * One module so that `validate()` and `inspect()` report the same list by
  * construction: both assemble it through `validationIssues`, so neither
- * can reorder or omit a check the other runs. `evaluate()`'s static gate
- * and a compiled expression's `issues` read the limit checks alone,
- * through `gateIssues`, the sample-data check being a warning, which never
- * gates.
+ * can reorder or omit a check the other runs. The issues differ only in
+ * suggestions, which `validate()`'s own compile alone computes.
+ * `evaluate()`'s static gate and a compiled expression's `issues` read the
+ * limit checks alone, through `gateIssues`, the sample-data check being a
+ * warning, which never gates.
  */
 import {
   renderDataReference,

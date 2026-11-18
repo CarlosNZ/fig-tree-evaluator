@@ -20,7 +20,7 @@ import Expression from '../../../components/Expression.astro'
 
 Compiling and checking run once for an expression, and what they produce is kept. Evaluating runs every time, and only reads what the first two produced: it never adds to it, so one compiled expression can serve any number of evaluations, including several at once. Since the first two always run together, the rest of the docs, and `fig.compile()` itself, call the pair "compiling", and a _compiled expression_ is the output of both. This page keeps them apart, to show what each one is allowed to know.
 
-An instance's main methods each run some or all of these stages. [`fig.validate()`](/guides/validation/) compiles and checks, and reports what it found. [`fig.evaluate()`](/api/figtree/#evaluate) does all three, refusing to evaluate an expression the first two found an error in. [`fig.compile()`](/guides/caching/#compiling-once) compiles and checks, and hands back a compiled expression to evaluate later.
+An instance's main methods each run some or all of these stages, as does [`validate()`](/guides/validation/) from `fig-tree-evaluator/authoring`, which compiles and checks, and reports what it found. [`fig.evaluate()`](/api/figtree/#evaluate) does all three, refusing to evaluate an expression the first two found an error in. [`fig.compile()`](/guides/caching/#compiling-once) compiles and checks, and hands back a compiled expression to evaluate later.
 
 ## Compile
 
@@ -50,7 +50,7 @@ Checking is a second pass over the _compiled_ tree. It reads each operator's def
 
 The issues it finds are added to the ones found during compile, in the order they appear in the expression. All of them are settled by the expression and the instance's setup alone, never by the data or the call's options, so they're found once and cached with the compiled expression.
 
-Two more checks depend on options, which can change from call to call, so they're left out of this stage and run on each call instead, despite the relevant knowledge being collected during compiling: whether the expression is deeper than `maxDepth` or has more pieces than `maxNodes`, and, in `fig.validate()` only, whether the paths it reads exist in [sample data](/guides/validation/#checking-against-sample-data).
+Two more checks depend on options, which can change from call to call, so they're left out of this stage and run on each call instead, despite the relevant knowledge being collected during compiling: whether the expression is deeper than `maxDepth` or has more pieces than `maxNodes`, and, in `validate()` only, whether the paths it reads exist in [sample data](/guides/validation/#checking-against-sample-data).
 
 Checking only sees fixed values in the expression. A value that arrives as a result of a runtime evaluation is checked when it arrives ([Strict where it can be](/under-the-hood/design/#strict-where-it-can-be-and-forgiving-where-it-has-to-be)).
 
@@ -82,7 +82,7 @@ The methods use it differently:
 
 - **`fig.evaluate()`** looks the expression up, and compiles it only if it isn't there.
 - **`fig.compile()`** shares the cache with `fig.evaluate()`, although the compiled expression it returns keeps the operators and options the instance had when it was compiled.
-- **`fig.validate()`** compiles fresh every time, and neither reads nor fills the cache.
+- **`validate()`** compiles fresh every time, and neither reads nor fills the cache.
 
 The **result cache** is separate: it holds what slow operators, such as HTTP requests, _returned_ ([Not repeating slow work](/under-the-hood/design/#not-repeating-slow-work)). It's shared by every expression on the instance, and by every compiled expression made from it.
 

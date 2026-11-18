@@ -1,19 +1,27 @@
 /**
- * Phase-3.3 black-box suite: `fig.validate()` signature and behaviour
+ * Phase-3.3 black-box suite: `validate()` signature and behaviour
  * ("Signature and behaviour" under "validate() — the process" in
  * docs-dev/v3-specs/v3-evaluator-methods.md). From this chunk the compiler's
  * test surface is the public method — no artifact internals.
  */
-import { FigTree, FigTreeError, type CallOptions } from '../src'
+import { FigTree, FigTreeError, inspect, type CallOptions } from '../src'
 import { compileOps } from './fixtures/compileRegistry'
+import { validate } from '../src/authoring'
 
 const fig = new FigTree({ operators: [compileOps()] })
 
 test('validate is synchronous and returns the ValidationResult shape', () => {
-  const result = fig.validate({ $plus: [1, 2] })
+  const result = validate(fig, { $plus: [1, 2] })
   expect(result.valid).toBe(true)
   expect(result.issues).toEqual([])
   expect(Object.keys(result).sort()).toEqual(['issues', 'valid'])
+})
+
+test('validate takes a FigTree instance, and nothing else', () => {
+  for (const notAnInstance of [undefined, {}, { validate: () => ({}) }, FigTree])
+    expect(() => validate(notAnInstance, 1)).toThrow(
+      new TypeError('validate() takes a FigTree instance')
+    )
 })
 
 test('validate never throws on expression content', () => {
@@ -26,25 +34,25 @@ test('validate never throws on expression content', () => {
     undefined,
   ]
   for (const expression of contents) {
-    expect(() => fig.validate(expression)).not.toThrow()
+    expect(() => validate(fig, expression)).not.toThrow()
   }
 })
 
 test('validate throws on a per-call configuration option — method misuse', () => {
   // Widened past the signature, as a JS host would reach it
-  expect(() => fig.validate(1, { operators: [] } as CallOptions)).toThrow(FigTreeError)
-  expect(() => fig.validate(1, { fragments: {} } as CallOptions)).toThrow(FigTreeError)
-  expect(() => fig.validate(1, { maxNodes: 3 } as CallOptions)).toThrow(/not a per-call option/)
+  expect(() => validate(fig, 1, { operators: [] } as CallOptions)).toThrow(FigTreeError)
+  expect(() => validate(fig, 1, { fragments: {} } as CallOptions)).toThrow(FigTreeError)
+  expect(() => validate(fig, 1, { maxNodes: 3 } as CallOptions)).toThrow(/not a per-call option/)
 })
 
 test('valid means no error-severity issues — warnings do not block', () => {
-  const result = fig.validate({ greeting: '$flibble' })
+  const result = validate(fig, { greeting: '$flibble' })
   expect(result.valid).toBe(true)
   expect(result.issues.some((issue) => issue.severity === 'warning')).toBe(true)
 })
 
 test('issues come back as plain Issues in tree order', () => {
-  const result = fig.validate({
+  const result = validate(fig, {
     a: { $plus: [1, { operator: 'nope' }] },
     b: '$vars.x',
   })
@@ -57,7 +65,7 @@ test("a rest slice's own issue leads the issues from its elements", () => {
   // A positional surplus compiles to a synthetic container, which is still
   // the parent of the elements it holds: its constraint failure sorts ahead
   // of the warning from element 0
-  const result = fig.validate({ '$>': ['$notANamespace', 1, 2] })
+  const result = validate(fig, { '$>': ['$notANamespace', 1, 2] })
   const parent = result.issues.findIndex((issue) => issue.code === 'type-check')
   const element = result.issues.findIndex((issue) => issue.code === 'unrecognized-identifier')
   expect(parent).toBeGreaterThanOrEqual(0)
@@ -66,16 +74,16 @@ test("a rest slice's own issue leads the issues from its elements", () => {
 
 test('a buildString template or currency amount raises no unrecognized-$ warning', () => {
   const core = new FigTree()
-  expect(core.validate({ $buildString: ['$%1', '$data.price'] }).issues).toEqual([])
-  expect(core.validate({ $buildString: ['$%1 or $5.00', '$data.price'] }).issues).toEqual([])
-  expect(core.validate({ $and: ['$5.00', '$€'] }).issues).toEqual([])
-  const [typo] = core.validate({ $and: ['$USD', true] }).issues
+  expect(validate(core, { $buildString: ['$%1', '$data.price'] }).issues).toEqual([])
+  expect(validate(core, { $buildString: ['$%1 or $5.00', '$data.price'] }).issues).toEqual([])
+  expect(validate(core, { $and: ['$5.00', '$€'] }).issues).toEqual([])
+  const [typo] = validate(core, { $and: ['$USD', true] }).issues
   expect(typo).toMatchObject({ severity: 'warning', code: 'unrecognized-identifier' })
   expect(typo.message).toContain("wrap it in 'literal'")
 })
 
 test('the evaluator-methods worked example: typo key, unresolved var, unknown operator', () => {
-  const result = fig.validate({
+  const result = validate(fig, {
     operator: 'if',
     condition: { $graeterThan: ['$data.age', 18] },
     thn: 'Adult',
@@ -101,7 +109,7 @@ test('the evaluator-methods worked example: typo key, unresolved var, unknown op
 })
 
 test('did-you-mean suggestions ride the messages where cheap', () => {
-  const result = fig.validate({ operator: 'if', condition: true, then: 1, thn: 2 })
+  const result = validate(fig, { operator: 'if', condition: true, then: 1, thn: 2 })
   const unknownKey = result.issues.find((issue) => issue.code === 'unknown-node-key')
   expect(unknownKey?.message).toContain("'then'")
 })
@@ -111,7 +119,7 @@ describe('the suggestion field: a drop-in replacement for what was written', () 
     fragments: { greet: { expression: '$params.name', parameters: { name: { type: 'string' } } } },
   })
   const issue = (expression: unknown, code: string, figTree: FigTree = fig) =>
-    figTree.validate(expression).issues.find((found) => found.code === code)
+    validate(figTree, expression).issues.find((found) => found.code === code)
 
   test('an unknown operator', () => {
     expect(issue({ operator: 'plsu', values: [1] }, 'unknown-operator')).toMatchObject({
@@ -167,7 +175,7 @@ describe('the suggestion field: a drop-in replacement for what was written', () 
       [{ operator: 'literal', value: 1, $greaterThn: 1 }, ['$greaterThn']],
     ]
     for (const [expression, path, figTree] of cases) {
-      const issues = (figTree ?? fig).validate(expression).issues
+      const issues = validate(figTree ?? fig, expression).issues
       expect(issues.filter((found) => found.code === 'unknown-node-key')).toEqual([])
       expect(issue(expression, 'unrecognized-identifier', figTree)).toMatchObject({
         severity: 'error',
@@ -201,7 +209,65 @@ describe('the suggestion field: a drop-in replacement for what was written', () 
   })
 })
 
+// "Suggestions are validate()'s alone" in
+// docs-dev/v3-specs/v3-evaluator-methods.md: every other surface reports the
+// same issue with no did-you-mean, in the message or as `suggestion`
+describe("suggestions are validate()'s alone (#231)", () => {
+  const core = new FigTree()
+  const typo = { a: { $plsu: [1, 2] } }
+  const bare =
+    "'$plsu' is not a registered operator or fragment — use 'literal' to treat it as data"
+
+  test('validate() suggests', () => {
+    expect(validate(core, typo).issues).toMatchObject([
+      {
+        message: "'$plsu' is not a registered operator or fragment — did you mean '$plus'?",
+        suggestion: '$plus',
+      },
+    ])
+  })
+
+  test("evaluate()'s static error does not, however often validate() has run", async () => {
+    validate(core, typo)
+    const error = await core.evaluate(typo).catch((thrown: FigTreeError) => thrown)
+    expect(error).toBeInstanceOf(FigTreeError)
+    expect((error as FigTreeError).message).toBe(bare)
+    expect((error as FigTreeError).issues?.[0]).not.toHaveProperty('suggestion')
+    // And validate() is not served the artifact evaluate() cached
+    expect(validate(core, typo).issues[0].suggestion).toBe('$plus')
+  })
+
+  test("a compiled expression's issues, and inspect()'s, do not", () => {
+    const handle = core.compile(typo)
+    expect(handle.issues).toEqual([expect.objectContaining({ message: bare })])
+    expect(handle.issues[0]).not.toHaveProperty('suggestion')
+    expect(inspect(handle).issues[0]).not.toHaveProperty('suggestion')
+  })
+
+  test("the trace's warnings do not", async () => {
+    const labels = { $match: ['a', { $plsu: 'x', a: 'y' }] }
+    expect(validate(core, labels).issues[0].suggestion).toBe('$plus')
+    const { trace } = await core.evaluate(labels, { trace: true })
+    expect(trace.warnings).toEqual([
+      expect.objectContaining({ message: "'$plsu' is matched as a plain label" }),
+    ])
+    expect(trace.warnings?.[0]).not.toHaveProperty('suggestion')
+  })
+
+  test("a fragment body's registration error does not", () => {
+    let error: unknown
+    try {
+      new FigTree({ fragments: { f: { expression: { operator: 'plsu', values: [1] } } } })
+    } catch (thrown) {
+      error = thrown
+    }
+    expect(error).toBeInstanceOf(FigTreeError)
+    expect((error as FigTreeError).message).toMatch(/'plsu' is not a registered operator$/)
+    expect((error as FigTreeError).issues?.[0]).not.toHaveProperty('suggestion')
+  })
+})
+
 test('a fully-constant expression validates clean', () => {
-  const result = fig.validate({ plain: ['data', { nested: true }] })
+  const result = validate(fig, { plain: ['data', { nested: true }] })
   expect(result).toEqual({ valid: true, issues: [] })
 })

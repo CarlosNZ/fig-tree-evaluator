@@ -15,6 +15,7 @@ import { ErrorCodes, FigTree } from '../src'
 import type { CallOptions, CompiledExpression } from '../src'
 import { compileSpyOp, type CompileSpy } from './fixtures/evalOperators'
 import { coreOperators } from '../src/operators'
+import { validate } from '../src/authoring'
 
 const rig = (options: object = {}) => {
   const spy: CompileSpy = compileSpyOp()
@@ -99,7 +100,7 @@ describe('the inert flavour', () => {
     // report it, so the handle compiles once, lazily, to answer
     const stray = { title: '$nosuchthing' }
     const handle = fig.compile(stray)
-    expect(handle.issues).toEqual(fig.validate(stray).issues)
+    expect(handle.issues).toEqual(validate(fig, stray).issues)
     expect(handle.issues.map((issue) => issue.severity)).toEqual(['warning'])
     expect(handle.hasErrors).toBe(false)
     expect(handle.getDependencies()).toEqual({
@@ -120,7 +121,7 @@ describe('the inert flavour', () => {
     const handle = fig.compile(deep)
     expect(handle.hasErrors).toBe(true)
     expect(handle.issues.map((issue) => issue.code)).toEqual([ErrorCodes.maxDepthExceeded])
-    expect(handle.issues).toEqual(fig.validate(deep).issues)
+    expect(handle.issues).toEqual(validate(fig, deep).issues)
     await expect(handle.evaluate()).rejects.toMatchObject({
       code: ErrorCodes.maxDepthExceeded,
       issues: handle.issues,

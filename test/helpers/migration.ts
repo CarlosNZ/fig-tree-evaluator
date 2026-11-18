@@ -5,6 +5,7 @@
  */
 import { FigTreeEvaluator, type EvaluatorNode, type FigTreeOptions } from 'fig-tree-evaluator-v2'
 import { defineOperator, type FigTree } from '../../src'
+import { validate } from '../../src/authoring'
 
 /** A v2 function as a v3 operator, the recipe's way, with `input` as well */
 export const asOperator = (name: string, fn: (...args: never[]) => unknown) =>
@@ -83,8 +84,7 @@ export const v3Outcome = async (
 
 /** The errors v3's `validate()` finds, by code and path */
 export const v3Errors = (fig: FigTree, expression: unknown, data?: Record<string, unknown>) =>
-  fig
-    .validate(expression, data === undefined ? {} : { data })
+  validate(fig, expression, data === undefined ? {} : { data })
     .issues.filter(({ severity }) => severity === 'error')
     .map(({ code, path, message }) => ({ code, path, message }))
 

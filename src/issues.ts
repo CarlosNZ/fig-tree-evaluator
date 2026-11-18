@@ -34,16 +34,19 @@ export interface Issue {
   fragment?: string
   parameter?: string
   /**
-   * A drop-in replacement for the name the issue is about, where one is
-   * close enough to suggest: the key, operator or fragment name as it
-   * would be written, so a shorthand key's suggestion keeps its `$`. The
-   * same suggestion as the message's "did you mean", for a tool to offer
-   * as a fix.
+   * A drop-in replacement for the name the issue is about, for a tool to
+   * offer as a fix: the key, operator or fragment name as it would be
+   * written, so a shorthand key's suggestion keeps its `$`. From
+   * `validate()`, the same suggestion as the message's "did you mean",
+   * where a name is close enough; no other method computes one, since only
+   * a person editing the expression reads it. Elsewhere, only where the
+   * fix is certain: an alias `operatorSet()` was given, and its canonical
+   * name.
    */
   suggestion?: string
 }
 
-/** The result of `fig.validate()` (Phase 3). */
+/** The result of `./authoring`'s `validate()`. */
 export interface ValidationResult {
   /** True when there are no `error`-severity issues. */
   valid: boolean

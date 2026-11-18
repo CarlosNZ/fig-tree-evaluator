@@ -20,6 +20,7 @@
  *   validate()       — the public view, option-dependent checks included
  */
 import { FigTree } from '../FigTree'
+import { validate } from '../authoring'
 import type { FigTreeOptions } from '../options'
 import type { Issue } from '../issues'
 import { buildRegistry } from '../registry'
@@ -297,7 +298,7 @@ export const inspect = (expression: unknown, options: InspectOptions = {}): void
   // The public view: compiles again behind validate(), then adds the
   // option-dependent checks (maxDepth/maxNodes, sample data) the artifact
   // deliberately never stores
-  const result = new FigTree({ ...figOptions, operators }).validate(expression)
+  const result = validate(new FigTree({ ...figOptions, operators }), expression)
   console.log(`\nvalidate(): valid ${result.valid}`)
   printIssues('validate() issues', result.issues)
 }

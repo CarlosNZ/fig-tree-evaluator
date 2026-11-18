@@ -6,6 +6,7 @@
  */
 import { FigTree, FigTreeError } from '../src'
 import { rejection } from './helpers/rejection'
+import { validate } from '../src/authoring'
 
 const fig = new FigTree()
 const ev = (expression: unknown, data?: Record<string, unknown>) =>
@@ -56,7 +57,7 @@ describe('split', () => {
   })
 
   test('trim is named-face only', () => {
-    expect(fig.validate({ $split: ['a b', ' ', false] }).issues.map((i) => i.code)).toContain(
+    expect(validate(fig, { $split: ['a b', ' ', false] }).issues.map((i) => i.code)).toContain(
       'positional-arity'
     )
   })
@@ -77,7 +78,7 @@ describe('lower / upper / trim', () => {
   test('strict strings in: a number is a type error, not "42"', async () => {
     const error = await rejection<FigTreeError>(ev({ $lower: '$data.n' }, { n: 42 }))
     expect(error.code).toBe('type-check')
-    expect(fig.validate({ $upper: 42 }).valid).toBe(false)
+    expect(validate(fig, { $upper: 42 }).valid).toBe(false)
   })
 
   test('null propagates and composes downstream', async () => {

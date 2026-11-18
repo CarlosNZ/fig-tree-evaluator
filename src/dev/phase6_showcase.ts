@@ -12,6 +12,7 @@
  */
 import { FigTree, defineOperator, OperatorFailure } from '../index'
 import { coreOperators } from '../operators'
+import { validate } from '../authoring'
 import { outcome, print, section } from './showcase'
 
 /** Records what ran, in the order it actually happened. */
@@ -77,8 +78,7 @@ const show = async (
 }
 
 const lint = (label: string, expression: unknown) => {
-  const issues = fig
-    .validate(expression)
+  const issues = validate(fig, expression)
     .issues.map((issue) => `${issue.severity} ${issue.code}`)
     .join(', ')
   print(label, expression, `⚑ ${issues === '' ? 'no issues' : issues}`)

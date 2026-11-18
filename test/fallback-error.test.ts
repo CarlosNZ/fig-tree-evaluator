@@ -22,7 +22,7 @@ import type {
   FragmentDefinition,
   TraceNode,
 } from '../src'
-import { fallbackCoverage } from '../src/authoring'
+import { fallbackCoverage, validate } from '../src/authoring'
 import { boomOp, echoOp, sleepOp } from './fixtures/evalOperators'
 import { rejection } from './helpers/rejection'
 
@@ -82,8 +82,7 @@ const entryAt = (entry: TraceNode, path: (string | number)[]): TraceNode | undef
 
 /** The paths of the issues `validate()` reports under `code`. */
 const issuesAt = (code: string, expression: unknown) =>
-  fig
-    .validate(expression)
+  validate(fig, expression)
     .issues.filter((issue) => issue.code === code)
     .map(({ path }) => path)
 
@@ -165,7 +164,7 @@ describe('scope', () => {
   })
 
   test('a plain object’s `fallback` key is data, and the error says whose fallback it needs', () => {
-    expect(fig.validate({ label: 'Regions', fallback: '$err.message' }).issues).toEqual([
+    expect(validate(fig, { label: 'Regions', fallback: '$err.message' }).issues).toEqual([
       expect.objectContaining({
         code: 'unresolved-binding',
         path: ['fallback'],
@@ -177,7 +176,7 @@ describe('scope', () => {
   test('beneath a $ key that names nothing, only that error is reported', () => {
     // The object was meant as a node, and its `fallback` as that node's:
     // a scope error would only repeat the unrecognized key
-    const { issues } = fig.validate({ lookup: { $refuze: 404, fallback: { code: '$err.code' } } })
+    const { issues } = validate(fig, { lookup: { $refuze: 404, fallback: { code: '$err.code' } } })
     expect(issues.map(({ code, path }) => ({ code, path }))).toEqual([
       { code: 'unrecognized-identifier', path: ['lookup', '$refuze'] },
     ])
@@ -205,7 +204,7 @@ describe('scope', () => {
         codes: ['$err.code'],
       },
     }
-    expect(fig.validate(expression).issues).toEqual([])
+    expect(validate(fig, expression).issues).toEqual([])
     expect(await fig.evaluate(expression)).toEqual({
       summary: 'Failed: boom – boom 1',
       codes: ['operator-failure'],
@@ -374,7 +373,7 @@ describe('static checks', () => {
   })
 
   test('bare $error where an object can never fit is a type-check error', () => {
-    const { issues } = fig.validate({
+    const { issues } = validate(fig, {
       $boom: 1,
       fallback: { operator: 'regex', value: '$error', pattern: 'x' },
     })
@@ -587,8 +586,7 @@ describe('fallbackCoverage', () => {
 
 describe('the static check knows the fields $error always has', () => {
   const typeErrors = (fallback: unknown) =>
-    fig
-      .validate({ $boom: 1, fallback })
+    validate(fig, { $boom: 1, fallback })
       .issues.filter((issue) => issue.code === 'type-check')
       .map(({ path, message }) => ({ path, message }))
 
@@ -866,9 +864,9 @@ describe('a fallback built only from literals and $error is static', () => {
 
     test('fallback-mismatch reads what each $error read holds', () => {
       const warned = (fallback: unknown) =>
-        defaulting(fallback)
-          .validate({ $round: { $refuse: 404 } })
-          .issues.some(({ code }) => code === 'fallback-mismatch')
+        validate(defaulting(fallback), { $round: { $refuse: 404 } }).issues.some(
+          ({ code }) => code === 'fallback-mismatch'
+        )
       expect(warned('$error')).toBe(true)
       expect(warned('$error.message')).toBe(true)
       expect(warned({ status: '$error.errorData.status' })).toBe(true)

@@ -20,6 +20,7 @@ import type {
   CompileArtifact,
 } from '../src/compile'
 import { makeCompileRegistry, compileOps } from './fixtures/compileRegistry'
+import { validate } from '../src/authoring'
 
 const registry = makeCompileRegistry()
 const compile = (input: unknown): CompileArtifact => compileExpression(input, registry)
@@ -30,7 +31,7 @@ const param = (input: unknown, name: string): CompiledNode =>
 
 /** Both layers, as an author sees them. */
 const fig = new FigTree({ operators: [compileOps()] })
-const allCodes = (input: unknown) => fig.validate(input).issues.map((issue) => issue.code)
+const allCodes = (input: unknown) => validate(fig, input).issues.map((issue) => issue.code)
 
 // ── elements: lazyElements and race ─────────────────────────────────
 

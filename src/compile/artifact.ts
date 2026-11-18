@@ -426,6 +426,17 @@ export interface IssueExtra {
   suggestion?: string
 }
 
+/**
+ * The did-you-mean for a name that resolved to nothing: the one of
+ * `candidates` the author most likely meant, or nothing. Only `validate()`
+ * passes one to a compile (`nearestName`), since a suggestion is for a
+ * person editing the expression ("Suggestions are validate()'s alone" in
+ * docs-dev/v3-specs/v3-evaluator-methods.md). Without one, an unknown
+ * name's issue carries no suggestion, in its message or as `suggestion`,
+ * and the candidate list is never built.
+ */
+export type Suggest = (name: string, candidates: Iterable<string>) => string | undefined
+
 /** Append one issue, tagged with its node's `order`, to a stream. */
 export const pushIssue = (
   issues: SequencedIssue[],

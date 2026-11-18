@@ -21,7 +21,7 @@ import { FigTree, coreOperators, httpOperators } from 'fig-tree-evaluator'
 // Each subpath has its own import path
 import { getCatalog } from 'fig-tree-evaluator/catalog'
 import { toCanonical, toShorthand } from 'fig-tree-evaluator/format'
-import { fallbackCoverage } from 'fig-tree-evaluator/authoring'
+import { validate, fallbackCoverage } from 'fig-tree-evaluator/authoring'
 import { migrateV2Expression } from 'fig-tree-evaluator/migrate'
 
 // Types always come from the main entry, even a subpath's
@@ -581,7 +581,7 @@ Reports how FigTree read a compiled expression.
 | Parameter  | Description                                                                                                  |
 | ---------- | ------------------------------------------------------------------------------------------------------------ |
 | `compiled` | What [`compile()`](/api/figtree/#compile) returned                                                           |
-| `options`  | The per-call options. Only `data` makes a difference: the report's `issues` include the warnings from checking the expression's `$data` paths against it, as [`validate()`](/api/figtree/#validate) does |
+| `options`  | The per-call options. Only `data` makes a difference: the report's `issues` include the warnings from checking the expression's `$data` paths against it, as [`validate()`](/tooling/authoring/#validate) does |
 
 **Returns:** the report, as plain JSON:
 
@@ -630,7 +630,7 @@ Every public type is exported from `fig-tree-evaluator`, including those for the
 | ---------------------------------------------------------------------------- | --------------------------------------------------------------- |
 | [`FigTreeOptions`](/api/options/)                                            | What the constructor takes                                      |
 | [`CallOptions`](/api/figtree/#evaluate)                                      | The per-call options: `data`, `signal`, `timeout` and `trace`   |
-| [`ValidateOptions`](/api/figtree/#validate)                                  | What `validate()` takes: the per-call options and `params`      |
+| [`ValidateOptions`](/tooling/authoring/#validate)                                  | What `validate()` takes: the per-call options and `params`      |
 | [`OptionsUpdate`](/api/figtree/#updateoptions)                               | What `updateOptions()` and `with()` take                        |
 | [`EvaluationOptions`](/api/figtree/#getoptions)                              | What `getOptions()` returns                                     |
 | [`EvaluationResult`](/api/figtree/#evaluate)                                 | What `evaluate()` returns with `trace` in effect                |
@@ -854,9 +854,13 @@ import type {
   FigTree,
   OperatorAnalysis,
   ValidatedOperatorDefinition,
+  ValidateOptions,
+  ValidationResult,
 } from 'fig-tree-evaluator'
 declare namespace Authoring {
 // ---cut---
+function validate(fig: FigTree, expression: unknown, options?: ValidateOptions): ValidationResult
+
 function fallbackCoverage(
   fig: FigTree,
   expression: unknown,
@@ -872,7 +876,7 @@ function declareAnalysis(
 }
 ```
 
-Static analyses for authoring tools. `fallbackCoverage()` reports where each node of an expression can fail, and which fallback, if any, catches it, under the instance's own options. `declareAnalysis()` tells it how one of your own operators can fail, and what it returns, for the list of analyses in its third argument.
+Static analyses for authoring tools. [`validate()`](/tooling/authoring/#validate) checks an expression for static errors and warnings without evaluating it, with a "did you mean" where a name is close to one FigTree knows. `fallbackCoverage()` reports where each node of an expression can fail, and which fallback, if any, catches it, under the instance's own options. `declareAnalysis()` tells it how one of your own operators can fail, and what it returns, for the list of analyses in its third argument.
 
 **See also:** [`/authoring`](/tooling/authoring/), [Covering the whole expression](/guides/fallbacks/)
 

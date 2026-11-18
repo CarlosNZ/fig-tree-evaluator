@@ -11,6 +11,7 @@
 import { coreOperators, FigTree, FigTreeError } from '../src'
 import { rejection } from './helpers/rejection'
 import { latencyOp } from './fixtures/evalOperators'
+import { validate } from '../src/authoring'
 
 const build = () => {
   const slow = latencyOp('slow')
@@ -185,7 +186,7 @@ describe('degeneration and the vacuous identities', () => {
 
   test('a literal empty list warns as a dead expression', () => {
     expect(
-      fig.validate({ operator: 'and', values: [] }).issues.map((issue) => issue.severity)
+      validate(fig, { operator: 'and', values: [] }).issues.map((issue) => issue.severity)
     ).toContain('warning')
   })
 

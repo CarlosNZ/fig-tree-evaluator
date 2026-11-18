@@ -65,10 +65,11 @@
  *  7. Objects are classified by their keys: `operator`, `fragment`, one
  *     `$name` shorthand, or a plain literal. Ambiguous combinations (two
  *     invocations, canonical beside shorthand) are hard errors.
- *  8. An operator name resolves through the alias map — unknown names error
- *     with a nearest-name suggestion. `literal` is where parsing stops
- *     descending: its content is taken verbatim, never walked, classified
- *     or counted, however node-like it looks.
+ *  8. An operator name resolves through the alias map — unknown names error,
+ *     with a nearest-name suggestion when the compile is given a suggester
+ *     (`validate()`'s, `CompileOptions.suggest`). `literal` is where parsing
+ *     stops descending: its content is taken verbatim, never walked,
+ *     classified or counted, however node-like it looks.
  *  9. Reserved modifiers compile first: `fallback`, `noCache` (the literal
  *     `true` only), `vars` (names legality-checked, values walked).
  * 10. Parameters are gathered — named keys checked against the definition,
@@ -104,7 +105,7 @@
 import { ErrorCodes } from '../errorCodes'
 import type { Severity } from '../issues'
 import type { EvaluationMode } from '../operatorDefinition'
-import { didYouMean, listing, nearestName } from '../utils'
+import { didYouMean, listing } from '../utils'
 import { isPlainDataObject } from '../plainData'
 import { COMPOSITE_RENDER_ERROR, rendersAsPlaceholder } from '../primitives/renderText'
 import { resolveOperator, type OperatorRegistry, type RegistryEntry } from '../registry'
@@ -158,6 +159,7 @@ import type {
   SkeletonHole,
   SkeletonNode,
   StaticFallback,
+  Suggest,
 } from './artifact'
 import {
   extendPath,
@@ -217,6 +219,7 @@ interface WalkState {
   unknownNodes: number
   /** Set by the first `noCache` compiled (`CompileArtifact.hasNoCache`). */
   hasNoCache: boolean
+  suggest?: Suggest
 }
 
 export interface CompileOptions {
@@ -229,6 +232,13 @@ export interface CompileOptions {
    * exact.
    */
   basePath?: NodePath
+  /**
+   * The did-you-mean for an unknown operator, fragment or parameter name,
+   * or an unrecognized `$` key. `validate()`'s compile alone passes one,
+   * and since it never touches the compile cache, no cached artifact holds
+   * a suggestion.
+   */
+  suggest?: Suggest
 }
 
 /** Compile an expression into its artifact. Never throws on content. */
@@ -258,6 +268,7 @@ export const compileExpression = (
     unrecognized: [],
     unknownNodes: 0,
     hasNoCache: false,
+    suggest: options.suggest,
   }
   const basePath = (options.basePath ?? []).reduce<LinkedPath>(extendPath, null)
   const root = walk(state, input, basePath, 0)
@@ -396,7 +407,7 @@ const walk = (state: WalkState, raw: unknown, path: LinkedPath, depth: number): 
 
   // The built-in ceiling: option-independent stack safety. Descent stops
   // here with an error issue; the user's `maxDepth` is a separate, per-call
-  // comparison against the measured depth (FigTree.validate / evaluate)
+  // comparison against the measured depth (`validate()` / `evaluate()`)
   if (depth > DEPTH_CEILING) {
     emit(
       state,
@@ -602,7 +613,7 @@ const walkOperatorCanonical = (
 
   const entry = resolveOperator(state.registry, opValue)
   if (entry === undefined) {
-    const suggestion = nearestName(opValue, allInvocationNames(state))
+    const suggestion = state.suggest?.(opValue, allInvocationNames(state))
     emit(
       state,
       'error',
@@ -740,7 +751,7 @@ const emitStrayInvocationKey = (
   order: number,
   labels = false
 ) => {
-  const nearest = nearestName(key.slice(1), allInvocationNames(state))
+  const nearest = state.suggest?.(key.slice(1), allInvocationNames(state))
   const suggestion = nearest === undefined ? undefined : `$${nearest}`
   const hint =
     suggestion !== undefined
@@ -776,7 +787,7 @@ const collectNamedParam = (
     return
   }
   if (node.entry.definition.parameters[key] === undefined) {
-    const suggestion = nearestName(key, Object.keys(node.entry.definition.parameters))
+    const suggestion = state.suggest?.(key, Object.keys(node.entry.definition.parameters))
     emit(
       state,
       'error',
@@ -1732,7 +1743,7 @@ const startFragmentCall = (
   state.fragmentNames.add(name)
   const entry = state.registry.fragments.get(name)
   if (entry === undefined) {
-    const suggestion = nearestName(name, state.registry.fragments.keys())
+    const suggestion = state.suggest?.(name, state.registry.fragments.keys())
     emit(
       state,
       'error',

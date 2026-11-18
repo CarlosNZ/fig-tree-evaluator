@@ -15,13 +15,14 @@
  */
 import { FigTree, FigTreeError } from '../src'
 import { rejection } from './helpers/rejection'
+import { validate } from '../src/authoring'
 
 const fig = new FigTree()
 const ev = (expression: unknown, data?: Record<string, unknown>) =>
   fig.evaluate(expression, data !== undefined ? { data } : {})
 const failure = (expression: unknown, data?: Record<string, unknown>) =>
   rejection<FigTreeError>(ev(expression, data))
-const codes = (expression: unknown) => fig.validate(expression).issues.map((issue) => issue.code)
+const codes = (expression: unknown) => validate(fig, expression).issues.map((issue) => issue.code)
 
 const data = {
   user: { first: 'Ada', id: 42, name: { first: 'Carl' } },
@@ -478,7 +479,7 @@ describe('buildString — reference tokens', () => {
   })
 
   test('a reference token contributes its path as a dependency', () => {
-    const result = fig.validate({ $buildString: 'Hi {{$d.user.absent}}' }, { data: {} })
+    const result = validate(fig, { $buildString: 'Hi {{$d.user.absent}}' }, { data: {} })
     expect(result.issues.map((issue) => issue.code)).toContain('missing-data-path')
   })
 })
@@ -487,12 +488,12 @@ describe('buildString — reference tokens', () => {
 
 describe('buildString — the token findings are warnings, never errors', () => {
   const findings = (expression: unknown) =>
-    fig.validate(expression).issues.map((issue) => [issue.severity, issue.code, issue.message])
+    validate(fig, expression).issues.map((issue) => [issue.severity, issue.code, issue.message])
   const unbound = (message: string) => ['warning', 'unbound-token', message]
   const unused = (message: string) => ['warning', 'unused-substitution', message]
 
   test('an unbound positional token warns and still evaluates', () => {
-    const result = fig.validate({ $buildString: ['My %1 is %3', 'name', 'Smith'] })
+    const result = validate(fig, { $buildString: ['My %1 is %3', 'name', 'Smith'] })
     expect(result.valid).toBe(true)
     expect(result.issues.map((issue) => issue.code)).toEqual(['unbound-token'])
   })
@@ -547,7 +548,7 @@ describe('buildString — the token findings are warnings, never errors', () => 
   })
 
   test('a repeated token with a spare substitution is not a renumbering slip', () => {
-    const result = fig.validate({ $buildString: ['%1 and %1', 'a', 'b'] })
+    const result = validate(fig, { $buildString: ['%1 and %1', 'a', 'b'] })
     expect(result.valid).toBe(true)
     expect(result.issues.map((issue) => issue.code)).toEqual(['unused-substitution'])
   })
@@ -598,7 +599,7 @@ describe('buildString — the token findings are warnings, never errors', () => 
   test('a percent-encoded URL draws no unbound warning it cannot act on', () => {
     // %20 IS unbound, so it warns — but the expression still evaluates,
     // which is the whole reason these are warnings
-    const result = fig.validate({ $buildString: ['https://x.test/?q=%20foo', 'a'] })
+    const result = validate(fig, { $buildString: ['https://x.test/?q=%20foo', 'a'] })
     expect(result.valid).toBe(true)
   })
 
@@ -620,7 +621,7 @@ describe('buildString — the token findings are warnings, never errors', () => 
 describe('buildString — a statically-composite literal substitution is an error', () => {
   const message = 'An array or object renders as a placeholder, not text — drill in, or join it'
   const composite = (expression: unknown) => {
-    const result = fig.validate(expression)
+    const result = validate(fig, expression)
     expect(result.valid).toBe(false)
     expect(result.issues).toEqual([
       expect.objectContaining({
@@ -657,7 +658,7 @@ describe('buildString — a statically-composite literal substitution is an erro
   })
 
   test('a dynamic composite is a data condition: valid, and renders its placeholder', async () => {
-    expect(fig.validate({ $buildString: ['%1', '$data.tags'] }).valid).toBe(true)
+    expect(validate(fig, { $buildString: ['%1', '$data.tags'] }).valid).toBe(true)
     expect(await ev({ $buildString: ['%1', '$data.tags'] }, { tags: [1] })).toBe('<array>')
   })
 
@@ -735,13 +736,13 @@ describe('join', () => {
   })
 
   test('a literal empty list is a dead expression, warned', () => {
-    const result = fig.validate({ $join: [] })
+    const result = validate(fig, { $join: [] })
     expect(result.valid).toBe(true)
     expect(result.issues.map((issue) => issue.severity)).toEqual(['warning'])
   })
 
   test('a statically-composite literal element is an error — it can only ever be a placeholder', () => {
-    const result = fig.validate({ $join: [{ a: 1 }, 'x'] })
+    const result = validate(fig, { $join: [{ a: 1 }, 'x'] })
     expect(result.valid).toBe(false)
     expect(result.issues.map((issue) => issue.code)).toContain('operator-validate')
   })

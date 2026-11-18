@@ -7,6 +7,7 @@
  */
 import { FigTree, FigTreeError, ErrorCodes, coreOperators } from '../src'
 import type { CallOptions, Issue, ValidateOptions } from '../src'
+import { validate } from '../src/authoring'
 
 const fig = new FigTree({ operators: [coreOperators] })
 
@@ -26,7 +27,7 @@ describe('every form a $params read takes resolves against the declared names', 
   ]
 
   test.each(forms)('%s', (_label, body) => {
-    expect(fig.validate(body, { params: ['x', 'y'] })).toEqual({ valid: true, issues: [] })
+    expect(validate(fig, body, { params: ['x', 'y'] })).toEqual({ valid: true, issues: [] })
   })
 
   test('in vars, fallbacks and iterator bodies alike', () => {
@@ -35,13 +36,13 @@ describe('every form a $params read takes resolves against the declared names', 
       value: { $plus: ['$vars.a', '$params.y'], fallback: '$params.x' },
       list: { $map: { input: '$params.x', each: { $plus: ['$element', '$params.y'] } } },
     }
-    expect(fig.validate(body, { params: ['x', 'y'] }).valid).toBe(true)
+    expect(validate(fig, body, { params: ['x', 'y'] }).valid).toBe(true)
   })
 })
 
 describe('an undeclared name is an error with the in-body message', () => {
   test('at the reading node', () => {
-    const result = fig.validate({ a: '$params.x', b: '$params.z' }, { params: ['x'] })
+    const result = validate(fig, { a: '$params.x', b: '$params.z' }, { params: ['x'] })
     expect(errors(result)).toEqual([
       expect.objectContaining({
         code: ErrorCodes.unresolvedParam,
@@ -53,7 +54,7 @@ describe('an undeclared name is an error with the in-body message', () => {
 
   test('params: [] declares nothing, so every read gets that message', () => {
     const body = { a: '$params.x', b: { $get: { path: 'y', from: '$p' } } }
-    const result = fig.validate(body, { params: [] })
+    const result = validate(fig, body, { params: [] })
     expect(errors(result).map((issue) => issue.path)).toEqual([['a'], ['b', '$get', 'from']])
     for (const issue of errors(result)) {
       expect(issue.message).toContain('the fragment has no parameter')
@@ -67,7 +68,7 @@ describe('an undeclared name is an error with the in-body message', () => {
       b: { $buildString: { template: '{{$params.nmae}} {{$p.zzz}}' } },
       c: { $get: { path: 'contry', from: '$params' } },
     }
-    const result = fig.validate(body, { params: ['country', 'name'] })
+    const result = validate(fig, body, { params: ['country', 'name'] })
     expect(errors(result)).toEqual([
       {
         severity: 'error',
@@ -95,13 +96,13 @@ describe('an undeclared name is an error with the in-body message', () => {
   })
 
   test('bare $params is clean even when nothing is declared', () => {
-    expect(fig.validate('$params', { params: [] }).valid).toBe(true)
+    expect(validate(fig, '$params', { params: [] }).valid).toBe(true)
   })
 })
 
 test('without the option, every $params read is the outside-a-body error', () => {
   for (const options of [undefined, {}, { params: undefined }] as (ValidateOptions | undefined)[]) {
-    const result = fig.validate({ a: '$params.x', b: '$params' }, options)
+    const result = validate(fig, { a: '$params.x', b: '$params' }, options)
     expect(errors(result).map((issue) => issue.message)).toEqual([
       "'$params.x' is only available inside a fragment body",
       "'$params' is only available inside a fragment body",
@@ -116,7 +117,7 @@ test('with data, the sample-data warnings come back at their paths in the body',
     found: '$data.site.name',
     nested: { town: '$data.site.twon' },
   }
-  const result = fig.validate(body, { params: ['name'], data: { site: { name: 'Pai' } } })
+  const result = validate(fig, body, { params: ['name'], data: { site: { name: 'Pai' } } })
   expect(result.valid).toBe(true)
   expect(
     result.issues
@@ -165,7 +166,7 @@ describe('parity with registration', () => {
 
   test.each(bodies)('%s', (label, body, names) => {
     const registered = register(body, names)
-    const validated = errors(fig.validate(body, { params: names }))
+    const validated = errors(validate(fig, body, { params: names }))
     expect(registered.length > 0).toBe(label !== 'a clean body')
     expect(shape(validated)).toEqual(shape(registered, 3))
     expect(registered.every((issue) => issue.path[2] === 'expression')).toBe(true)
@@ -178,7 +179,7 @@ describe('parity with registration', () => {
       fragments: { draft: { expression: body, parameters: { x: {} } } },
     })
     const [{ warnings }] = registered.getFragments()
-    const validated = fig.validate(body, { params: ['x'] })
+    const validated = validate(fig, body, { params: ['x'] })
     expect(validated.valid).toBe(true)
     expect(warnings.length).toBeGreaterThan(0)
     expect(shape(validated.issues)).toEqual(shape(warnings, 1))
@@ -192,7 +193,7 @@ describe('misuse', () => {
     ['null', null],
     ['a non-string entry', ['x', 1]],
   ])('params as %s throws invalid-options', (_label, params) => {
-    const call = () => fig.validate('$params.x', { params } as unknown as ValidateOptions)
+    const call = () => validate(fig, '$params.x', { params } as unknown as ValidateOptions)
     expect(call).toThrow(FigTreeError)
     expect(call).toThrow(
       expect.objectContaining({
@@ -204,7 +205,7 @@ describe('misuse', () => {
 
   test('the per-call options beside it are still checked', () => {
     expect(() =>
-      fig.validate(1, { params: ['x'], maxNodes: 3 } as unknown as ValidateOptions)
+      validate(fig, 1, { params: ['x'], maxNodes: 3 } as unknown as ValidateOptions)
     ).toThrow(/not a per-call option/)
   })
 

@@ -39,6 +39,7 @@ import {
 import { isDeepStrictEqual } from 'node:util'
 import { checkConstraints, checkType } from '../src/typeCheck'
 import { MockHttpClient, MockSqlConnection } from './helpers'
+import { validate } from '../src/authoring'
 
 const packageOperators = [
   ...coreOperators,
@@ -64,7 +65,7 @@ const companions: Record<string, Record<string, Record<string, unknown>>> = {
 }
 
 const errorsOf = (expression: unknown) =>
-  fig.validate(expression).issues.filter((issue) => issue.severity === 'error')
+  validate(fig, expression).issues.filter((issue) => issue.severity === 'error')
 
 /** WCAG relative luminance of a `#rrggbb` colour. */
 const luminance = (hex: string) => {

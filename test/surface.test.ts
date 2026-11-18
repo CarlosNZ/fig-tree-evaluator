@@ -4,6 +4,7 @@
  * disposition" in docs-dev/v3-specs/v3-evaluator-methods.md).
  */
 import { FigTree, coreOperators, version } from '../src'
+import { validate } from '../src/authoring'
 
 const fig = new FigTree({
   operators: [coreOperators],
@@ -38,7 +39,7 @@ describe('isEvaluable — does the compile find anything to evaluate?', () => {
   test('a static error still counts — the node is a hole', () => {
     // `values` wants an array of numbers; the literal type check fails at
     // validate(), but the node is evaluable all the same
-    expect(fig.validate({ $plus: 'not an array' }).valid).toBe(false)
+    expect(validate(fig, { $plus: 'not an array' }).valid).toBe(false)
     expect(fig.isEvaluable({ $plus: 'not an array' })).toBe(true)
   })
 
@@ -46,7 +47,7 @@ describe('isEvaluable — does the compile find anything to evaluate?', () => {
     // A malformed `vars` block folds its container to a constant — zero
     // holes — yet validate() rejects it and evaluate() would throw. Only
     // the issue stream records that the expression engaged the grammar
-    expect(fig.validate({ vars: 'high' }).valid).toBe(false)
+    expect(validate(fig, { vars: 'high' }).valid).toBe(false)
     expect(fig.isEvaluable({ vars: 'high' })).toBe(true)
   })
 
@@ -70,7 +71,6 @@ describe('the v2 → v3 method disposition, as a checklist', () => {
   test.each([
     'evaluate',
     'compile',
-    'validate',
     'getDependencies',
     'isEvaluable',
     'updateOptions',
@@ -93,6 +93,7 @@ describe('the v2 → v3 method disposition, as a checklist', () => {
     'evaluateFullObject', // deep evaluation is the only semantics
     'evaluateSync', // cut for v3.0
     'evaluateExpression', // never an instance method
+    'validate', // ./authoring's validate(fig, expression), #231
   ])('%s is gone', (method) => {
     expect(surface[method]).toBeUndefined()
   })

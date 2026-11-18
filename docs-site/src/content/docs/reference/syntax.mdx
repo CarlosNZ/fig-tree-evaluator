@@ -111,6 +111,8 @@ Here's an account dashboard, built from one config with three dynamic fields: a 
 The expression author has misspelt `round`'s `decimals`. [`validate()`](/guides/validation/) finds it without any data, with the path to the mistake and a suggestion:
 
 ```ts title="dashboard.ts"
+import { validate } from 'fig-tree-evaluator/authoring'
+// ---cut---
 const dashboard = {
   '//': 'Account dashboard, evaluated on every page load',
   title: 'Account overview',
@@ -130,7 +132,7 @@ const dashboard = {
   },
 }
 
-fig.validate(dashboard)
+validate(fig, dashboard)
 // => {
 //      valid: false,
 //      issues: [

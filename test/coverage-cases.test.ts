@@ -37,7 +37,7 @@ import type {
   SqlConnection,
   TraceNode,
 } from '../src'
-import { declareAnalysis, fallbackCoverage } from '../src/authoring'
+import { declareAnalysis, fallbackCoverage, validate } from '../src/authoring'
 import { fragments, sections } from './coverage-cases'
 import type { CoverageCase, Finding, NodePath } from './coverage-cases'
 
@@ -528,7 +528,9 @@ for (const [section, cases] of Object.entries(sections))
   describe(section, () => {
     test.each(cases.map((item) => [item.name, item] as const))('%s', async (_name, item) => {
       const fig = instanceOf(item, false)
-      expect(fig.validate(item.expression).issues.filter((i) => i.severity === 'error')).toEqual([])
+      expect(validate(fig, item.expression).issues.filter((i) => i.severity === 'error')).toEqual(
+        []
+      )
 
       for (const [list, covered] of [
         [item.uncovered ?? [], false],

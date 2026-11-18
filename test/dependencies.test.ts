@@ -10,6 +10,7 @@
 import { FigTree, coreOperators } from '../src'
 import type { FragmentDefinition } from '../src'
 import { compileSpyOp } from './fixtures/evalOperators'
+import { validate } from '../src/authoring'
 
 const build = (fragments?: Record<string, FragmentDefinition>): FigTree =>
   new FigTree({ operators: [coreOperators], ...(fragments !== undefined ? { fragments } : {}) })
@@ -262,14 +263,14 @@ describe('$params reads', () => {
       text: { $buildString: { template: '{{$vars.greeting}}, {{$p.name}}' } },
       town: '$params.address.town',
     }
-    expect(fig.validate(body).issues.map((issue) => issue.code)).toEqual([
+    expect(validate(fig, body).issues.map((issue) => issue.code)).toEqual([
       'unresolved-param',
       'unresolved-param',
       'unresolved-param',
     ])
     expect(params(body).names.sort()).toEqual(['address', 'name', 'salutation'])
     // The names it reports, declared, are what the body validates against
-    expect(fig.validate(body, { params: params(body).names }).valid).toBe(true)
+    expect(validate(fig, body, { params: params(body).names }).valid).toBe(true)
   })
 })
 

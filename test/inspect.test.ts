@@ -12,6 +12,7 @@
  */
 import { coreOperators, ErrorCodes, FigTree, FigTreeError, inspect, version } from '../src'
 import type { FigTreeOptions, InspectNode, InspectReport } from '../src'
+import { validate } from '../src/authoring'
 
 const greet = {
   expression: { $join: ['Hello, ', '$params.name'], fallback: 'Hello!' },
@@ -511,7 +512,7 @@ describe('issues', () => {
       delete issue.order
       return issue
     })
-    expect(listed).toEqual(fig.validate(expression).issues)
+    expect(listed).toEqual(validate(fig, expression).issues)
     // All three kinds are present, so the comparison is not vacuous
     expect(listed.map((issue) => issue.code)).toEqual([
       ErrorCodes.maxNodesExceeded,
@@ -544,7 +545,7 @@ describe('issues', () => {
     const compiled = fig.compile({ x: '$data.x', y: '$data.y' })
     const result = inspect(compiled, { data: { x: 1 } })
     expect(result.issues).toEqual(
-      fig.validate({ x: '$data.x', y: '$data.y' }, { data: { x: 1 } }).issues
+      validate(fig, { x: '$data.x', y: '$data.y' }, { data: { x: 1 } }).issues
     )
     expect(result.options).toEqual({ data: '[supplied: 1 top-level key]' })
     expect(inspect(compiled).issues).toEqual([])

@@ -11,6 +11,7 @@
 import { FigTree, FigTreeError, ErrorCodes, isFigTreeError, coreOperators } from '../src'
 import { buildRegistry } from '../src/registry'
 import type { FragmentDefinition, Listing } from '../src'
+import { validate } from '../src/authoring'
 
 const rejects = (fragments: Record<string, unknown>): FigTreeError => {
   try {
@@ -74,7 +75,7 @@ describe('the definition shape', () => {
 
   test('a zero-parameter wrapper is legal — the wrapper is the only rule', () => {
     const fig = new FigTree({ fragments: { frag: { expression: 'hello' } } })
-    expect(fig.validate({ $frag: {} }).valid).toBe(true)
+    expect(validate(fig, { $frag: {} }).valid).toBe(true)
   })
 
   test('the listing and metadata are carried by identity, their keys unchecked', () => {
@@ -345,7 +346,7 @@ describe('body compilation', () => {
         },
       },
     })
-    expect(fig.validate({ $frag: { rows: [1] } }).valid).toBe(true)
+    expect(validate(fig, { $frag: { rows: [1] } }).valid).toBe(true)
   })
 
   test('warnings survive registration on the compiled body', () => {
@@ -483,7 +484,7 @@ describe('batch semantics', () => {
     expect(() =>
       fig.updateOptions({ fragments: { broken: { expression: { operator: 'nope' } } } })
     ).toThrow()
-    expect(fig.validate({ $outer: {} }).valid).toBe(true)
+    expect(validate(fig, { $outer: {} }).valid).toBe(true)
   })
 })
 
@@ -563,8 +564,8 @@ describe('rollups compose through calls', () => {
         maxNodes,
       })
     // One call node plus the three the body holds
-    expect(withLimit(4).validate({ fragment: 'leaf' }).valid).toBe(true)
-    expect(withLimit(3).validate({ fragment: 'leaf' }).issues[0].code).toBe(
+    expect(validate(withLimit(4), { fragment: 'leaf' }).valid).toBe(true)
+    expect(validate(withLimit(3), { fragment: 'leaf' }).issues[0].code).toBe(
       ErrorCodes.maxNodesExceeded
     )
   })
@@ -585,11 +586,11 @@ describe('rollups compose through calls', () => {
     const fig = new FigTree({
       fragments: { leaf: { expression: '$data.deep.value' } },
     })
-    const issues = fig.validate({ $leaf: {} }, { data: { other: 1 } }).issues
+    const issues = validate(fig, { $leaf: {} }, { data: { other: 1 } }).issues
     expect(issues).toHaveLength(1)
     expect(issues[0].code).toBe(ErrorCodes.missingDataPath)
     expect(issues[0].message).toContain('deep.value')
-    expect(fig.validate({ $leaf: {} }, { data: { deep: { value: 1 } } }).issues).toEqual([])
+    expect(validate(fig, { $leaf: {} }, { data: { deep: { value: 1 } } }).issues).toEqual([])
   })
 
   test('a dynamic-arguments call makes the read-set unenumerable', () => {
