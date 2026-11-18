@@ -29,6 +29,11 @@ import { nearestName } from './nearestName'
  * costs a compile and the cache holds only what evaluation asked for. That
  * is also what lets its compile take the suggester: no artifact it makes
  * can answer an evaluation.
+ *
+ * `fig` is typed `unknown`, as `fallbackCoverage`'s is: each entry's
+ * declarations carry their own copy of the `FigTree` class, and its private
+ * members would make the root's unassignable to this one ("`./authoring`"
+ * in docs-dev/v3-specs/v3-packaging.md).
  */
 export const validate = (
   fig: unknown,
@@ -38,7 +43,7 @@ export const validate = (
   const instance = viewInstance(fig)
   if (instance === undefined) throw new TypeError('validate() takes a FigTree instance')
   let call: CallOptions | undefined = options
-  const context: StaticCheckContext = { suggest: nearestName }
+  const context: StaticCheckContext = {}
   if (options?.params !== undefined) {
     const { params, ...rest } = options
     call = rest
@@ -46,7 +51,7 @@ export const validate = (
   }
   const effective =
     call === undefined ? instance.evaluation : withCallOptions(instance.evaluation, call)
-  const artifact = compileWithRegistry(expression, instance.registry, context)
+  const artifact = compileWithRegistry(expression, instance.registry, context, nearestName)
   const issues = validationIssues(artifact, effective, (sequenced) => sequenced.issue)
   return {
     valid: !issues.some((issue) => issue.severity === 'error'),

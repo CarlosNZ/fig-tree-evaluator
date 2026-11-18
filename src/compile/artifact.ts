@@ -543,6 +543,13 @@ export interface CompileArtifact extends Rollups {
    * (src/compile/cacheChecks.ts).
    */
   hasNoCache: boolean
+  /**
+   * The suggester the compile was given (`CompileOptions.suggest`). The
+   * static checks read it from here, so both passes over one artifact
+   * suggest alike, or neither does. Only `validate()`'s artifacts carry
+   * one, and none of them reaches the compile cache.
+   */
+  suggest?: Suggest
 }
 
 /**

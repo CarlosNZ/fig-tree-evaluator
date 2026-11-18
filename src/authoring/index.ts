@@ -49,6 +49,9 @@ export { validate } from './validate'
  * every static error, uncovered, in the order `evaluate()` reads them to
  * choose the one it throws, and nothing is walked ("Static errors" in the
  * spec).
+ *
+ * `fig` is typed `unknown` and checked at runtime, as `validate()`'s is,
+ * which says why.
  */
 export const fallbackCoverage = async (
   fig: unknown,

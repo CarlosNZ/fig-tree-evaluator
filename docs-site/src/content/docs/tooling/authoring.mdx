@@ -333,10 +333,10 @@ interface FailureEntry {
 ## `validate()`
 
 ```ts
-import type { FigTree, ValidateOptions, ValidationResult } from 'fig-tree-evaluator'
+import type { ValidateOptions, ValidationResult } from 'fig-tree-evaluator'
 declare namespace Authoring {
 // ---cut---
-function validate(fig: FigTree, expression: unknown, options?: ValidateOptions): ValidationResult
+function validate(fig: unknown, expression: unknown, options?: ValidateOptions): ValidationResult
 // ---cut-after---
 }
 ```

@@ -43,6 +43,7 @@ export type {
   SkeletonHole,
   SkeletonNode,
   StaticFallback,
+  Suggest,
 } from './artifact'
 export { bindsReference, childrenOf, renamedBinding, splice, toNodePath } from './artifact'
 export { probeConstant, probeStaticFallback } from './probe'

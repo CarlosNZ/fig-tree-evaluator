@@ -267,13 +267,13 @@ An `Issue` is one problem found in an expression, or in the options or a definit
 | `operator`   | The operator the issue is about, where there is one                                                                                                 |
 | `fragment`   | The fragment a call is to, where the issue is about a fragment call                                                                                 |
 | `parameter`  | The parameter the issue is about, where there is one                                                                                                |
-| `suggestion` | From `validate()`, the "did you mean" on its own, as a drop-in replacement for what was written, such as `'then'`, or `'$greaterThan'` for a shorthand key |
+| `suggestion` | From `validate()`, the "did you mean" on its own, as a drop-in replacement for what was written, such as `'then'`, or `'$greaterThan'` for a shorthand key. Elsewhere, only a fix that's certain: the canonical name for an alias given to [`operatorSet()`](/api/exports/#operatorset) |
 | `valid`      | On a `ValidationResult`, `false` exactly when `issues` holds at least one error                                                                     |
 | `issues`     | On a `ValidationResult`, every issue found, or `[]`                                                                                                 |
 
 **Details:**
 
-- Issues have the same shape wherever they appear: in a `ValidationResult`, in a compiled expression's [`issues`](/api/compiled-expression/#issues), and in a thrown error's `issues`. Only `validate()`'s have a "did you mean", in the `message` and as `suggestion`.
+- Issues have the same shape wherever they appear: in a `ValidationResult`, in a compiled expression's [`issues`](/api/compiled-expression/#issues), and in a thrown error's `issues`. Only `validate()`'s have a "did you mean", in the `message` and as `suggestion`. The one `suggestion` elsewhere is a certain fix rather than a guess: `operatorSet()` given an alias, such as `'+'`, suggests its canonical name, `'plus'`.
 - An issue's `fragment` is about the call, unlike a `FigTreeError`'s, which marks a failure inside the body. A static problem inside a body is found when the fragment is registered, so it's never reported at a call.
 - [`validate()`](/tooling/authoring/#validate) gives the order it lists issues in.
 

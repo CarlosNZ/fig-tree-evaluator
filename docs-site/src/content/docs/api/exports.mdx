@@ -851,7 +851,6 @@ Converting expressions between shorthand and canonical form, and reading them as
 import type {
   FallbackCoverage,
   FallbackCoverageOptions,
-  FigTree,
   OperatorAnalysis,
   ValidatedOperatorDefinition,
   ValidateOptions,
@@ -859,10 +858,10 @@ import type {
 } from 'fig-tree-evaluator'
 declare namespace Authoring {
 // ---cut---
-function validate(fig: FigTree, expression: unknown, options?: ValidateOptions): ValidationResult
+function validate(fig: unknown, expression: unknown, options?: ValidateOptions): ValidationResult
 
 function fallbackCoverage(
-  fig: FigTree,
+  fig: unknown,
   expression: unknown,
   analyses?: (OperatorAnalysis | OperatorAnalysis[])[],
   options?: FallbackCoverageOptions
@@ -877,6 +876,8 @@ function declareAnalysis(
 ```
 
 Static analyses for authoring tools. [`validate()`](/tooling/authoring/#validate) checks an expression for static errors and warnings without evaluating it, with a "did you mean" where a name is close to one FigTree knows. `fallbackCoverage()` reports where each node of an expression can fail, and which fallback, if any, catches it, under the instance's own options. `declareAnalysis()` tells it how one of your own operators can fail, and what it returns, for the list of analyses in its third argument.
+
+`validate()` and `fallbackCoverage()` take your FigTree instance as `fig`. It's typed `unknown` because each entry point's type declarations have their own copy of the `FigTree` class, which the root's instance wouldn't match, so it's checked when called instead, with a `TypeError` for anything else.
 
 **See also:** [`/authoring`](/tooling/authoring/), [Covering the whole expression](/guides/fallbacks/)
 

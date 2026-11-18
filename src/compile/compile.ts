@@ -236,7 +236,8 @@ export interface CompileOptions {
    * The did-you-mean for an unknown operator, fragment or parameter name,
    * or an unrecognized `$` key. `validate()`'s compile alone passes one,
    * and since it never touches the compile cache, no cached artifact holds
-   * a suggestion.
+   * a suggestion. The artifact keeps it, for the static checks' own
+   * did-you-means (`CompileArtifact.suggest`).
    */
   suggest?: Suggest
 }
@@ -300,6 +301,7 @@ export const compileExpression = (
     fragmentCalls: state.fragmentCalls,
     dataReads: state.dataReads,
     hasNoCache: state.hasNoCache,
+    suggest: options.suggest,
   }
 }
 

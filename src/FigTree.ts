@@ -54,6 +54,7 @@ import {
   type CacheEntry,
   type CompileArtifact,
   type StaticCheckContext,
+  type Suggest,
 } from './compile'
 import { copyOptions, mergeOptions, runEvaluation } from './evaluate'
 import { readCacheConfig, ResultCache } from './resultCache'
@@ -171,18 +172,20 @@ const withoutRegistryKeys = (options: FigTreeOptions): EvaluationOptions => {
  * The one compile: the walk plus the metadata-driven static checks and the
  * `noCache` checks, against a registry. `./authoring`'s `validate()` calls
  * it directly; `evaluate()` and `compile()` reach it through the compile
- * cache, which is
- * what makes the three report identically, suggestions apart. The
- * static-check context is `validate()`'s alone: an artifact compiled with
- * its `params` would answer an evaluation wrongly from the cache, and its
- * suggester serves only a person editing the expression.
+ * cache, which is what makes the three report identically, suggestions
+ * apart. The static-check context and the suggester are `validate()`'s
+ * alone: an artifact compiled with its `params` would answer an evaluation
+ * wrongly from the cache, and a suggestion serves only a person editing the
+ * expression. The artifact keeps the suggester, so the static checks
+ * suggest as the walk did.
  */
 export const compileWithRegistry = (
   expression: unknown,
   registry: OperatorRegistry,
-  context?: StaticCheckContext
+  context?: StaticCheckContext,
+  suggest?: Suggest
 ): CompileArtifact => {
-  const artifact = compileExpression(expression, registry, { suggest: context?.suggest })
+  const artifact = compileExpression(expression, registry, { suggest })
   runStaticChecks(artifact, context)
   if (artifact.hasNoCache) checkNoCache(artifact)
   return artifact

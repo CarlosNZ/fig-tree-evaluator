@@ -39,7 +39,6 @@ import type {
   ReferenceNode,
   StaticFallback,
   IssueExtra,
-  Suggest,
 } from './artifact'
 import type { PathSegment } from '../primitives'
 
@@ -51,11 +50,6 @@ export interface StaticCheckContext {
    * outside-a-body error.
    */
   fragmentParams?: ReadonlySet<string>
-  /**
-   * The did-you-mean for an undeclared fragment argument or parameter
-   * read, which only `validate()` passes (`CompileOptions.suggest`).
-   */
-  suggest?: Suggest
 }
 
 interface VarEntry {
@@ -579,7 +573,7 @@ const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
       for (const name in supplied) {
         const argument = supplied[name]
         if (declarations[name] === undefined) {
-          const suggestion = state.context.suggest?.(name, Object.keys(declarations))
+          const suggestion = state.artifact.suggest?.(name, Object.keys(declarations))
           emit(
             state,
             'error',
@@ -734,7 +728,7 @@ const resolveParam = (state: CheckState, node: ReferenceNode) => {
   if (node.segments.length === 0) return
   if (parameter !== undefined && declared.has(parameter)) return
   const suggestion =
-    parameter === undefined ? undefined : state.context.suggest?.(parameter, declared)
+    parameter === undefined ? undefined : state.artifact.suggest?.(parameter, declared)
   emit(
     state,
     'error',
