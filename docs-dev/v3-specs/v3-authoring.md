@@ -6,7 +6,23 @@ _Working document (Claude, October 2026), from the [#209](https://github.com/Car
 
 `fig-tree-evaluator/authoring` holds static analyses that answer an authoring question about an expression and have no bearing on evaluation. Nothing in the engine imports it, so `evaluate()` never pays for these checks, however thorough they become, and they can be refined without weighing runtime cost. A host uses them in CI over its stored expressions, and an editor uses them to mark what needs attention.
 
-Its first analysis is `fallbackCoverage`. The engine's existing warnings also have no runtime role, but moving them here was measured and not worth it ([#214](https://github.com/CarlosNZ/fig-tree-evaluator/issues/214)): about 1.7 kB brotli and no meaningful compile time, against moving or splitting `validate()`. The placement rule from there: an authoring-only check that needs its own pass, or is expensive, starts here; a check that is a few lines on a walk the engine already does stays in the engine.
+It holds `validate`, the full static-issue report, and `fallbackCoverage`. The engine's existing warnings also have no runtime role, but moving them here was measured and not worth it ([#214](https://github.com/CarlosNZ/fig-tree-evaluator/issues/214)): about 1.7 kB brotli and no meaningful compile time, against moving or splitting `validate()`. The placement rule from there: an authoring-only check that needs its own pass, or is expensive, starts here; a check that is a few lines on a walk the engine already does stays in the engine.
+
+## `validate`
+
+```ts
+import { validate } from 'fig-tree-evaluator/authoring'
+
+validate(fig, expression) // → { valid, issues }
+validate(fig, expression, { data: sample }) // with the sample-data check
+validate(fig, body, { params: ['amount', 'rate'] }) // a fragment body before registration
+```
+
+Every static issue in an expression, against the instance's registry and options: what "validate() — the process" in [v3-evaluator-methods.md](v3-evaluator-methods.md) specifies, where it was first an instance method. It moved here with [#231](https://github.com/CarlosNZ/fig-tree-evaluator/issues/231) ("Suggestions are validate()'s alone" there), because its issues alone carry a did-you-mean, which no evaluation needs. A `FigTree`-only bundle then ships neither the did-you-mean nor the report's own code, such as the sample-data check.
+
+- **Output unchanged** from the method it was: the same issues, in the same order, with the same messages and suggestions.
+- **It compiles fresh**, never through the compile cache, reaching the instance's registry and options through `viewInstance`, an internal reader in src/FigTree.ts. That is what lets its compile take the suggester: no artifact it makes can answer an evaluation.
+- **It takes a `FigTree`, and throws a `TypeError` for anything else**, as `fallbackCoverage` does. Otherwise it throws only on misuse of its options: a per-call option that is instance configuration, or a `params` that is not a list of names.
 
 ## `fallbackCoverage`
 

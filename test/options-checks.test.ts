@@ -149,29 +149,24 @@ describe('trace and strictDataPaths take a boolean', () => {
     expect(error.message).toBe("'trace' must be true or false")
   })
 
+  // Neither key gets a did-you-mean: suggestions are validate()'s alone
+  // (#231)
   it.each([
-    [
-      'a misspelt per-call key',
-      'tracee',
-      "'tracee' is not an option — did you mean 'trace'?",
-      'trace',
-    ],
-    // Suggesting `maxDepth` would only lead to the refusal below
-    ['a misspelt instance key', 'maxdepth', "'maxdepth' is not an option", undefined],
+    ['a misspelt per-call key', 'tracee', "'tracee' is not an option"],
+    ['a misspelt instance key', 'maxdepth', "'maxdepth' is not an option"],
     [
       'an instance option',
       'maxDepth',
       "'maxDepth' is not a per-call option — set it at construction or with updateOptions()",
-      undefined,
     ],
-  ])('%s is refused per call', async (_label, key, message, suggestion) => {
+  ])('%s is refused per call', async (_label, key, message) => {
     const error = await rejection<FigTreeError>(
       new FigTree().evaluate({ $plus: [1] }, { [key]: 5 } as never)
     )
     expect(error.code).toBe('invalid-options')
     expect(error.message).toBe(message)
     expect(error.path).toEqual([key])
-    expect(error.issues?.[0].suggestion).toBe(suggestion)
+    expect(error.issues?.[0]).not.toHaveProperty('suggestion')
   })
 
   it("a call's problems are reported in one throw", async () => {
@@ -191,25 +186,24 @@ describe('trace and strictDataPaths take a boolean', () => {
 })
 
 describe('an unknown key is refused', () => {
+  // With no did-you-mean, however close the key: suggestions are
+  // validate()'s alone (#231)
   it.each([
-    ['at the top level', { maxdepth: 5 }, ['maxdepth'], "'maxdepth'", 'maxDepth'],
-    ['inside http', { http: { baseUrl: 'x' } }, ['http', 'baseUrl'], "'http.baseUrl'", undefined],
-    ['inside cache', { cache: { maxsize: 5 } }, ['cache', 'maxsize'], "'cache.maxsize'", 'maxSize'],
+    ['at the top level', { maxdepth: 5 }, ['maxdepth'], "'maxdepth'"],
+    ['inside http', { http: { baseUrl: 'x' } }, ['http', 'baseUrl'], "'http.baseUrl'"],
+    ['inside cache', { cache: { maxsize: 5 } }, ['cache', 'maxsize'], "'cache.maxsize'"],
     [
       'left over from v2',
       { skipRuntimeTypeCheck: true },
       ['skipRuntimeTypeCheck'],
       "'skipRuntimeTypeCheck'",
-      undefined,
     ],
-  ])('%s', (_label, options, path, name, suggestion) => {
+  ])('%s', (_label, options, path, name) => {
     const error = thrown(construct(options))
     expect(error.code).toBe('invalid-options')
     expect(error.path).toEqual(path)
-    expect(error.message).toBe(
-      `${name} is not an option${suggestion ? ` — did you mean '${suggestion}'?` : ''}`
-    )
-    expect(error.issues?.[0].suggestion).toBe(suggestion)
+    expect(error.message).toBe(`${name} is not an option`)
+    expect(error.issues?.[0]).not.toHaveProperty('suggestion')
   })
 })
 

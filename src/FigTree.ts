@@ -4,14 +4,16 @@
  * instance registry via `buildRegistry()` and throws `FigTreeError` (code
  * `invalid-options`) on any bad input — the loud-at-registration posture.
  *
- * `validate()`, `evaluate()` and `compile()` share one spine: the same
- * compile (the walk + static checks) and the same per-call limit checks;
- * `validate()` returns the issue stream, `evaluate()` refuses on the first
- * error-severity issue and evaluates the holes otherwise, and `compile()`
- * hands back a `CompiledExpression` that does what `evaluate()` does from
- * the compiled artifact onward. `evaluate()` and `compile()` go through the
- * compile cache; `validate()` compiles fresh every time, so its report always
- * costs a compile and the cache holds only what evaluation asked for.
+ * `evaluate()`, `compile()` and `./authoring`'s `validate()` share one
+ * spine: the same compile (the walk + static checks) and the same per-call
+ * limit checks. `evaluate()` refuses on the first error-severity issue and
+ * evaluates the holes otherwise, `compile()` hands back a
+ * `CompiledExpression` that does what `evaluate()` does from the compiled
+ * artifact onward, and `validate()` returns the issue stream. `evaluate()`
+ * and `compile()` go through the compile cache; `validate()` compiles fresh
+ * every time, reaching the instance through `viewInstance`, so its report
+ * always costs a compile and the cache holds only what evaluation asked
+ * for.
  * `trace` shapes what comes back rather than how the spine works: with it
  * in effect the method returns an `EvaluationResult` envelope instead of
  * the bare value, and the class is generic over its construction `trace`
@@ -39,9 +41,8 @@ import type {
   FigTreeOptions,
   OptionsUpdate,
   ResultShape,
-  ValidateOptions,
 } from './options'
-import { issuesError, type Issue, type ValidationResult } from './issues'
+import { issuesError, type Issue } from './issues'
 import { callOptionIssue, optionIssues } from './optionChecks'
 import { buildRegistry, type OperatorRegistry } from './registry'
 import {
@@ -53,6 +54,7 @@ import {
   type CacheEntry,
   type CompileArtifact,
   type StaticCheckContext,
+  type Suggest,
 } from './compile'
 import { copyOptions, mergeOptions, runEvaluation } from './evaluate'
 import { readCacheConfig, ResultCache } from './resultCache'
@@ -66,7 +68,7 @@ import {
 } from './introspect'
 import { FigTreeError } from './FigTreeError'
 import { ErrorCodes } from './errorCodes'
-import { depthIssue, gateIssues, staticGate, validationIssues } from './validation'
+import { depthIssue, gateIssues, staticGate } from './validation'
 import { coreOperators } from './operators'
 import { version } from './version'
 
@@ -168,19 +170,22 @@ const withoutRegistryKeys = (options: FigTreeOptions): EvaluationOptions => {
 
 /**
  * The one compile: the walk plus the metadata-driven static checks and the
- * `noCache` checks, against a registry. `validate()` calls it directly;
- * `evaluate()` and `compile()` reach it through the compile cache, which is
- * what makes the three report identically. The static-check context is
- * `validate()`'s `params` option and nothing else: only `validate()`'s own
- * fresh compile may pass one, since an artifact compiled with it would
- * answer an evaluation wrongly from the cache.
+ * `noCache` checks, against a registry. `./authoring`'s `validate()` calls
+ * it directly; `evaluate()` and `compile()` reach it through the compile
+ * cache, which is what makes the three report identically, suggestions
+ * apart. The static-check context and the suggester are `validate()`'s
+ * alone: an artifact compiled with its `params` would answer an evaluation
+ * wrongly from the cache, and a suggestion serves only a person editing the
+ * expression. The artifact keeps the suggester, so the static checks
+ * suggest as the walk did.
  */
-const compileWithRegistry = (
+export const compileWithRegistry = (
   expression: unknown,
   registry: OperatorRegistry,
-  context?: StaticCheckContext
+  context?: StaticCheckContext,
+  suggest?: Suggest
 ): CompileArtifact => {
-  const artifact = compileExpression(expression, registry)
+  const artifact = compileExpression(expression, registry, { suggest })
   runStaticChecks(artifact, context)
   if (artifact.hasNoCache) checkNoCache(artifact)
   return artifact
@@ -212,6 +217,10 @@ export class FigTree<Trace extends boolean = false> {
     seed = undefined
     this.state = ready?.state ?? buildState(null, options)
     this.results = ready?.results ?? new ResultCache(readCacheConfig(this.state.options.cache))
+    readInstance ??= (value) =>
+      value instanceof FigTree
+        ? { registry: value.state.registry, evaluation: value.state.evaluation }
+        : undefined
   }
 
   /**
@@ -369,36 +378,6 @@ export class FigTree<Trace extends boolean = false> {
    */
   getFragments(): FragmentInfo[] {
     return fragmentSnapshot(this.state.registry)
-  }
-
-  /**
-   * Full static-issue report ("validate() — the process" in
-   * docs-dev/v3-specs/v3-evaluator-methods.md): synchronous, never throws
-   * on expression content — even hard grammar errors come back as
-   * error-severity issues. Throws only on misuse of the method itself (a
-   * per-call option that is instance configuration, or a `params` that is
-   * not a list of names). It takes the same per-call shape as `evaluate()`,
-   * of which only `data` — the sample data for the missing-path check — has
-   * any bearing on a static report, plus `params` of its own: the declared
-   * parameter names of a fragment body, so the body checks as it would at
-   * registration.
-   */
-  validate(expression: unknown, options?: ValidateOptions): ValidationResult {
-    let call: CallOptions | undefined = options
-    let context: StaticCheckContext | undefined
-    if (options?.params !== undefined) {
-      const { params, ...rest } = options
-      call = rest
-      context = { fragmentParams: paramNames(params) }
-    }
-    const effective =
-      call === undefined ? this.state.evaluation : withCallOptions(this.state.evaluation, call)
-    const artifact = compileWithRegistry(expression, this.state.registry, context)
-    const issues = validationIssues(artifact, effective, (sequenced) => sequenced.issue)
-    return {
-      valid: !issues.some((issue) => issue.severity === 'error'),
-      issues,
-    }
   }
 
   /**
@@ -607,6 +586,29 @@ let readHandle: ReadHandle | undefined
  */
 export const viewHandle: ReadHandle = (value, call) => readHandle?.(value, call)
 
+/** What `viewInstance` reads: the two things a static report runs against. */
+export interface InstanceView {
+  registry: OperatorRegistry
+  evaluation: EvaluationOptions
+}
+
+type ReadInstance = (value: unknown) => InstanceView | undefined
+
+/**
+ * The reader of an instance's state, installed by the first instance's
+ * constructor, as `readHandle` is by the first handle's: only code in the
+ * class body may read the private `state`.
+ */
+let readInstance: ReadInstance | undefined
+
+/**
+ * An instance's registry and prepared options, or `undefined` for anything
+ * that is not a `FigTree` — for `./authoring`'s `validate()`, which compiles
+ * fresh against them rather than through the cache. Internal, beside the
+ * class rather than on it, for `viewHandle`'s reasons.
+ */
+export const viewInstance: ReadInstance = (value) => readInstance?.(value)
+
 /**
  * What `compile()` returns ("compile()" in
  * docs-dev/v3-specs/v3-evaluator-methods.md): a holdable, nameable
@@ -801,7 +803,10 @@ export interface HandleView {
  * is never written to — the override is a fresh copy — and a call whose
  * keys are all `undefined` runs under the instance object itself.
  */
-const withCallOptions = (instance: EvaluationOptions, call: CallOptions): EvaluationOptions => {
+export const withCallOptions = (
+  instance: EvaluationOptions,
+  call: CallOptions
+): EvaluationOptions => {
   let merged: Record<string, unknown> | undefined
   let issues: Issue[] | undefined
   for (const key in call) {
@@ -821,20 +826,6 @@ const withCallOptions = (instance: EvaluationOptions, call: CallOptions): Evalua
   }
   if (issues !== undefined) throw issuesError(ErrorCodes.invalidOptions, issues)
   return merged === undefined ? instance : (merged as EvaluationOptions)
-}
-
-/**
- * `validate()`'s `params` option as the static checks take it, refused
- * unless it is an array of strings.
- */
-const paramNames = (params: unknown): ReadonlySet<string> => {
-  if (!Array.isArray(params) || params.some((name) => typeof name !== 'string'))
-    throw new FigTreeError({
-      code: ErrorCodes.invalidOptions,
-      message: "'params' must be an array of parameter names",
-      path: [],
-    })
-  return new Set(params)
 }
 
 /**

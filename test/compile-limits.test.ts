@@ -9,6 +9,7 @@
 import { FigTree } from '../src'
 import { compileExpression } from '../src/compile'
 import { makeCompileRegistry, compileOps } from './fixtures/compileRegistry'
+import { validate } from '../src/authoring'
 
 const fig = new FigTree({ operators: [compileOps()] })
 /** The limits are instance configuration, so a limit is an instance. */
@@ -34,9 +35,9 @@ const nestObjects = (depth: number, leaf: unknown): unknown => {
 describe('the built-in depth ceiling', () => {
   test('a 5,000-deep array reports depth-ceiling instead of overflowing the stack', () => {
     const deep = nestArrays(5000, 1)
-    let result: ReturnType<FigTree['validate']> | undefined
+    let result: ReturnType<typeof validate> | undefined
     expect(() => {
-      result = fig.validate(deep)
+      result = validate(fig, deep)
     }).not.toThrow()
     expect(result!.valid).toBe(false)
     expect(result!.issues.map((issue) => issue.code)).toContain('depth-ceiling')
@@ -44,33 +45,31 @@ describe('the built-in depth ceiling', () => {
 
   test('a 5,000-deep object reports the same, with an operator at the bottom', () => {
     const deep = nestObjects(5000, { $plus: [1, 2] })
-    const result = fig.validate(deep)
+    const result = validate(fig, deep)
     expect(result.valid).toBe(false)
     expect(result.issues.map((issue) => issue.code)).toContain('depth-ceiling')
   })
 
   test('the ceiling is option-independent — no maxDepth needed, and a larger one is moot', () => {
     const deep = nestArrays(5000, 1)
-    const codes = withLimits({ maxDepth: 100_000 })
-      .validate(deep)
-      .issues.map((issue) => issue.code)
+    const codes = validate(withLimits({ maxDepth: 100_000 }), deep).issues.map(
+      (issue) => issue.code
+    )
     expect(codes).toContain('depth-ceiling')
     expect(codes).not.toContain('max-depth')
   })
 
   test('ordinary depth is untouched, and the user maxDepth still compares against it', () => {
     const shallow = nestObjects(40, { $plus: [1, 2] })
-    expect(fig.validate(shallow).valid).toBe(true)
-    expect(
-      withLimits({ maxDepth: 10 })
-        .validate(shallow)
-        .issues.map((i) => i.code)
-    ).toContain('max-depth')
+    expect(validate(fig, shallow).valid).toBe(true)
+    expect(validate(withLimits({ maxDepth: 10 }), shallow).issues.map((i) => i.code)).toContain(
+      'max-depth'
+    )
   })
 
   test('the ceiling issue is tagged with the path where descent stopped', () => {
     const deep = nestArrays(5000, 1)
-    const issue = fig.validate(deep).issues.find((i) => i.code === 'depth-ceiling')!
+    const issue = validate(fig, deep).issues.find((i) => i.code === 'depth-ceiling')!
     expect(issue.severity).toBe('error')
     expect(issue.path.length).toBeGreaterThan(400)
     expect(issue.path.every((segment) => segment === 0)).toBe(true)
@@ -84,14 +83,14 @@ describe('nodeCount counts evaluable nodes only', () => {
       value: i,
       enabled: i % 2 === 0,
     }))
-    const result = withLimits({ maxNodes: 500 }).validate({ options })
+    const result = validate(withLimits({ maxNodes: 500 }), { options })
     expect(result.valid).toBe(true)
     expect(result.issues.map((issue) => issue.code)).not.toContain('max-nodes')
   })
 
   test('an expression with 600 operators does', () => {
     const items = Array.from({ length: 600 }, (_, i) => ({ $plus: [i, 1] }))
-    const result = withLimits({ maxNodes: 500 }).validate({ items })
+    const result = validate(withLimits({ maxNodes: 500 }), { items })
     expect(result.valid).toBe(false)
     expect(result.issues.map((issue) => issue.code)).toContain('max-nodes')
   })

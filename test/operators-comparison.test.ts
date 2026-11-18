@@ -7,6 +7,7 @@
  */
 import { FigTree, FigTreeError } from '../src'
 import { rejection } from './helpers/rejection'
+import { validate } from '../src/authoring'
 
 const fig = new FigTree()
 const ev = (expression: unknown, data?: Record<string, unknown>) =>
@@ -136,7 +137,7 @@ describe('equal', () => {
   })
 
   test('a literal array under two elements is a dead-expression warning', () => {
-    const result = fig.validate({ $equal: ['solo'] })
+    const result = validate(fig, { $equal: ['solo'] })
     expect(result.valid).toBe(true)
     expect(result.issues.some((issue) => issue.severity === 'warning')).toBe(true)
   })
@@ -190,12 +191,12 @@ describe('the ordering four', () => {
   test('heterogeneous operands are a type error — the deliberate asymmetry with equal', async () => {
     expect((await failure({ $greaterThan: '$data.v' }, { v: [1, 'a'] })).code).toBe('type-check')
     expect((await failure({ $lessThan: '$data.v' }, { v: [true, false] })).code).toBe('type-check')
-    expect(fig.validate({ '$>': [1, 'a'] }).valid).toBe(false)
+    expect(validate(fig, { '$>': [1, 'a'] }).valid).toBe(false)
   })
 
   test('exactly two values: a literal violation fails validate(), a dynamic one fails at runtime', async () => {
-    expect(fig.validate({ $greaterThan: [12] }).valid).toBe(false)
-    expect(fig.validate({ '$<': [] }).valid).toBe(false)
+    expect(validate(fig, { $greaterThan: [12] }).valid).toBe(false)
+    expect(validate(fig, { '$<': [] }).valid).toBe(false)
     expect((await failure({ $lessThan: '$data.v' }, { v: [1, 2, 3] })).code).toBe('type-check')
   })
 

@@ -7,6 +7,7 @@
  */
 import { FigTree, FigTreeError, ErrorCodes, isFigTreeError } from '../src'
 import type { FragmentDefinition } from '../src'
+import { validate } from '../src/authoring'
 
 const returnsOf = (fragments: Record<string, FragmentDefinition>) =>
   Object.fromEntries(new FigTree({ fragments }).getFragments().map((f) => [f.name, f.returns]))
@@ -63,7 +64,7 @@ describe('the feeding check at a call', () => {
       anything: { expression: '$data.x' },
     },
   })
-  const issuesOf = (expression: unknown) => fig.validate(expression).issues
+  const issuesOf = (expression: unknown) => validate(fig, expression).issues
 
   test('a call whose returns cannot meet the parameter is a returns-mismatch', () => {
     for (const expression of [
@@ -108,7 +109,7 @@ describe('the feeding check at a call', () => {
     const call = (fallback: unknown) => ({
       $half: { n: { $divide: ['$data.a', '$data.b'], fallback } },
     })
-    expect(fig.validate(call('n/a')).issues).toEqual([
+    expect(validate(fig, call('n/a')).issues).toEqual([
       expect.objectContaining({
         severity: 'warning',
         code: ErrorCodes.fallbackMismatch,
@@ -117,7 +118,7 @@ describe('the feeding check at a call', () => {
         parameter: 'n',
       }),
     ])
-    expect(fig.validate(call(0)).issues).toEqual([])
+    expect(validate(fig, call(0)).issues).toEqual([])
   })
 
   test('a call to an unknown fragment reports only that', () => {
@@ -167,18 +168,18 @@ describe('the feeding check at a container holding something computed', () => {
     ['an object at a number', { $round: { value: { a: '$data.x' } } }, ['$round', 'value']],
     ['an array at a string', { $upper: { value: ['$data.x'] } }, ['$upper', 'value']],
   ])('%s is a type-check error, as the literal would be', (_label, expression, path) => {
-    const [issue] = fig.validate(expression).issues
+    const [issue] = validate(fig, expression).issues
     expect(issue).toMatchObject({ severity: 'error', code: ErrorCodes.typeCheck, path })
   })
 
   test('the same message as a constant container', () => {
-    const computed = fig.validate({ $round: { value: { a: '$data.x' } } }).issues[0]
-    const constant = fig.validate({ $round: { value: { a: 1 } } }).issues[0]
+    const computed = validate(fig, { $round: { value: { a: '$data.x' } } }).issues[0]
+    const constant = validate(fig, { $round: { value: { a: 1 } } }).issues[0]
     expect(computed.message).toBe(constant.message)
   })
 
   test('a container where one is admitted passes', () => {
-    expect(fig.validate({ $length: { value: ['$data.x'] } }).issues).toEqual([])
-    expect(fig.validate({ $get: { path: 'a', from: { a: '$data.x' } } }).issues).toEqual([])
+    expect(validate(fig, { $length: { value: ['$data.x'] } }).issues).toEqual([])
+    expect(validate(fig, { $get: { path: 'a', from: { a: '$data.x' } } }).issues).toEqual([])
   })
 })

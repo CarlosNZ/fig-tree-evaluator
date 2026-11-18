@@ -23,6 +23,7 @@
 import { FigTree, type CallOptions } from '../src'
 import { signalProbeOp, spyOp } from './fixtures/evalOperators'
 import { rejection } from './helpers/rejection'
+import { validate } from '../src/authoring'
 
 /** An instance whose one operator records the options each call saw. */
 const withSpy = (instance: object = {}) => {
@@ -306,21 +307,21 @@ describe('validate() and evaluate() see the same data', () => {
   it('both read the per-call data in place of the instance’s', async () => {
     const fig = new FigTree({ data: { org: 'Acme' } })
     const expression = { $buildString: ['%1', '$data.team'] }
-    const { issues } = fig.validate(expression, { data: { team: 'Platform' } })
+    const { issues } = validate(fig, expression, { data: { team: 'Platform' } })
     expect(issues).toEqual([])
     expect(await fig.evaluate(expression, { data: { team: 'Platform' } })).toBe('Platform')
   })
 
   it('both report a path the per-call data lacks, even where the instance has it', () => {
     const fig = new FigTree({ data: { org: 'Acme' } })
-    const { issues } = fig.validate({ $buildString: ['%1', '$data.org'] }, { data: {} })
+    const { issues } = validate(fig, { $buildString: ['%1', '$data.org'] }, { data: {} })
     expect(issues.map((issue) => issue.severity)).toEqual(['warning'])
   })
 
   it('both fall back to the instance data when the call supplies none', async () => {
     const fig = new FigTree({ data: { org: 'Acme' } })
     const expression = { $buildString: ['%1', '$data.org'] }
-    expect(fig.validate(expression).issues).toEqual([])
+    expect(validate(fig, expression).issues).toEqual([])
     expect(await fig.evaluate(expression)).toBe('Acme')
   })
 })

@@ -11,6 +11,7 @@
 import { FigTree, FigTreeError, coreOperators, httpOperators, sqlOperators } from '../src'
 import { MockHttpClient, MockSqlConnection } from './helpers'
 import { rejection } from './helpers/rejection'
+import { validate } from '../src/authoring'
 
 /** Runs a body with no global fetch, restoring it afterwards. */
 const withoutGlobalFetch = (body: () => void) => {
@@ -29,8 +30,8 @@ describe('httpOperators()', () => {
     const fig = new FigTree({
       operators: [coreOperators, httpOperators(new MockHttpClient())],
     })
-    expect(fig.validate({ $http: 'https://api.test/x' }).valid).toBe(true)
-    expect(fig.validate({ $graphQL: 'query { a }' }).valid).toBe(true)
+    expect(validate(fig, { $http: 'https://api.test/x' }).valid).toBe(true)
+    expect(validate(fig, { $graphQL: 'query { a }' }).valid).toBe(true)
   })
 
   it('defaults to a fetch-backed client when given no argument', () => {
@@ -57,7 +58,7 @@ describe('sqlOperators()', () => {
     const fig = new FigTree({
       operators: [coreOperators, sqlOperators(new MockSqlConnection())],
     })
-    expect(fig.validate({ $sql: ['SELECT 1'] }).valid).toBe(true)
+    expect(validate(fig, { $sql: ['SELECT 1'] }).valid).toBe(true)
   })
 })
 
@@ -67,7 +68,7 @@ describe('a clientless instance', () => {
   it('refuses the canonical face outright', async () => {
     // v2 threw 'No HTTP client provided' when the node RAN, in front of
     // the end user. Absence is structural now, so it lands on the author
-    const report = bare.validate({ operator: 'http', url: 'https://api.test/x' })
+    const report = validate(bare, { operator: 'http', url: 'https://api.test/x' })
     expect(report.valid).toBe(false)
     expect(report.issues[0].code).toBe('unknown-operator')
 
@@ -80,7 +81,7 @@ describe('a clientless instance', () => {
   it('refuses the shorthand face too, as an unrecognized $ key', async () => {
     // Every `$` key in an authored expression invokes, so the call fails
     // as the canonical face does, under a fallback or not
-    const report = bare.validate({ $http: 'https://api.test/x' })
+    const report = validate(bare, { $http: 'https://api.test/x' })
     expect(report.valid).toBe(false)
     expect(report.issues[0].code).toBe('unrecognized-identifier')
 
@@ -91,14 +92,14 @@ describe('a clientless instance', () => {
   })
 
   it('is what omitting `operators` means — core only, no I/O', () => {
-    expect(bare.validate({ $plus: [1, 2] }).valid).toBe(true)
+    expect(validate(bare, { $plus: [1, 2] }).valid).toBe(true)
   })
 })
 
 describe('the registry is stated exhaustively', () => {
   it('drops the core set when a host names only the I/O operators', () => {
     const fig = new FigTree({ operators: [httpOperators(new MockHttpClient())] })
-    const report = fig.validate({ operator: 'plus', values: [1, 2] })
+    const report = validate(fig, { operator: 'plus', values: [1, 2] })
     expect(report.valid).toBe(false)
     expect(report.issues[0].code).toBe('unknown-operator')
   })

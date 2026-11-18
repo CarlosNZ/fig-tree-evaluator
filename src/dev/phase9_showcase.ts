@@ -15,6 +15,7 @@
  */
 import { FigTree, coreOperators, httpOperators, sqlOperators } from '../index'
 import type { HttpClient, SqlConnection } from '../index'
+import { validate } from '../authoring'
 import { block, outcome, print, section } from './showcase'
 
 /** A scripted client that counts what it was asked to fetch. */
@@ -140,7 +141,7 @@ const main = async () => {
   section('An instance without a client cannot reach the network at all')
 
   const bare = new FigTree()
-  const report = bare.validate({ operator: 'http', url: 'https://api.example.com/rates' })
+  const report = validate(bare, { operator: 'http', url: 'https://api.example.com/rates' })
   print(
     'validate(), on a clientless instance',
     { operator: 'http', url: '…' },

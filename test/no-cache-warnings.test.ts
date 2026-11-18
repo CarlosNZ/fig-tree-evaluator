@@ -6,6 +6,7 @@
  */
 import { FigTree, coreOperators, defineOperator } from '../src'
 import type { Issue } from '../src'
+import { validate } from '../src/authoring'
 
 const fetch = defineOperator({
   name: 'fetch',
@@ -29,8 +30,7 @@ const build = (options: object = {}) =>
 
 /** The `useless-modifier` warnings `validate()` reports, as their paths. */
 const dead = (fig: FigTree, expression: unknown) =>
-  fig
-    .validate(expression)
+  validate(fig, expression)
     .issues.filter((issue) => issue.code === 'useless-modifier')
     .map((issue) => ({ path: issue.path, message: issue.message }))
 

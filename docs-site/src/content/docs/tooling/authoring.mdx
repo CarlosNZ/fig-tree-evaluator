@@ -1,6 +1,6 @@
 ---
 title: fig-tree-evaluator/authoring
-description: Analyses for authoring tools, such as which failures an expression's fallbacks cover
+description: Analyses for authoring tools, such as checking an expression, and which failures its fallbacks cover
 sidebar:
   label: /authoring
   order: 4
@@ -329,3 +329,44 @@ interface FailureEntry {
 <Callout kind="tip" title="Analyses in a library">
   In a library, export your operators from your package's root, and their analyses from an `/authoring` subpath of its own, as FigTree does, so an app that never checks coverage never loads them.
 </Callout>
+
+## `validate()`
+
+```ts
+import type { ValidateOptions, ValidationResult } from 'fig-tree-evaluator'
+declare namespace Authoring {
+// ---cut---
+function validate(fig: unknown, expression: unknown, options?: ValidateOptions): ValidationResult
+// ---cut-after---
+}
+```
+
+Checks an expression for static errors and warnings, without evaluating it, as `fig` would evaluate it: with its operators, fragments and options.
+
+**Parameters:**
+
+| Parameter        | Description                                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- |
+| `fig`            | Your FigTree instance                                                                                       |
+| `expression`     | The expression to check                                                                                     |
+| `options.data`   | Sample data: each `$data` path the expression reads is checked against it                                   |
+| `options.params` | The parameter names of a fragment body being checked, so its `$params` references are checked against them |
+
+The other per-call options, `signal`, `timeout` and `trace`, are accepted, but have no effect.
+
+**Returns:** a [`ValidationResult`](/api/errors/#issue-and-validationresult), `{ valid, issues }`. `valid` is `false` exactly when at least one issue has severity `'error'`.
+
+**Throws:** a `TypeError` when `fig` isn't a FigTree instance, and `invalid-options` when the options are wrong: an option other than the per-call ones and `params`, a `params` that isn't an array of strings, or a `timeout`, `signal` or `trace` that isn't valid. A problem in the expression, however serious, is reported in `issues` instead.
+
+**Details:**
+
+- It makes the same checks `evaluate()` makes before running anything, and, when given `data`, checks the expression's `$data` paths against it. Nothing is evaluated.
+- `maxDepth` and `maxNodes` are read from the instance, and going over either is an error.
+- Issues are listed in this order: the size-limit errors, then the expression's own issues, in the order they appear in it, then the warnings from checking `data`.
+- The check against `data` covers the paths known before anything runs, not computed ones. It warns at each place a missing path is read, so a path read three times gives three warnings. A read inside a fragment's body is reported at the call, naming the fragment.
+- With `params`, a `$params` reference naming an undeclared parameter is an `unresolved-param` error, with the nearest declared name as its `suggestion`. `params: []` is a body that declares no parameters. Without `params`, every `$params` reference is an error, as it is in any expression outside a fragment.
+- Warnings never stop an evaluation, and `evaluate()` doesn't report them.
+- It's the only place a "did you mean" is worked out. Where a name is close to one FigTree knows, the issue has one in its `message` and as `suggestion`. The same issue, thrown by `evaluate()` or in a compiled expression's `issues`, has neither.
+- It compiles the expression afresh every time, and never reads or fills the compile cache.
+
+**See also:** [Checking expressions](/guides/validation/), [Validating a fragment during authoring](/guides/fragments/#validating-a-fragment-during-authoring)

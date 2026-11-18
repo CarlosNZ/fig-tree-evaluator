@@ -293,14 +293,16 @@ The whole set is checked again, as `new FigTree()` checks it, and an update that
 
 ### Validating a fragment during authoring
 
-Like with normal expressions, a fragment body can be checked using `validate()`. The only difference is that you must provide a second argument, listing the parameters expected:
+Like with normal expressions, a fragment body can be checked using `validate()`. The only difference is that you must provide the `params` option, listing the parameters expected:
 
 ```ts title="checkBody.ts"
+import { validate } from 'fig-tree-evaluator/authoring'
+// ---cut---
 const fragmentBody = {
   $round: [{ $multiply: ['$params.amount', { $plus: [1, { $divide: ['$params.rat', 100] }] }] }, 2],
 }
 
-fig.validate(fragmentBody, { params: ['amount', 'rate'] })
+validate(fig, fragmentBody, { params: ['amount', 'rate'] })
 // => { valid: false, issues: [{ code: 'unresolved-param', suggestion: 'rate', … }] }
 ```
 

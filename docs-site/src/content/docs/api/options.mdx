@@ -23,7 +23,7 @@ A FigTree instance takes its options in the constructor, `new FigTree(options)`,
 | [`cache`](#cache)                                | No       | 50 results, 30 minutes | How the result cache keeps results                         |
 | [`trace`](#trace)                                | Yes      | `false`                | Returns a trace of the evaluation, with the result         |
 
-Every option's value is checked where it's set. An invalid option makes the constructor, `updateOptions()` or `with()` throw a [`FigTreeError`](/api/errors/#figtreeerror) with the code `invalid-options`, and an invalid per-call option makes `evaluate()` reject the same way. Every problem found is listed in the error's `issues`, each with a `path` to the option it's about. A key that isn't an option, such as a misspelt `maxdepth`, is a problem too, with a "did you mean" where there's a close match, so a misspelt option in a config file can't quietly do nothing. Each entry's **Throws** says what makes the option invalid, and what an evaluation throws because of it.
+Every option's value is checked where it's set. An invalid option makes the constructor, `updateOptions()` or `with()` throw a [`FigTreeError`](/api/errors/#figtreeerror) with the code `invalid-options`, and an invalid per-call option makes `evaluate()` reject the same way. Every problem found is listed in the error's `issues`, each with a `path` to the option it's about. A key that isn't an option, such as a misspelt `maxdepth`, is a problem too, so a misspelt option in a config file can't quietly do nothing. Each entry's **Throws** says what makes the option invalid, and what an evaluation throws because of it.
 
 An instance's options apply to every expression it evaluates, including ones already stored, so changing one on a running system can change what those expressions give ([Changing options](/guides/setup/#changing-options)).
 
@@ -115,7 +115,7 @@ Named expressions, each called like an operator, by its key.
 
 **Throws:** `invalid-options` when a fragment:
 
-- has a static error in its body, anything [`validate()`](/api/figtree/#validate) would report as an error
+- has a static error in its body, anything [`validate()`](/tooling/authoring/#validate) would report as an error
 - has a `$params` reference to a parameter it doesn't declare
 - declares a `default` that doesn't match its parameter's `type`
 - has an operator's name or alias (`duplicate-operator`)
@@ -431,6 +431,6 @@ fig.getOptions()
 fig.updateOptions({ http: { baseEndpoint: null } })
 ```
 
-A call's options never merge: each one given replaces the instance's for that evaluation, `data` included, and `undefined` counts as not given. Per call, `null` is a value rather than a removal: `data: null` evaluates with no data, and a `null` `timeout` or `signal` is `invalid-options`. Any option other than `data`, `signal`, `timeout` and `trace` is `invalid-options` too: an instance option, such as `maxDepth`, is refused with a message naming the four a call can give, and a key that isn't an option at all with a "did you mean".
+A call's options never merge: each one given replaces the instance's for that evaluation, `data` included, and `undefined` counts as not given. Per call, `null` is a value rather than a removal: `data: null` evaluates with no data, and a `null` `timeout` or `signal` is `invalid-options`. Any option other than `data`, `signal`, `timeout` and `trace` is `invalid-options` too: an instance option, such as `maxDepth`, is refused with a message saying to set it at construction or with `updateOptions()`, and a key that isn't an option at all as not an option.
 
 **See also:** [Changing options](/guides/setup/#changing-options)

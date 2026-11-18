@@ -16,7 +16,6 @@ Every expression is evaluated by an instance of the `FigTree` class, which holds
 | [`new FigTree()`](#constructor)                                      | `FigTree`                          | Creates an instance                               |
 | [`evaluate()`](#evaluate)                                            | `Promise`                          | Evaluates an expression                           |
 | [`compile()`](#compile)                                              | `CompiledExpression`               | Compiles an expression                            |
-| [`validate()`](#validate)                                            | `ValidationResult`                 | Checks an expression without evaluating it        |
 | [`getDependencies()`](#getdependencies)                              | `Dependencies`                     | Lists what an expression reads and uses           |
 | [`isEvaluable()`](#isevaluable)                                      | `boolean`                          | Whether a value holds anything to evaluate        |
 | [`updateOptions()`](#updateoptions)                                  | `void`                             | Changes the instance's options                    |
@@ -26,7 +25,7 @@ Every expression is evaluated by an instance of the `FigTree` class, which holds
 | [`clearCache()`](#clearcache)                                        | `void`                             | Empties the result cache                          |
 | [`version`](#version)                                                | `string`                           | The package version in use                        |
 
-Every method except `evaluate()` is synchronous.
+Every method except `evaluate()` is synchronous. Checking an expression without evaluating it is [`validate()`](/tooling/authoring/#validate)'s job, a function in `fig-tree-evaluator/authoring` rather than a method, so an app that only evaluates never loads it.
 
 Any error FigTree throws is a [`FigTreeError`](/api/errors/#figtreeerror), even one that started inside a custom operator, so each entry here lists only the error codes.
 
@@ -45,7 +44,7 @@ constructor(options?: FigTreeOptions)
 
 **Parameters:** `options`, the instance's [options](/api/options/), all of them optional. With none, the instance has the core operators: every operator on the [Operators](/reference/operators/) page except the I/O ones (`http`, `graphQL` and `sql`).
 
-**Throws:** `invalid-options` when an option is invalid. The error's `issues` lists every problem found, each with its own `code`, such as `duplicate-operator`, and a `path` into the options. A key that isn't an option is a problem too, with a "did you mean" where there's a close match.
+**Throws:** `invalid-options` when an option is invalid. The error's `issues` lists every problem found, each with its own `code`, such as `duplicate-operator`, and a `path` into the options. A key that isn't an option is a problem too.
 
 **Details:** everything is checked here, before the instance exists: each operator, each `operatorDefaults` entry against the operators, each fragment body, and every other option's value ([Options](/api/options/)).
 
@@ -154,45 +153,6 @@ Compiles an expression, ready to check or evaluate.
 - It shares the instance's result cache.
 
 **See also:** [Compiling once](/guides/caching/#compiling-once)
-
-## `validate()`
-
-```ts
-import type { ValidateOptions, ValidationResult } from 'fig-tree-evaluator'
-declare class FigTree {
-// ---cut---
-validate(expression: unknown, options?: ValidateOptions): ValidationResult
-// ---cut-after---
-}
-```
-
-Checks an expression for static errors and warnings, without evaluating it.
-
-**Parameters:**
-
-| Parameter        | Description                                                                                                 |
-| ---------------- | ----------------------------------------------------------------------------------------------------------- |
-| `expression`     | The expression to check                                                                                     |
-| `options.data`   | Sample data: each `$data` path the expression reads is checked against it                                   |
-| `options.params` | The parameter names of a fragment body being checked, so its `$params` references are checked against them |
-
-The other per-call options, `signal`, `timeout` and `trace`, are accepted, but have no effect.
-
-**Returns:** a [`ValidationResult`](/api/errors/#issue-and-validationresult), `{ valid, issues }`. `valid` is `false` exactly when at least one issue has severity `'error'`.
-
-**Throws:** `invalid-options`, only when the options are wrong: an option other than the per-call ones and `params`, a `params` that isn't an array of strings, or a `timeout`, `signal` or `trace` that isn't valid. A problem in the expression, however serious, is reported in `issues` instead.
-
-**Details:**
-
-- It makes the same checks `evaluate()` makes before running anything, and, when given `data`, checks the expression's `$data` paths against it. Nothing is evaluated.
-- `maxDepth` and `maxNodes` are read from the instance, and going over either is an error.
-- Issues are listed in this order: the size-limit errors, then the expression's own issues, in the order they appear in it, then the warnings from checking `data`.
-- The check against `data` covers the paths known before anything runs, not computed ones. It warns at each place a missing path is read, so a path read three times gives three warnings. A read inside a fragment's body is reported at the call, naming the fragment.
-- With `params`, a `$params` reference naming an undeclared parameter is an `unresolved-param` error, with the nearest declared name as its `suggestion`. `params: []` is a body that declares no parameters. Without `params`, every `$params` reference is an error, as it is in any expression outside a fragment.
-- Warnings never stop an evaluation, and `evaluate()` doesn't report them.
-- It compiles the expression afresh every time, and never reads or fills the compile cache.
-
-**See also:** [Checking expressions](/guides/validation/), [Validating a fragment during authoring](/guides/fragments/#validating-a-fragment-during-authoring)
 
 ## `getDependencies()`
 

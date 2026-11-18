@@ -1,8 +1,9 @@
 /**
- * The did-you-mean scan (src/utils.ts): a bounded edit distance that is
- * exact within its bound, and the nearest-name pick built on it (#215).
+ * The did-you-mean scan (src/authoring/nearestName.ts): a bounded edit
+ * distance that is exact within its bound, and the nearest-name pick built
+ * on it (#215).
  */
-import { editDistanceWithin, nearestName } from '../src/utils'
+import { editDistanceWithin, nearestName } from '../src/authoring/nearestName'
 
 /** The textbook unbounded distance, adjacent swaps included, as the oracle. */
 const editDistance = (a: string, b: string): number => {

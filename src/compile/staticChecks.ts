@@ -7,7 +7,7 @@
  *
  * Everything here is option-independent — issues append to the artifact's
  * stored stream. The two option-dependent checks (maxDepth/maxNodes, the
- * sample-data warning) live in FigTree.validate(), which runs them per call
+ * sample-data warning) live in src/validation.ts, which runs them per call
  * against the artifact's stored counts and dependency list.
  */
 import { ErrorCodes } from '../errorCodes'
@@ -19,7 +19,7 @@ import { staticType } from './staticType'
 import type { Constraints, ExpectedType } from '../typeCheck'
 import { EvaluationData } from '../operatorDefinition'
 import type { EvaluationMode } from '../operatorDefinition'
-import { didYouMean, findCycles, listing, nearestName } from '../utils'
+import { didYouMean, findCycles, listing } from '../utils'
 import { validateHelpers } from './helpers'
 import {
   authoredNames,
@@ -42,13 +42,13 @@ import type {
 } from './artifact'
 import type { PathSegment } from '../primitives'
 
-/**
- * Inside a fragment body, `$params` resolves against the declared parameter
- * names: registration passes a body's declarations, and `validate()` its
- * `params` option. Absent, any `$params` reference is an outside-a-body
- * error.
- */
 export interface StaticCheckContext {
+  /**
+   * Inside a fragment body, `$params` resolves against the declared
+   * parameter names: registration passes a body's declarations, and
+   * `validate()` its `params` option. Absent, any `$params` reference is an
+   * outside-a-body error.
+   */
   fragmentParams?: ReadonlySet<string>
 }
 
@@ -573,7 +573,7 @@ const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
       for (const name in supplied) {
         const argument = supplied[name]
         if (declarations[name] === undefined) {
-          const suggestion = nearestName(name, Object.keys(declarations))
+          const suggestion = state.artifact.suggest?.(name, Object.keys(declarations))
           emit(
             state,
             'error',
@@ -703,8 +703,9 @@ const resolveVar = (state: CheckState, node: ReferenceNode) => {
 
 /**
  * An unresolved reference names the parameter it reads (its first key) as
- * `parameter`, where it names one, and an undeclared one carries the
- * nearest declared name as `suggestion`, as a call's unknown argument does.
+ * `parameter`, where it names one, and under `validate()` an undeclared one
+ * carries the nearest declared name as `suggestion`, as a call's unknown
+ * argument does.
  */
 const resolveParam = (state: CheckState, node: ReferenceNode) => {
   const declared = state.context.fragmentParams
@@ -726,7 +727,8 @@ const resolveParam = (state: CheckState, node: ReferenceNode) => {
   // the set it names is declared, finite and local
   if (node.segments.length === 0) return
   if (parameter !== undefined && declared.has(parameter)) return
-  const suggestion = parameter === undefined ? undefined : nearestName(parameter, declared)
+  const suggestion =
+    parameter === undefined ? undefined : state.artifact.suggest?.(parameter, declared)
   emit(
     state,
     'error',

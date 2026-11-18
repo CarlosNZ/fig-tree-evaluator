@@ -63,7 +63,7 @@ export interface InspectReport {
   options: Record<string, Json>
   /** The compiled tree. */
   canonicalForm: InspectNode
-  /** `validate()`'s list under the same options. */
+  /** `validate()`'s list under the same options, without suggestions. */
   issues: InspectIssue[]
   /** Whether a timeout assembles rather than rejects. */
   timeoutShielded: boolean

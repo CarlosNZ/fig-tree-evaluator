@@ -7,6 +7,7 @@
  */
 import { FigTree, FigTreeError } from '../src'
 import { rejection } from './helpers/rejection'
+import { validate } from '../src/authoring'
 
 const fig = new FigTree()
 const ev = (expression: unknown, data?: Record<string, unknown>) =>
@@ -131,7 +132,7 @@ describe('null and the selector', () => {
   })
 
   test('a literal to outside the union fails validate(); a dynamic one fails at runtime', async () => {
-    expect(fig.validate({ $convert: [1, 'integer'] }).valid).toBe(false)
+    expect(validate(fig, { $convert: [1, 'integer'] }).valid).toBe(false)
     expect((await failure({ $convert: [1, '$data.to'] }, { to: 'integer' })).code).toBe(
       'type-check'
     )
@@ -142,7 +143,7 @@ describe('null and the selector', () => {
   })
 
   test('to is required — a single payload is a static error', () => {
-    expect(fig.validate({ $convert: 5 }).issues.map((i) => i.code)).toContain('missing-required')
+    expect(validate(fig, { $convert: 5 }).issues.map((i) => i.code)).toContain('missing-required')
   })
 
   test('a failed cast is catchable, and the mining respelling now runs', async () => {

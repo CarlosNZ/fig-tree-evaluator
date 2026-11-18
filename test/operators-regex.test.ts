@@ -11,13 +11,14 @@
  */
 import { FigTree, FigTreeError } from '../src'
 import { rejection } from './helpers/rejection'
+import { validate } from '../src/authoring'
 
 const fig = new FigTree()
 const ev = (expression: unknown, data?: Record<string, unknown>) =>
   fig.evaluate(expression, data !== undefined ? { data } : {})
 const failure = (expression: unknown, data?: Record<string, unknown>) =>
   rejection<FigTreeError>(ev(expression, data))
-const codes = (expression: unknown) => fig.validate(expression).issues.map((issue) => issue.code)
+const codes = (expression: unknown) => validate(fig, expression).issues.map((issue) => issue.code)
 
 const EMAIL = '^[A-Za-z0-9.]+@[A-Za-z0-9]+\\.[A-Za-z0-9.]+$'
 
@@ -229,7 +230,7 @@ describe('regex — replace', () => {
 
   test('…and validate() reads none of them as a mistyped reference (#249)', () => {
     for (const replacement of ['$1', '$1-$2', '$<year>', '$&', '$$', "$'", '$`'])
-      expect(fig.validate(replace('a', 'a', { replacement })).issues).toEqual([])
+      expect(validate(fig, replace('a', 'a', { replacement })).issues).toEqual([])
   })
 
   test('a replacement from the data is a pattern too: $$ writes a dollar', async () => {
@@ -257,7 +258,7 @@ describe('regex — replace', () => {
 
   test('the result is a string, so it feeds a string position', async () => {
     const node = { $upper: replace('a-b', '-', { replacement: ' ' }) }
-    expect(fig.validate(node).issues).toEqual([])
+    expect(validate(fig, node).issues).toEqual([])
     expect(await ev(node)).toBe('A B')
   })
 
@@ -270,8 +271,7 @@ describe('regex — replace', () => {
 
 describe('regex — a parameter written for another mode', () => {
   const warnings = (expression: unknown, figTree: FigTree = fig) =>
-    figTree
-      .validate(expression)
+    validate(figTree, expression)
       .issues.filter((issue) => issue.severity === 'warning')
       .map((issue) => [issue.code, issue.parameter])
 
@@ -315,7 +315,7 @@ describe('regex — a parameter written for another mode', () => {
   })
 
   test('a mode that is none of them gets its type error alone', () => {
-    const issues = fig.validate({
+    const issues = validate(fig, {
       $regex: { value: 'a', pattern: 'a', mode: 'foo', replacement: '-' },
     }).issues
     expect(issues.map((issue) => [issue.severity, issue.code])).toEqual([['error', 'type-check']])
@@ -350,7 +350,7 @@ describe('regex — flags', () => {
   })
 
   test('g is barred, loudly, with the hint — a literal is caught at authoring', () => {
-    const result = fig.validate({ $regex: { value: 'a', pattern: 'a', flags: 'g' } })
+    const result = validate(fig, { $regex: { value: 'a', pattern: 'a', flags: 'g' } })
     expect(result.valid).toBe(false)
     expect(result.issues[0].message).toContain("mode: 'match'")
   })
@@ -381,7 +381,7 @@ describe('regex — flags', () => {
 
 describe('regex — the pattern', () => {
   test('a malformed LITERAL pattern is an authoring error', () => {
-    const result = fig.validate({ $regex: ['x', '(['] })
+    const result = validate(fig, { $regex: ['x', '(['] })
     expect(result.valid).toBe(false)
     expect(result.issues[0].message).toContain('does not compile')
   })

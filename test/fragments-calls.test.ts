@@ -11,6 +11,7 @@
 import { FigTree, FigTreeError, ErrorCodes, isFigTreeError, coreOperators } from '../src'
 import { boomOp, echoOp, spyOp } from './fixtures/evalOperators'
 import type { FragmentDefinition } from '../src'
+import { validate } from '../src/authoring'
 
 const rejection = async (promise: Promise<unknown>): Promise<FigTreeError> => {
   try {
@@ -167,7 +168,7 @@ describe('declarations govern what a body receives', () => {
         parameters: { pair: { type: ['array', 'null'], constraints: { length: 2 } } },
       },
     })
-    expect(fig.validate({ $read: { pair: null } }).issues).toEqual([])
+    expect(validate(fig, { $read: { pair: null } }).issues).toEqual([])
     expect(await fig.evaluate({ $read: { pair: null } })).toBeNull()
     expect(await fig.evaluate({ $read: { pair: '$data.missing' } })).toBeNull()
   })
@@ -183,7 +184,7 @@ describe('declarations govern what a body receives', () => {
   ] as const)('%s: a null is %s', async (_, declared, behavior, result) => {
     const fig = build({ probe: { expression: '$params.p', parameters: { p: declared } } })
     expect(fig.getFragments()[0].parameters.p.nullBehavior).toBe(behavior)
-    const written = fig.validate({ $probe: { p: null } }).issues
+    const written = validate(fig, { $probe: { p: null } }).issues
     expect(written.some((issue) => issue.code === ErrorCodes.typeCheck)).toBe(behavior === 'error')
     const computed = { $probe: { p: '$data.missing' } }
     if (behavior === 'error')
@@ -218,7 +219,7 @@ describe('declarations govern what a body receives', () => {
   })
 
   test('a literal argument of the wrong type is refused before evaluation', () => {
-    const issues = fig().validate({ $frag: { required: 1, withDefault: 7 } }).issues
+    const issues = validate(fig(), { $frag: { required: 1, withDefault: 7 } }).issues
     expect(issues[0].code).toBe(ErrorCodes.typeCheck)
   })
 })
@@ -245,9 +246,7 @@ describe('the call faces', () => {
 
   test('a stray key is named an argument when the fragment declares it', () => {
     const messages = (expression: object) =>
-      fig()
-        .validate(expression)
-        .issues.map((issue) => issue.message)
+      validate(fig(), expression).issues.map((issue) => issue.message)
     expect(messages({ fragment: 'greet', name: 'Ada' })).toContain(
       "The 'name' argument must go in 'parameters'"
     )
@@ -257,7 +256,7 @@ describe('the call faces', () => {
   })
 
   test('a reference-string payload stays a hard error in shorthand position', () => {
-    const issues = fig().validate({ $greet: '$data.args' }).issues
+    const issues = validate(fig(), { $greet: '$data.args' }).issues
     expect(issues[0].code).toBe(ErrorCodes.malformedNode)
     expect(issues[0].message).toContain('takes an object of named arguments')
   })
@@ -318,7 +317,7 @@ describe('dynamic arguments', () => {
     expect(error.message).toContain("requires 'a'")
     // One condition, one code, on both sides of the boundary: the static
     // form of the same call classifies identically, and reads identically
-    const [statically] = fig().validate({ fragment: 'frag', parameters: { b: 'x' } }).issues
+    const [statically] = validate(fig(), { fragment: 'frag', parameters: { b: 'x' } }).issues
     expect(statically.code).toBe(error.code)
     expect(statically.message).toBe(error.message)
     // The issue names its owner, as an operator issue names its operator
@@ -380,12 +379,12 @@ describe('bare $params', () => {
   })
 
   test('is an error outside a fragment body', () => {
-    const issues = build({}).validate({ $not: '$params' }).issues
+    const issues = validate(build({}), { $not: '$params' }).issues
     expect(issues[0].code).toBe(ErrorCodes.unresolvedParam)
   })
 
   test('bare $vars is an error with its own code', () => {
-    const issues = build({}).validate({ $not: '$vars' }).issues
+    const issues = validate(build({}), { $not: '$vars' }).issues
     expect(issues[0].code).toBe(ErrorCodes.bareVars)
     expect(issues[0].message).toContain('must name a var')
   })
@@ -466,9 +465,9 @@ describe('composition', () => {
   test('noCache is legal on a call node, as the literal true only', () => {
     const fig = build({ frag: { expression: 1 } })
     expect(
-      fig.validate({ fragment: 'frag', noCache: true }).issues.map((i) => i.severity)
+      validate(fig, { fragment: 'frag', noCache: true }).issues.map((i) => i.severity)
     ).not.toContain('error')
-    expect(fig.validate({ fragment: 'frag', noCache: false }).issues[0].code).toBe(
+    expect(validate(fig, { fragment: 'frag', noCache: false }).issues[0].code).toBe(
       ErrorCodes.malformedNode
     )
   })
@@ -598,7 +597,7 @@ describe('v2 corpus', () => {
   // the other side of the error partition: no fallback can answer it
   test('an unknown fragment is a static error, and a fallback cannot rescue it', async () => {
     const fig = v2()
-    expect(fig.validate({ fragment: 'newFragment' }).issues[0].code).toBe(
+    expect(validate(fig, { fragment: 'newFragment' }).issues[0].code).toBe(
       ErrorCodes.unknownFragment
     )
     const error = await rejection(

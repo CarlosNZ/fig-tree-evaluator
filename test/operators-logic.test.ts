@@ -9,6 +9,7 @@
  */
 import { coreOperators, defineOperator, FigTree, FigTreeError } from '../src'
 import { rejection } from './helpers/rejection'
+import { validate } from '../src/authoring'
 
 const fig = new FigTree()
 const ev = (expression: unknown, data?: Record<string, unknown>) =>
@@ -155,7 +156,7 @@ describe('match', () => {
     // Branch keys are compared against runtime values, and `$`-prefixed
     // values are common enough that a label must be able to carry one
     const expression = { $match: ['$data.code', { $USD: 'dollars', EUR: 'euros' }] }
-    expect(fig.validate(expression).issues).toMatchObject([
+    expect(validate(fig, expression).issues).toMatchObject([
       {
         severity: 'warning',
         code: 'unrecognized-identifier',
@@ -167,7 +168,7 @@ describe('match', () => {
   })
 
   test('a label near a registered name says it is a label before suggesting the name', async () => {
-    expect(fig.validate({ $match: ['a', { $plsu: 'x' }] }).issues).toMatchObject([
+    expect(validate(fig, { $match: ['a', { $plsu: 'x' }] }).issues).toMatchObject([
       {
         severity: 'warning',
         message: "'$plsu' is matched as a plain label — did you mean '$plus'?",
@@ -178,7 +179,7 @@ describe('match', () => {
 
   test("only the map's own keys are labels: one inside a branch value is an error", async () => {
     const expression = { $match: ['a', { a: { $USD: 1 } }] }
-    expect(fig.validate(expression).issues).toMatchObject([
+    expect(validate(fig, expression).issues).toMatchObject([
       { severity: 'error', code: 'unrecognized-identifier', path: ['$match', 1, 'a', '$USD'] },
     ])
     expect((await failure(expression)).code).toBe('unrecognized-identifier')
@@ -235,7 +236,7 @@ describe('firstNonNull', () => {
   })
 
   test('a literal empty list warns as a dead expression', () => {
-    const issues = fig.validate({ operator: 'firstNonNull', values: [] }).issues
+    const issues = validate(fig, { operator: 'firstNonNull', values: [] }).issues
     expect(issues.map((issue) => issue.severity)).toContain('warning')
   })
 })
@@ -338,14 +339,14 @@ describe('hand-migrated: v2 6_conditional', () => {
   test('missing parameters fail statically, before evaluation', async () => {
     // v2 reported these at runtime, where a `fallback` could swallow them;
     // in v3 a missing required parameter is a static error by construction
-    const issues = fig.validate({ operator: 'if' }).issues
+    const issues = validate(fig, { operator: 'if' }).issues
     expect(issues.map((issue) => issue.code)).toContain('missing-required')
     expect((await failure({ operator: 'if' })).code).toBe('missing-required')
     // `then` is required, `else` is not
     expect(
-      fig.validate({ operator: 'if', condition: 'YES', else: 'NO' }).issues.map((i) => i.code)
+      validate(fig, { operator: 'if', condition: 'YES', else: 'NO' }).issues.map((i) => i.code)
     ).toContain('missing-required')
-    expect(fig.validate({ operator: 'if', condition: 'YES', then: 'YES' }).valid).toBe(true)
+    expect(validate(fig, { operator: 'if', condition: 'YES', then: 'YES' }).valid).toBe(true)
   })
 })
 

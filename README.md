@@ -157,7 +157,9 @@ Expressions often come from people, and they often run against data you didn't w
 Mistakes in the expression itself are caught before anything runs:
 
 ```js
-fig.validate({ $plsu: [1, 2] })
+import { validate } from 'fig-tree-evaluator/authoring'
+
+validate(fig, { $plsu: [1, 2] })
 // → '$plsu' is not a registered operator or fragment — did you mean '$plus'?
 ```
 

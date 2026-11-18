@@ -8,7 +8,7 @@
  * one of these (implementation-plan working rule 7).
  */
 import { FigTree, defineOperator, OperatorFailure } from '../index'
-import { fallbackCoverage } from '../authoring'
+import { fallbackCoverage, validate } from '../authoring'
 import { outcome, print, section } from './showcase'
 
 const fig = new FigTree({ data: { org: 'Acme' } })
@@ -310,7 +310,7 @@ const main = async () => {
   section('validate() — the same spine, without evaluating')
   // The instance carries data ({ org: 'Acme' }), so the sample-data check
   // runs too and warns about every $data path absent from it
-  const report = fig.validate({
+  const report = validate(fig, {
     total: { $plus: { values: [], expect: 'number' } },
     check: { '$>': ['$data.age', 'eighteen'] },
     name: { $uper: '$data.name' },

@@ -5,6 +5,7 @@
  */
 import { FigTree, FigTreeError } from '../src'
 import { rejection } from './helpers/rejection'
+import { validate } from '../src/authoring'
 
 const fig = new FigTree()
 const ev = (expression: unknown, data?: Record<string, unknown>) =>
@@ -34,7 +35,7 @@ test('an object input is a type error', async () => {
 })
 
 test('a missing value is a static error', () => {
-  expect(fig.validate({ operator: 'length' }).issues.map((i) => i.code)).toContain(
+  expect(validate(fig, { operator: 'length' }).issues.map((i) => i.code)).toContain(
     'missing-required'
   )
 })

@@ -14,6 +14,7 @@ import { CONTENT_LAYER_SIZE } from '../src/compile'
 import { compileSpyOp, type CompileSpy } from './fixtures/evalOperators'
 import { coreOperators } from '../src/operators'
 import { makeOp } from './fixtures/registryOptions'
+import { validate } from '../src/authoring'
 
 /** An unrelated operator, so the registry can change around the counter. */
 const extraOp = makeOp('extra')
@@ -156,10 +157,10 @@ describe('validate() stays out of the cache', () => {
   it('neither warms the cache nor reads it', async () => {
     const { fig, spy } = rig()
     const expression = expr('x')
-    fig.validate(expression)
+    validate(fig, expression)
     await fig.evaluate(expression)
     expect(spy.compiles()).toBe(2)
-    fig.validate(expression)
+    validate(fig, expression)
     expect(spy.compiles()).toBe(3)
   })
 
@@ -168,7 +169,7 @@ describe('validate() stays out of the cache', () => {
     // A stray `$` key is inert data, but validate must still flag it
     const config = { title: '$nosuchthing' }
     expect(await fig.evaluate(config)).toBe(config)
-    const { issues } = fig.validate(config)
+    const { issues } = validate(fig, config)
     expect(issues.map((issue) => issue.severity)).toEqual(['warning'])
     // ...and evaluate's identity return is untouched by the report
     expect(await fig.evaluate(config)).toBe(config)

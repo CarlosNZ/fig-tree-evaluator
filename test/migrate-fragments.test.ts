@@ -33,6 +33,7 @@ import {
   v3Outcome,
   type Outcome,
 } from './helpers/migration'
+import { validate } from '../src/authoring'
 
 type Raised = { code: IssueCode; path: Path }
 
@@ -1406,7 +1407,7 @@ describe("a call's `useCache`", () => {
     expect(raised(result.issues)).toEqual(issues)
     // Valid against the converted definitions, with no `noCache` v3 calls
     // redundant or dead
-    const reported = fig.validate(result.expression).issues
+    const reported = validate(fig, result.expression).issues
     expect(reported.filter((issue) => issue.severity === 'error')).toEqual([])
     expect(reported.filter((issue) => issue.code === 'useless-modifier')).toEqual([])
   })

@@ -13,7 +13,7 @@
  */
 import { FigTree, FigTreeError, ErrorCodes, httpOperators } from '../src'
 import { coreOperators } from '../src/operators'
-import { fallbackCoverage } from '../src/authoring'
+import { fallbackCoverage, validate } from '../src/authoring'
 import { MockHttpClient } from './helpers'
 import { rejection } from './helpers/rejection'
 import { compileSpyOp } from './fixtures/evalOperators'
@@ -464,7 +464,7 @@ describe('worked example 4 — a failure inside a fragment body', () => {
     const strict = build({
       frag: { expression: '$params.role', parameters: { role: { type: 'string' } } },
     })
-    expect(strict.validate({ $frag: { role: 7 } }).issues[0].code).toBe(ErrorCodes.typeCheck)
+    expect(validate(strict, { $frag: { role: 7 } }).issues[0].code).toBe(ErrorCodes.typeCheck)
   })
 })
 

@@ -8,11 +8,12 @@
 import { defineOperator, EvaluationData, FigTree } from '../src'
 import type { Issue } from '../src'
 import { compileOps } from './fixtures/compileRegistry'
+import { validate } from '../src/authoring'
 
 const fig = new FigTree({ operators: [compileOps()] })
 
-const issuesOf = (expression: unknown, options?: Parameters<FigTree['validate']>[1]) =>
-  fig.validate(expression, options).issues
+const issuesOf = (expression: unknown, options?: Parameters<typeof validate>[2]) =>
+  validate(fig, expression, options).issues
 
 const errorCodes = (expression: unknown) =>
   issuesOf(expression)
@@ -54,8 +55,7 @@ describe('literal parameter values vs declared types, constraints included', () 
     })
     const hosts = new FigTree({ operators: [compileOps(), [pickKey]] })
     const codes = (key: unknown) =>
-      hosts
-        .validate({ $pickKey: { from: { a: 1 }, key } })
+      validate(hosts, { $pickKey: { from: { a: 1 }, key } })
         .issues.filter((issue) => issue.severity === 'error')
         .map((issue) => issue.code)
     expect(codes({ $plus: ['a', 'b'] })).toEqual(['type-check'])
@@ -290,7 +290,7 @@ describe('as renaming', () => {
     expect(errorCodes(nested('item'))).toHaveLength(0)
     // The inner index name clashing with an outer name
     const inner = { operator: 'map', input: [2], as: 'order', each: 1 }
-    const { issues } = fig.validate({ operator: 'map', input: [1], as: 'orderIndex', each: inner })
+    const { issues } = validate(fig, { operator: 'map', input: [1], as: 'orderIndex', each: inner })
     const errors = issues.filter((issue) => issue.severity === 'error')
     expect(errors.map((issue) => issue.message)).toEqual([
       "'order' gives '$orderIndex', already in use by an enclosing 'as'",
@@ -309,7 +309,7 @@ describe('vars cycles, shadowing, unreferenced', () => {
   })
 
   test('a cycle is reported on its members, not on a var that leads into it (#230)', () => {
-    const issues = fig.validate({
+    const issues = validate(fig, {
       vars: { c: '$vars.a', a: '$vars.b', b: '$vars.a' },
       x: '$vars.c',
     }).issues
@@ -320,7 +320,7 @@ describe('vars cycles, shadowing, unreferenced', () => {
   })
 
   test('a self-cycle and a three-var cycle name their members', () => {
-    const self = fig.validate({ vars: { a: '$vars.a' }, x: '$vars.a' }).issues
+    const self = validate(fig, { vars: { a: '$vars.a' }, x: '$vars.a' }).issues
     expect(self.filter((issue) => issue.code === 'var-cycle')).toEqual([
       expect.objectContaining({
         path: ['vars', 'a'],
@@ -328,7 +328,7 @@ describe('vars cycles, shadowing, unreferenced', () => {
       }),
     ])
 
-    const three = fig.validate({
+    const three = validate(fig, {
       vars: { a: '$vars.b', b: '$vars.c', c: '$vars.a' },
       x: '$vars.a',
     }).issues
@@ -341,7 +341,7 @@ describe('vars cycles, shadowing, unreferenced', () => {
   })
 
   test('two separate cycles in one block are both reported', () => {
-    const issues = fig.validate({
+    const issues = validate(fig, {
       vars: { a: '$vars.b', b: '$vars.a', c: '$vars.d', d: '$vars.c' },
       x: ['$vars.a', '$vars.c'],
     }).issues
@@ -390,15 +390,15 @@ describe('maxDepth / maxNodes — instance configuration, compared against store
     new FigTree({ operators: [compileOps()], ...limits })
 
   test('limits are compared at validation — the artifact stays option-independent', () => {
-    expect(fig.validate(deep).valid).toBe(true)
-    const limited = withLimits({ maxDepth: 2 }).validate(deep)
+    expect(validate(fig, deep).valid).toBe(true)
+    const limited = validate(withLimits({ maxDepth: 2 }), deep)
     expect(limited.issues.map((issue) => issue.code)).toContain('max-depth')
-    expect(fig.validate(deep).valid).toBe(true)
+    expect(validate(fig, deep).valid).toBe(true)
   })
 
   test('maxNodes counts evaluable nodes — the one operator here', () => {
-    expect(withLimits({ maxNodes: 1 }).validate(deep).valid).toBe(true)
-    const result = withLimits({ maxNodes: 0 }).validate(deep)
+    expect(validate(withLimits({ maxNodes: 1 }), deep).valid).toBe(true)
+    const result = validate(withLimits({ maxNodes: 0 }), deep)
     expect(result.issues.map((issue) => issue.code)).toContain('max-nodes')
   })
 })
@@ -422,7 +422,7 @@ describe('the static layer applies null policy before the type check', () => {
       parameters: { x: { type: 'number', evaluationMode: 'lazy', required: false } },
       evaluate: () => null,
     })
-    const issues = new FigTree({ operators: [later] }).validate({ $later: { x: null } }).issues
+    const issues = validate(new FigTree({ operators: [later] }), { $later: { x: null } }).issues
     expect(issues.map((issue) => issue.code)).toEqual(['type-check'])
   })
 
@@ -493,7 +493,7 @@ describe('operator validate hooks', () => {
         evaluate: ({ value }) => value,
       })
       const hosts = new FigTree({ operators: [compileOps(), [fussy]] })
-      const issues = hosts.validate({ $fussy: 1 }).issues
+      const issues = validate(hosts, { $fussy: 1 }).issues
       expect(issues.map(({ code, path, operator }) => ({ code, path, operator }))).toEqual([
         { code: 'operator-validate', path: [], operator: 'fussy' },
       ])
@@ -533,7 +533,7 @@ describe("a validate hook reads each parameter's effective value", () => {
       operators: [probe],
       ...(operatorDefaults !== undefined ? { operatorDefaults: { probe: operatorDefaults } } : {}),
     })
-    const issue = figTree.validate(expression).issues.find((i) => i.code === 'operator-validate')
+    const issue = validate(figTree, expression).issues.find((i) => i.code === 'operator-validate')
     return JSON.parse(issue!.message)
   }
   const received = (expression: unknown, operatorDefaults?: Record<string, unknown>) =>
@@ -579,7 +579,7 @@ describe("a validate hook reads each parameter's effective value", () => {
 describe('sample-data check (only when data is supplied)', () => {
   test('warns on statically-known $data paths absent from the sample', () => {
     const expression = { a: '$data.user.name', b: '$data.missing.path' }
-    const result = fig.validate(expression, { data: { user: { name: 'Ada' } } })
+    const result = validate(fig, expression, { data: { user: { name: 'Ada' } } })
     const misses = result.issues.filter((issue) => issue.code === 'missing-data-path')
     expect(misses).toHaveLength(1)
     expect(misses[0].severity).toBe('warning')
@@ -591,7 +591,8 @@ describe('sample-data check (only when data is supplied)', () => {
   })
 
   test('a literal get path is checked too — the sugar equivalence', () => {
-    const result = fig.validate(
+    const result = validate(
+      fig,
       { a: { $get: 'user.name' }, b: { $get: 'missing.path' } },
       { data: { user: { name: 'Ada' } } }
     )
@@ -601,9 +602,9 @@ describe('sample-data check (only when data is supplied)', () => {
   })
 
   const missesOf = (figTree: FigTree, expression: unknown, data: Record<string, unknown>) =>
-    figTree
-      .validate(expression, { data })
-      .issues.filter((issue) => issue.code === 'missing-data-path')
+    validate(figTree, expression, { data }).issues.filter(
+      (issue) => issue.code === 'missing-data-path'
+    )
 
   test('one warning per reading node, each at its own path', () => {
     const expression = {
@@ -646,7 +647,8 @@ describe('sample-data check (only when data is supplied)', () => {
   })
 
   test('a get reading a supplied `from` is not a $data path, so it is not checked', () => {
-    const result = fig.validate(
+    const result = validate(
+      fig,
       { a: { $get: { path: 'missing.path', from: { $plus: [1, 2] } } } },
       { data: {} }
     )
@@ -656,7 +658,7 @@ describe('sample-data check (only when data is supplied)', () => {
 
 describe('useless modifiers on literal', () => {
   test('fallback / vars / noCache on literal warn as dead', () => {
-    const result = fig.validate({ $literal: { x: 1 }, fallback: 2, noCache: true })
+    const result = validate(fig, { $literal: { x: 1 }, fallback: 2, noCache: true })
     const dead = result.issues.filter((issue) => issue.code === 'useless-modifier')
     expect(dead).toHaveLength(2)
     expect(result.valid).toBe(true)
@@ -690,7 +692,7 @@ describe('dead bindings', () => {
 
   test('the warning names both bindings, renamed or not', () => {
     const message = (expression: object) =>
-      fig.validate(expression).issues.find((issue) => issue.code === 'dead-binding')?.message
+      validate(fig, expression).issues.find((issue) => issue.code === 'dead-binding')?.message
     expect(message({ operator: 'map', input: [1], each: 1 })).toBe(
       "'map' never reads $element or $index in its 'each'"
     )

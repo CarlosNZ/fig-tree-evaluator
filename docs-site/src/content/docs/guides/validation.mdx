@@ -10,7 +10,7 @@ import Expression from '../../../components/Expression.astro'
 
 As mentioned in [How evaluation works](/concepts/evaluation/#compiled-first-then-run), FigTree is _strict where it can be, and forgiving where it has to be_; in other words, fail loudly before an expression runs if possible (so you can catch it during authoring), but handle runtime issues gracefully when possible.
 
-In order to meet this promise, your FigTree instance provides some authoring-time validation and inspection methods to show you what's wrong and help you fix it.
+In order to meet this promise, FigTree provides some authoring-time validation and inspection tools to show you what's wrong and help you fix it.
 
 If you're authoring expressions by hand, you'd want to validate them via CLI script, or on import to your app. If providing a GUI editor, you'd integrate this validation into the UI.
 
@@ -20,12 +20,14 @@ If you're authoring expressions by hand, you'd want to validate them via CLI scr
 
 ## Validating before you store
 
-`validate()` finds all the [static errors](#static-errors) in an expression, along with warnings about likely slips. These are the same checks `evaluate()` makes before it runs anything, but `validate()` only reports what it finds — nothing is evaluated. It needs no data, never throws because of what's in the expression, and is synchronous.
+[`validate()`](/tooling/authoring/#validate), from `fig-tree-evaluator/authoring`, finds all the [static errors](#static-errors) in an expression, along with warnings about likely slips. These are the same checks `evaluate()` makes before it runs anything, but `validate()` only reports what it finds — nothing is evaluated. It needs no data, never throws because of what's in the expression, and is synchronous.
 
 It returns whether the expression is `valid`, and a list of `issues`:
 
 ```ts title="validate.ts"
-fig.validate({
+import { validate } from 'fig-tree-evaluator/authoring'
+
+validate(fig, {
   $if: {
     condition: '$data.isMember',
     thn: 'Member price', // Oops, typo
@@ -73,12 +75,14 @@ Each **issue** is one problem found in the expression, with:
 
 ### Errors and warnings
 
-An issue with severity `'error'` is something `evaluate()` would refuse to run. `valid` is `false` exactly when there's at least one, and evaluating the same expression throws a `FigTreeError` with the first error's `code` and `message`, and the whole list in `error.issues`.
+An issue with severity `'error'` is something `evaluate()` would refuse to run. `valid` is `false` exactly when there's at least one, and evaluating the same expression throws a `FigTreeError` with the first error's `code` and `message`, and the whole list in `error.issues`. Those leave out the "did you mean": only `validate()` works one out, since it's there for whoever is fixing the expression.
 
 A `'warning'` is something that's allowed, but probably a slip. Warnings never stop an expression from running, and `evaluate()` doesn't report them, so `validate()` is the place to look:
 
 ```ts title="warning.ts"
-fig.validate({ $buildString: ['Hello, %1', '$dta.name'] })
+import { validate } from 'fig-tree-evaluator/authoring'
+// ---cut---
+validate(fig, { $buildString: ['Hello, %1', '$dta.name'] })
 // => {
 //      valid: true,
 //      issues: [
@@ -169,7 +173,10 @@ But `plus` _can_ return a string, so this one is left to run, and works or fails
 A misspelt `$data` path isn't an error, since a missing value is just `null` ([Missing values](/concepts/data/#missing-values)). Give `validate()` some sample data, and it warns about every `$data` path the sample doesn't have:
 
 ```ts title="sample.ts"
-fig.validate(
+import { validate } from 'fig-tree-evaluator/authoring'
+// ---cut---
+validate(
+  fig,
   { $plus: ['$data.subtotal', '$data.shiping'] },
   { data: { subtotal: 120, shipping: 5.5 } }
 )

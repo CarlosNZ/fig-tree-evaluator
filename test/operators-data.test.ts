@@ -13,6 +13,7 @@
  */
 import { FigTree, FigTreeError } from '../src'
 import { rejection } from './helpers/rejection'
+import { validate } from '../src/authoring'
 
 const fig = new FigTree()
 const ev = (expression: unknown, data?: Record<string, unknown>) =>
@@ -103,7 +104,7 @@ describe('get — the path grammar', () => {
   })
 
   test('a malformed LITERAL path is an authoring error, caught before evaluation', () => {
-    const result = fig.validate({ $get: 'a[' })
+    const result = validate(fig, { $get: 'a[' })
     expect(result.valid).toBe(false)
     expect(result.issues.map((issue) => issue.code)).toContain('operator-validate')
   })
@@ -409,7 +410,7 @@ describe('buildObject', () => {
 
 describe('buildObject — static findings', () => {
   test('duplicate literal keys warn', () => {
-    const issues = fig.validate({
+    const issues = validate(fig, {
       $buildObject: [
         { key: 'k', value: 1 },
         { key: 'k', value: 2 },
@@ -421,7 +422,7 @@ describe('buildObject — static findings', () => {
 
   test('distinct literal keys draw nothing', () => {
     expect(
-      fig.validate({
+      validate(fig, {
         $buildObject: [
           { key: 'a', value: 1 },
           { key: 'b', value: 2 },
@@ -431,7 +432,7 @@ describe('buildObject — static findings', () => {
   })
 
   test('a literal empty entries is a dead expression, warned not errored', () => {
-    const result = fig.validate({ $buildObject: [] })
+    const result = validate(fig, { $buildObject: [] })
     expect(result.valid).toBe(true)
     expect(result.issues.map((issue) => issue.severity)).toEqual(['warning'])
   })

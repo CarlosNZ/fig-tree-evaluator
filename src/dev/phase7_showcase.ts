@@ -15,6 +15,7 @@
  */
 import { FigTree } from '../index'
 import { coreOperators } from '../operators'
+import { validate } from '../authoring'
 import { outcome, print, section } from './showcase'
 
 const data = {
@@ -42,8 +43,7 @@ const show = async (
 ) => print(label, expression, await outcome(() => fig.evaluate(expression, options)))
 
 const lint = (label: string, expression: unknown) => {
-  const issues = fig
-    .validate(expression)
+  const issues = validate(fig, expression)
     .issues.map((issue) => `${issue.severity} ${issue.code}`)
     .join(', ')
   print(label, expression, `⚑ ${issues === '' ? 'no issues' : issues}`)

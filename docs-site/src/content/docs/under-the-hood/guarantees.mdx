@@ -52,7 +52,7 @@ The promise covers FigTree and its own operators. A custom operator is given the
 
 ## Checking never throws
 
-> For any expression, `fig.validate()` returns a report and never throws, however malformed the expression is. The report lists every problem found, not just the first, each with its path in the expression. It can throw _only_ when its own options are invalid.
+> For any expression, `validate()` returns a report and never throws, however malformed the expression is. The report lists every problem found, not just the first, each with its path in the expression. It can throw _only_ when it's misused: given something other than a FigTree instance, or options that are invalid.
 
 Whoever is fixing an expression sees everything wrong with it at once, and an editor can show every problem in place. Something that can't be compiled at all, such as an operator that doesn't exist or a node with two operators in it, is reported, and checking carries on with the rest of the expression. That includes an expression nested too deep to walk.
 
@@ -60,7 +60,7 @@ Whoever is fixing an expression sees everything wrong with it at once, and an ed
 
 ## A validated expression only fails at runtime
 
-> Every error FigTree raises about an expression is one of three kinds: static, runtime, or the kill switch. If `fig.validate()` reports no errors for an expression, evaluating it on the same instance, with the same options, never raises a static error, and any other error it raises, other than the kill switch, goes through its fallbacks.
+> Every error FigTree raises about an expression is one of three kinds: static, runtime, or the kill switch. If `validate()` reports no errors for an expression, evaluating it on the same instance, with the same options, never raises a static error, and any other error it raises, other than the kill switch, goes through its fallbacks.
 
 | Error kind      | For example                                                                                                                                       | Found                     | Caught by a fallback?                                                    |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------ |
@@ -68,9 +68,9 @@ Whoever is fixing an expression sees everything wrong with it at once, and an ed
 | **Runtime**     | A request that fails or takes longer than its own `timeout`, a value of the wrong type read from the data, a custom operator's failure            | While the expression runs | Always, by the nearest one around it                                     |
 | **Kill switch** | The evaluation's `timeout` running out, or its `signal` being aborted                                                                             | At any time               | No, apart from [timeout shielding](/guides/fallbacks/#timeout-shielding) |
 
-`fig.validate()` and `fig.evaluate()` run the same checks, so if `fig.validate()` reports no static error, there is none for `fig.evaluate()` to find. When there is one, `fig.evaluate()` throws it before anything runs. A runtime error is one a [fallback](/guides/fallbacks/) can plan for, since a problem in the data can't be fixed in advance ([Strict where it can be, and forgiving where it has to be](/under-the-hood/design/#strict-where-it-can-be-and-forgiving-where-it-has-to-be)). The kill switch is the host's, not the expression's: it stops everything, fallbacks included.
+`validate()` and `fig.evaluate()` run the same checks, so if `validate()` reports no static error, there is none for `fig.evaluate()` to find. When there is one, `fig.evaluate()` throws it before anything runs. A runtime error is one a [fallback](/guides/fallbacks/) can plan for, since a problem in the data can't be fixed in advance ([Strict where it can be, and forgiving where it has to be](/under-the-hood/design/#strict-where-it-can-be-and-forgiving-where-it-has-to-be)). The kill switch is the host's, not the expression's: it stops everything, fallbacks included.
 
-So any error that escapes both `fig.validate()` and every fallback, other than the kill switch, would be a bug in FigTree, and worth [reporting](https://github.com/CarlosNZ/fig-tree-evaluator/issues). An error in the host's own call, such as an option that isn't valid, isn't one of these three kinds.
+So any error that escapes both `validate()` and every fallback, other than the kill switch, would be a bug in FigTree, and worth [reporting](https://github.com/CarlosNZ/fig-tree-evaluator/issues). An error in the host's own call, such as an option that isn't valid, isn't one of these three kinds.
 
 The promise is why a static error should never reach a stored expression ([Checking expressions](/guides/validation/)): no fallback will ever catch it, so it fails on every evaluation.
 

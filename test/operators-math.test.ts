@@ -7,6 +7,7 @@
  */
 import { FigTree, FigTreeError } from '../src'
 import { rejection } from './helpers/rejection'
+import { validate } from '../src/authoring'
 
 const fig = new FigTree()
 const ev = (expression: unknown, data?: Record<string, unknown>) =>
@@ -84,10 +85,10 @@ describe('plus', () => {
   })
 
   test('validate() reports mixed literal operands, from the declared constraint', () => {
-    const [issue] = fig.validate({ $plus: [1, 'a'] }).issues
+    const [issue] = validate(fig, { $plus: [1, 'a'] }).issues
     expect(issue).toMatchObject({ severity: 'error', code: 'type-check', path: ['$plus'] })
     expect(issue.message).toContain('received string beside number')
-    expect(fig.validate({ $plus: [true, false] }).issues[0].message).toContain(
+    expect(validate(fig, { $plus: [true, false] }).issues[0].message).toContain(
       'received array of boolean'
     )
   })
@@ -135,16 +136,16 @@ describe('plus', () => {
   })
 
   test('a literal empty values fails validate() unless a literal expect pins it', () => {
-    const unpinned = fig.validate({ $plus: [] })
+    const unpinned = validate(fig, { $plus: [] })
     expect(unpinned.valid).toBe(false)
-    const pinned = fig.validate({ $plus: { values: [], expect: 'number' } })
+    const pinned = validate(fig, { $plus: { values: [], expect: 'number' } })
     expect(pinned.valid).toBe(true)
     expect(pinned.issues.some((issue) => issue.severity === 'warning')).toBe(true)
   })
 
   test('…and an operatorDefaults expect pins it as a literal one does', async () => {
     const pinnedByHost = new FigTree({ operatorDefaults: { plus: { expect: 'number' } } })
-    expect(pinnedByHost.validate({ $plus: [] }).valid).toBe(true)
+    expect(validate(pinnedByHost, { $plus: [] }).valid).toBe(true)
     expect(await pinnedByHost.evaluate({ $plus: [] })).toBe(0)
   })
 
@@ -161,7 +162,7 @@ describe('plus', () => {
   })
 
   test('a missing values parameter is a static error', () => {
-    expect(fig.validate({ operator: '+' }).issues.map((i) => i.code)).toContain('missing-required')
+    expect(validate(fig, { operator: '+' }).issues.map((i) => i.code)).toContain('missing-required')
   })
 })
 
@@ -195,17 +196,17 @@ describe('subtract / divide / modulo', () => {
 
   test('a non-number operand is a type error, not NaN', async () => {
     expect((await failure({ $subtract: [0.3, '$data.s'] }, { s: 'five' })).code).toBe('type-check')
-    expect(fig.validate({ $divide: [0.3, 'five'] }).valid).toBe(false)
+    expect(validate(fig, { $divide: [0.3, 'five'] }).valid).toBe(false)
   })
 
   test('arity is fixed: surplus and missing operands are static errors', () => {
-    expect(fig.validate({ $subtract: [0.3] }).issues.map((i) => i.code)).toContain(
+    expect(validate(fig, { $subtract: [0.3] }).issues.map((i) => i.code)).toContain(
       'missing-required'
     )
-    expect(fig.validate({ $divide: [1, 2, 3] }).issues.map((i) => i.code)).toContain(
+    expect(validate(fig, { $divide: [1, 2, 3] }).issues.map((i) => i.code)).toContain(
       'positional-arity'
     )
-    expect(fig.validate({ operator: '-', minus: 0.3 }).valid).toBe(false)
+    expect(validate(fig, { operator: '-', minus: 0.3 }).valid).toBe(false)
   })
 
   test('null operands propagate', async () => {
@@ -226,7 +227,7 @@ describe('multiply', () => {
 
   test('empty input is 1 — the empty product (row 12); a literal [] warns', async () => {
     expect(await ev({ $multiply: '$data.factors' }, { factors: [] })).toBe(1)
-    const result = fig.validate({ $multiply: [] })
+    const result = validate(fig, { $multiply: [] })
     expect(result.valid).toBe(true)
     expect(result.issues.some((issue) => issue.severity === 'warning')).toBe(true)
   })
@@ -292,12 +293,12 @@ describe('min / max', () => {
 
   test('heterogeneous candidates are a type error', async () => {
     expect((await failure({ $min: '$data.v' }, { v: [1, 'a'] })).code).toBe('type-check')
-    expect(fig.validate({ $max: [1, 'a'] }).valid).toBe(false)
+    expect(validate(fig, { $max: [1, 'a'] }).valid).toBe(false)
   })
 
   test('empty input is an error, no identity in the domain', async () => {
     expect((await failure({ $min: '$data.empty' }, { empty: [] })).code).toBe('empty-aggregate')
-    expect(fig.validate({ $max: [] }).valid).toBe(false)
+    expect(validate(fig, { $max: [] }).valid).toBe(false)
     expect(await ev({ $min: '$data.empty', fallback: 0 }, { empty: [] })).toBe(0)
   })
 

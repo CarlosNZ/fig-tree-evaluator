@@ -5,7 +5,7 @@ import type {
   FigTree,
   OperatorAnalysis,
 } from 'fig-tree-evaluator'
-import { fallbackCoverage } from 'fig-tree-evaluator/authoring'
+import { fallbackCoverage, validate } from 'fig-tree-evaluator/authoring'
 
 type Analyses = readonly (OperatorAnalysis | readonly OperatorAnalysis[])[]
 
@@ -43,7 +43,7 @@ export const useFallbackCoverage = (
       const id = ++run.current
       // fallbackCoverage() reports only the static errors of an expression
       // that has them, so it's validate() that says whether to show any
-      const result = figTree.validate(current.expression).valid
+      const result = validate(figTree, current.expression).valid
         ? await fallbackCoverage(
             figTree,
             current.expression,

@@ -6,10 +6,11 @@
  * wording is never asserted — codes, severities and paths only.
  */
 import { FigTree } from '../src'
+import { validate } from '../src/authoring'
 
 const fig = new FigTree()
 
-const issuesOf = (expression: unknown) => fig.validate(expression).issues
+const issuesOf = (expression: unknown) => validate(fig, expression).issues
 
 const codesOf = (expression: unknown, severity: 'error' | 'warning') =>
   issuesOf(expression)
@@ -22,7 +23,7 @@ const inValue = (fallback: unknown) => ({ $round: { value: { ...divide, fallback
 describe('fallback feeding-position check', () => {
   test('a constant fallback its position can never take warns, at the fallback', async () => {
     const expression = inValue('n/a')
-    const result = fig.validate(expression)
+    const result = validate(fig, expression)
     expect(result.valid).toBe(true)
     expect(result.issues).toEqual([
       expect.objectContaining({
@@ -100,9 +101,11 @@ describe('an operatorDefaults fallback', () => {
   const withDefault = (fallback: unknown) =>
     new FigTree({ operatorDefaults: { divide: { fallback } } })
   const issuesUnder = (fallback: unknown, expression: unknown) =>
-    withDefault(fallback)
-      .validate(expression)
-      .issues.map(({ severity, code, path }) => ({ severity, code, path }))
+    validate(withDefault(fallback), expression).issues.map(({ severity, code, path }) => ({
+      severity,
+      code,
+      path,
+    }))
 
   test("is checked where the node has no fallback of its own, on the node's path", () => {
     expect(issuesUnder('n/a', { $round: { value: divide } })).toEqual([

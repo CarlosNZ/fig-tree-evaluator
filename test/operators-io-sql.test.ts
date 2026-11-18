@@ -16,6 +16,7 @@ import type { ValidatedOperatorDefinition } from '../src'
 import { MockSqlConnection } from './helpers'
 import { spyOp } from './fixtures/evalOperators'
 import { rejection } from './helpers/rejection'
+import { validate } from '../src/authoring'
 
 const PEOPLE = [
   { id: 1, name: 'Ada' },
@@ -168,7 +169,7 @@ describe('shape', () => {
   })
 
   it('validates a literal shape at authoring time', () => {
-    const report = withDb(db()).validate({ $sql: { query: 'SELECT 1', shape: 'row' } })
+    const report = validate(withDb(db()), { $sql: { query: 'SELECT 1', shape: 'row' } })
     expect(report.valid).toBe(false)
   })
 })
@@ -239,7 +240,7 @@ describe('the read contract is documentation, not a lint', () => {
     // Considered and dropped (Carl, September 2026): mutating POSTs are
     // equally reachable and equally unlintable, so singling out SQL would
     // be inconsistent. The description carries the guidance instead
-    const report = withDb(db()).validate({ $sql: ['UPDATE jobs SET run = now()'] })
+    const report = validate(withDb(db()), { $sql: ['UPDATE jobs SET run = now()'] })
     expect(report.issues).toEqual([])
   })
 })

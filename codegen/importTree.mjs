@@ -63,6 +63,7 @@ const TREE = [
       row('httpOperators, FetchClient'),
       row('sqlOperators, PostgresConnection'),
       row('toCanonical, toShorthand'),
+      row('validate'),
       row('fallbackCoverage', row('declareAnalysis'))
     )
   ),

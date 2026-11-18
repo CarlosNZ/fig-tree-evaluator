@@ -219,7 +219,7 @@ const checks: {
     call: () => operatorSet(coreOperators, { except: 'uper' }),
     code: ErrorCodes.unknownOperator,
     path: ['except'],
-    message: "'uper' is not an operator in the input — did you mean 'upper'?",
+    message: "'uper' is not an operator in the input",
   },
   {
     id: 'a name selector that is an alias',
@@ -457,12 +457,12 @@ describe('operatorSet — checks', () => {
       {
         code: ErrorCodes.unknownOperator,
         path: ['only'],
-        message: "'uper' is not an operator in the input — did you mean 'upper'?",
+        message: "'uper' is not an operator in the input",
       },
     ])
   })
 
-  it('names an unknown category, suggesting the nearest', () => {
+  it('names an unknown category', () => {
     const error = invalidCall(() =>
       operatorSet(coreOperators, { only: { category: 'maths' as OperatorCategory } })
     )
@@ -470,15 +470,16 @@ describe('operatorSet — checks', () => {
       expect.objectContaining({
         code: ErrorCodes.invalidOptions,
         path: ['only', 'category'],
-        message: "'maths' is not a category — did you mean 'math'?",
-        suggestion: 'math',
+        message: "'maths' is not a category",
       }),
     ])
   })
 
-  it('suggests the canonical name for an alias, and the nearest for a typo', () => {
+  // A did-you-mean is validate()'s alone (#231); an alias's canonical name
+  // is no guess
+  it('suggests the canonical name for an alias, and nothing for a typo', () => {
     const error = invalidCall(() => operatorSet(coreOperators, { except: ['+', 'uper'] }))
-    expect(error.issues?.map(({ suggestion }) => suggestion)).toEqual(['plus', 'upper'])
+    expect(error.issues?.map(({ suggestion }) => suggestion)).toEqual(['plus', undefined])
   })
 
   it('collects every problem into one throw', () => {

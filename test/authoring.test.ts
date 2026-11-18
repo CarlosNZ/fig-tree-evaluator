@@ -34,7 +34,7 @@ import type {
   OperatorAnalysis,
 } from '../src'
 import * as authoring from '../src/authoring'
-import { declareAnalysis, fallbackCoverage } from '../src/authoring'
+import { declareAnalysis, fallbackCoverage, validate } from '../src/authoring'
 
 const risky = defineOperator({
   name: 'risky',
@@ -70,8 +70,8 @@ const uncovered = async (expression: unknown, instance: FigTree = fig) =>
 const external = 'operator-failure'
 const node = { $risky: 1 }
 
-test('the subpath exports fallbackCoverage and declareAnalysis, and its types from the root', async () => {
-  expect(Object.keys(authoring)).toEqual(['declareAnalysis', 'fallbackCoverage'])
+test('the subpath exports fallbackCoverage, declareAnalysis and validate, and its types from the root', async () => {
+  expect(Object.keys(authoring).sort()).toEqual(['declareAnalysis', 'fallbackCoverage', 'validate'])
   const gamut = (params: Record<string, Gamut>, helpers: GamutHelpers): Gamut =>
     helpers.union(params.value, helpers.exactly(null))
   const occurs: Answer = 'maybe'
@@ -1660,9 +1660,9 @@ describe('static errors', () => {
     'agrees with validate() and evaluate(): %s',
     async (_label, expression, instance) => {
       const { uncovered } = await fallbackCoverage(instance, expression)
-      const errors = instance
-        .validate(expression)
-        .issues.filter((issue) => issue.severity === 'error')
+      const errors = validate(instance, expression).issues.filter(
+        (issue) => issue.severity === 'error'
+      )
       expect(uncovered).toEqual(
         errors.map(({ path, code, message, operator, parameter }) => ({
           path,

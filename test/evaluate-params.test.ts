@@ -7,6 +7,7 @@
 import { FigTree, FigTreeError, EvaluationData } from '../src'
 import type { FigTreeOptions, PerElement } from '../src'
 import { boomOp, echoOp, spyOp, type Spy } from './fixtures/evalOperators'
+import { validate } from '../src/authoring'
 
 const rejection = async (promise: Promise<unknown>): Promise<FigTreeError> => {
   try {
@@ -317,7 +318,7 @@ describe('the runtime type check', () => {
       values: { type: ['array', 'null'], nullPolicy: 'accept', constraints: { length: 2 } },
     })
     const fig = figWith([spy])
-    expect(fig.validate({ $pairOrNull: { values: null } }).issues).toEqual([])
+    expect(validate(fig, { $pairOrNull: { values: null } }).issues).toEqual([])
     await fig.evaluate({ $pairOrNull: { values: null } })
     await fig.evaluate({ $pairOrNull: { values: '$data.missing' } })
     expect(spy.calls).toEqual([{ values: null }, { values: null }])

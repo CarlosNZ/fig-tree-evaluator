@@ -13,6 +13,7 @@
 import { coreOperators, FigTree, FigTreeError } from '../src'
 import { latencyOp } from './fixtures/evalOperators'
 import { rejection } from './helpers/rejection'
+import { validate } from '../src/authoring'
 
 const fig = new FigTree()
 const ev = (expression: unknown, data?: Record<string, unknown>) =>
@@ -300,7 +301,7 @@ describe('the shared contract', () => {
       // A null holder is omitted, so nothing replaces the input
       { $map: { input: null, each: '$element', nullInputDefault: null } },
     ])
-      expect(fig.validate(expression).issues.map((issue) => issue.code)).toEqual(['type-check'])
+      expect(validate(fig, expression).issues.map((issue) => issue.code)).toEqual(['type-check'])
   })
 
   test('nullInputDefault is host-configurable through operatorDefaults', async () => {
